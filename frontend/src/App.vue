@@ -93,9 +93,9 @@ onMounted(async () => {
               </div>
             </n-gi>
             <n-gi :span="!showSideMargin ? gridMaxCols : (gridMaxCols - 2)">
-              <div class="main">
+              <div class="view">
                 <n-space vertical>
-                  <n-layout style="min-height: 80vh;">
+                  <n-layout style="min-height: 80vh;opacity:0.7;">
                     <Header />
                     <router-view></router-view>
                   </n-layout>
