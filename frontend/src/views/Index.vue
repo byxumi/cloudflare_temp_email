@@ -127,7 +127,7 @@ onMounted(() => {
 </style>
 
 <template>
-  <div>
+  <div class="view">
     <AddressBar />
     <n-tabs v-if="settings.address" type="card" v-model:value="indexTab" :placement="globalTabplacement">
       <n-tab-pane name="mailbox" :tab="t('mailbox')">
