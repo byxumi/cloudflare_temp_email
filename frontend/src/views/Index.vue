@@ -120,6 +120,12 @@ onMounted(() => {
 })
 </script>
 
+<style scoped>
+.view {
+  opacity: 0.7;
+}
+</style>
+
 <template>
   <div>
     <AddressBar />
