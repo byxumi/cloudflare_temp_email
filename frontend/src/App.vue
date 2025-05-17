@@ -73,6 +73,12 @@ onMounted(async () => {
 });
 </script>
 
+<style scoped>
+.view {
+  opacity: 0.7;
+}
+</style>
+
 <template>
   <n-config-provider :locale="localeConfig" :theme="theme">
     <n-global-style />
