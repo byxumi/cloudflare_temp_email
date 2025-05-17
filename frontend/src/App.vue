@@ -73,11 +73,6 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped>
-.view {
-  opacity: 0.7;
-}
-</style>
 
 <template>
   <n-config-provider :locale="localeConfig" :theme="theme">
@@ -93,7 +88,7 @@ onMounted(async () => {
               </div>
             </n-gi>
             <n-gi :span="!showSideMargin ? gridMaxCols : (gridMaxCols - 2)">
-              <div class="view">
+              <div class="main">
                 <n-space vertical>
                   <n-layout style="min-height: 80vh;opacity:0.7;">
                     <Header />
