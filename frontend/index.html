@@ -60,7 +60,7 @@
 </script>
   
 <body>
-  <div id="splash" style="
+<div id="splash" style="
   position: fixed;
   width: 100vw;
   height: 100vh;
@@ -68,17 +68,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;">
+  z-index: 9999;
+">
   <img src="logo.png" alt="Logo" style="width: 100px; height: 100px;">
 </div>
 
 <script>
-  window.addEventListener('load', () => {
+  setTimeout(() => {
     const splash = document.getElementById('splash');
     splash.style.transition = 'opacity 0.5s ease';
     splash.style.opacity = 0;
-    setTimeout(() => splash.remove(), 500); // 移除 splash 层
-  });
+    setTimeout(() => splash.remove(), 500);
+  }, 1500); // 1.5 秒后开始淡出动画
 </script>
   
 <!-- 邮箱 -->
