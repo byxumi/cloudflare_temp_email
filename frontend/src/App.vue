@@ -109,7 +109,7 @@ onMounted(async () => {
       </n-notification-provider>
     </n-spin>
   </n-config-provider>
-  <template>
+
   <div>
     <!-- 吉祥物图片（浮动右下角） -->
     <img
