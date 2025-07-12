@@ -8,6 +8,20 @@ import { useIsMobile } from './utils/composables'
 import Header from './views/Header.vue';
 import Footer from './views/Footer.vue';
 import { api } from './api'
+import { ref } from 'vue'
+
+
+
+function toggleChat() {
+  showChat.value = !showChat.value
+  selectedQuestion.value = null
+}
+
+function hideMascot() {
+  showChat.value = false
+  showMascot.value = false
+}
+</script>
 
 const {
   isDark, loading, useSideMargin, telegramApp, isTelegram
@@ -21,6 +35,24 @@ const isMobile = useIsMobile()
 const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
+const showMascot = ref(true)
+const showChat = ref(false)
+const selectedQuestion = ref(null)
+
+const faqList = [
+  {
+    q: "什么是临时邮箱？",
+    a: "临时邮箱是一种无需注册即可使用的邮箱，用于接收短期邮件。"
+  },
+  {
+    q: "邮箱多久会失效？",
+    a: "一般会保存几小时到一天，取决于平台配置。"
+  },
+  {
+    q: "可以用来注册网站吗？",
+    a: "当然可以，但请注意部分服务可能禁止临时邮箱。"
+  }
+]
 
 onMounted(async () => {
 
@@ -109,18 +141,26 @@ onMounted(async () => {
       </n-notification-provider>
     </n-spin>
   </n-config-provider>
+</template>
 
+
+<template>
   <div>
-    <!-- 吉祥物图片（浮动右下角） -->
+    <h1>欢迎使用临时邮箱！</h1>
+    <YourEmailComponent />
+
+    <!-- ✅ 插入开始 -->
+
+    <!-- 吉祥物图片 -->
     <img
       v-if="showMascot"
-      src="/mascot.png"
+      src="/assets/mascot.png"
       @click="toggleChat"
       alt="吉祥物"
       class="fixed bottom-4 right-4 w-24 h-24 z-50 drop-shadow-lg cursor-pointer animate-float"
     />
 
-    <!-- 对话框区域 -->
+    <!-- 对话框 -->
     <div
       v-if="showChat"
       class="fixed bottom-28 right-4 w-72 bg-white border border-pink-200 rounded-xl p-4 shadow-lg z-50"
@@ -149,56 +189,11 @@ onMounted(async () => {
       <!-- 关闭按钮 -->
       <button class="mt-4 text-xs text-red-500 hover:underline block" @click="hideMascot">关闭吉祥物</button>
     </div>
+
+    <!-- ✅ 插入结束 -->
   </div>
 </template>
 
-  <script setup>
-import { ref } from 'vue'
-
-const showMascot = ref(true)
-const showChat = ref(false)
-const selectedQuestion = ref(null)
-
-const faqList = [
-  {
-    q: "什么是临时邮箱？",
-    a: "临时邮箱是一种无需注册即可使用的邮箱，用于接收短期邮件。"
-  },
-  {
-    q: "邮箱多久会失效？",
-    a: "一般会保存几小时到一天，取决于平台配置。"
-  },
-  {
-    q: "可以用来注册网站吗？",
-    a: "当然可以，但请注意部分服务可能禁止临时邮箱。"
-  }
-]
-
-function toggleChat() {
-  showChat.value = !showChat.value
-  selectedQuestion.value = null
-}
-
-function hideMascot() {
-  showChat.value = false
-  showMascot.value = false
-}
-</script>
-
-<style scoped>
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-.animate-float {
-  animation: float 3s ease-in-out infinite;
-}
-</style>
-  
 <style>
 .n-switch {
   margin-left: 10px;
