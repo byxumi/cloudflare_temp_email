@@ -109,10 +109,7 @@ onMounted(async () => {
       </n-notification-provider>
     </n-spin>
   </n-config-provider>
-</template>
-
-<template>
-  <div>
+    <div>
     <!-- 你原本的内容 -->
     <h1>欢迎使用临时邮箱</h1>
 
@@ -203,6 +200,8 @@ function hideMascot() {
   animation: float 3s ease-in-out infinite;
 }
 </style>
+</template>
+
 
 <style>
 .n-switch {
