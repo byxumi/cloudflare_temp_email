@@ -194,6 +194,20 @@ onMounted(async () => {
   </div>
 </template>
 
+<style scoped>
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+</style>
+
 <style>
 .n-switch {
   margin-left: 10px;
