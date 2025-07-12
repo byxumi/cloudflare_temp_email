@@ -109,9 +109,96 @@ onMounted(async () => {
       </n-notification-provider>
     </n-spin>
   </n-config-provider>
+  <template>
+  <div>
+    <!-- 吉祥物图片（浮动右下角） -->
+    <img
+      v-if="showMascot"
+      src="/mascot.png"
+      @click="toggleChat"
+      alt="吉祥物"
+      class="fixed bottom-4 right-4 w-24 h-24 z-50 drop-shadow-lg cursor-pointer animate-float"
+    />
+
+    <!-- 对话框区域 -->
+    <div
+      v-if="showChat"
+      class="fixed bottom-28 right-4 w-72 bg-white border border-pink-200 rounded-xl p-4 shadow-lg z-50"
+    >
+      <h3 class="text-pink-500 font-bold mb-2">有什么问题想问我？</h3>
+
+      <!-- 问题列表 -->
+      <ul v-if="!selectedQuestion" class="text-sm text-gray-700 space-y-2">
+        <li
+          v-for="(item, index) in faqList"
+          :key="index"
+          class="hover:text-pink-500 cursor-pointer"
+          @click="selectedQuestion = item"
+        >
+          👉 {{ item.q }}
+        </li>
+      </ul>
+
+      <!-- 回答内容 -->
+      <div v-else>
+        <p class="text-gray-700 text-sm mb-2">❓ <strong>{{ selectedQuestion.q }}</strong></p>
+        <p class="text-gray-600 text-sm">💬 {{ selectedQuestion.a }}</p>
+        <button class="mt-3 text-xs text-blue-500 hover:underline" @click="selectedQuestion = null">返回问题列表</button>
+      </div>
+
+      <!-- 关闭按钮 -->
+      <button class="mt-4 text-xs text-red-500 hover:underline block" @click="hideMascot">关闭吉祥物</button>
+    </div>
+  </div>
 </template>
 
+  <script setup>
+import { ref } from 'vue'
 
+const showMascot = ref(true)
+const showChat = ref(false)
+const selectedQuestion = ref(null)
+
+const faqList = [
+  {
+    q: "什么是临时邮箱？",
+    a: "临时邮箱是一种无需注册即可使用的邮箱，用于接收短期邮件。"
+  },
+  {
+    q: "邮箱多久会失效？",
+    a: "一般会保存几小时到一天，取决于平台配置。"
+  },
+  {
+    q: "可以用来注册网站吗？",
+    a: "当然可以，但请注意部分服务可能禁止临时邮箱。"
+  }
+]
+
+function toggleChat() {
+  showChat.value = !showChat.value
+  selectedQuestion.value = null
+}
+
+function hideMascot() {
+  showChat.value = false
+  showMascot.value = false
+}
+</script>
+
+<style scoped>
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+</style>
+  
 <style>
 .n-switch {
   margin-left: 10px;
