@@ -116,7 +116,7 @@ onMounted(async () => {
     <!-- 吉祥物图片 -->
     <img
       v-if="showMascot"
-      src="/assets/mascot.png"
+      src="/mascot.png"
       @click="toggleChat"
       alt="吉祥物"
       class="fixed bottom-4 right-4 w-24 h-24 z-50 drop-shadow-lg cursor-pointer animate-float"
