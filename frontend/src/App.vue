@@ -152,7 +152,6 @@ onMounted(async () => {
       <button class="mt-4 text-xs text-red-500 hover:underline block" @click="hideMascot">关闭吉祥物</button>
     </div>
   </div>
-</template>
 
 <script setup>
 import { ref } from 'vue'
