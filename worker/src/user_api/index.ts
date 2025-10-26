@@ -6,6 +6,7 @@ import bind_address from './bind_address';
 import passkey from './passkey';
 import oauth2 from './oauth2';
 import user_mail_api from './user_mail_api';
+import recharge_api from './recharge_api'; // <-- NEW IMPORT
 
 export const api = new Hono<HonoCustomType>();
 
@@ -41,3 +42,5 @@ api.post('/user_api/passkey/register_request', passkey.registerRequest);
 api.post('/user_api/passkey/register_response', passkey.registerResponse);
 api.post('/user_api/passkey/authenticate_request', passkey.authenticateRequest);
 api.post('/user_api/passkey/authenticate_response', passkey.authenticateResponse);
+
+api.post('/redeem_code', user_middleware, recharge_api.redeemCode);
