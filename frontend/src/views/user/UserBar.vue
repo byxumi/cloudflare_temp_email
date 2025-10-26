@@ -1,9 +1,11 @@
+// frontend/src/views/user/UserBar.vue
 <script setup>
 import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { NAlert, NButton, NTag, useMessage, NCard, NSkeleton } from 'naive-ui'; 
 
-import { useGlobalState } from '../../store'
+import { useGlobalState } from '../../store' 
 import { api } from '../../api'
 import UserLogin from './UserLogin.vue'
 
@@ -11,7 +13,7 @@ const message = useMessage()
 const router = useRouter()
 
 const {
-    userSettings, userJwt, userOpenSettings
+    userSettings, userJwt, userOpenSettings, removeJwt 
 } = useGlobalState()
 
 const { t } = useI18n({
@@ -19,20 +21,25 @@ const { t } = useI18n({
         en: {
             currentUser: 'Current Login User',
             fetchUserSettingsError: 'Login password is invalid or account not exist, it may be network connection issue, please try again later.',
+            logout: 'Logout' 
         },
         zh: {
             currentUser: '当前登录用户',
             fetchUserSettingsError: '登录信息已过期或账号不存在，也可能是网络连接异常，请稍后再尝试。',
-
+            logout: '登出' 
         }
     }
 });
 
+const logout = () => {
+    removeJwt() 
+    router.push('/')
+}
 
 onMounted(async () => {
     await api.getUserOpenSettings(message);
     // make sure user_id is fetched
-    if (!userSettings.value.user_id) await api.getUserSettings(message);
+    if (!userSettings.user_id) await api.getUserSettings(message);
 });
 </script>
 
@@ -45,6 +52,18 @@ onMounted(async () => {
             <n-alert type="success" :show-icon="false" :bordered="false">
                 <span>
                     <b>{{ t('currentUser') }} <b>{{ userSettings.user_email }}</b></b>
+                    <span style="margin-left: 20px;">
+                        <n-tag type="info">余额: {{ userSettings.balance }}</n-tag>
+                    </span>
+                    <n-button 
+                        size="small" 
+                        style="margin-left: 20px;" 
+                        @click="logout"
+                        type="error"
+                        tertiary
+                    >
+                        {{ t('logout') }}
+                    </n-button>
                 </span>
             </n-alert>
         </div>
