@@ -101,6 +101,8 @@ export const useGlobalState = createGlobalState(
             new_user_token: null,
             /** @type {null | {domains: string[] | undefined | null, role: string, prefix: string | undefined | null}} */
             user_role: null,
+            /** @type {number} */ 
+            balance: 0, 
         });
         const showAdminPage = computed(() =>
             !!adminAuth.value
@@ -111,6 +113,24 @@ export const useGlobalState = createGlobalState(
         const isTelegram = ref(!!window.Telegram?.WebApp?.initData);
         const userOauth2SessionState = useSessionStorage('userOauth2SessionState', '');
         const userOauth2SessionClientID = useSessionStorage('userOauth2SessionClientID', '');
+
+        // === 关键新增: removeJwt 函数定义 ===
+        const removeJwt = () => {
+            userJwt.value = '';
+            addressPassword.value = '';
+            userSettings.value = {
+                fetched: false,
+                user_email: '',
+                user_id: 0,
+                is_admin: false,
+                access_token: null,
+                new_user_token: null,
+                user_role: null,
+                balance: 0,
+            };
+        };
+        // === 结束新增 ===
+
         return {
             isDark,
             toggleDark,
@@ -148,6 +168,7 @@ export const useGlobalState = createGlobalState(
             userOauth2SessionClientID,
             useSimpleIndex,
             addressPassword,
+            removeJwt, // <-- 关键修改: 导出 removeJwt
         }
     },
 )
