@@ -1,14 +1,14 @@
 <script setup>
-import { ref } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { computed, ref, h } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { startRegistration } from '@simplewebauthn/browser';
-import { NButton, NPopconfirm } from 'naive-ui'
+import { NButton, NPopconfirm, NCard, NDivider, NForm, NFormItem, NInput, NTabs, NTabPane, NSpace, NTag, NAlert, NDataTable, NModal, useMessage } from 'naive-ui'; // 确保导入所有组件
 
-import { useGlobalState } from '../../store'
-import { api } from '../../api'
+import { useGlobalState } from '../../store';
+import { api } from '../../api';
 
-const { userJwt, userSettings, } = useGlobalState()
-const message = useMessage()
+const message = useMessage();
+const { userJwt, userSettings, loading } = useGlobalState();
 
 const showLogout = ref(false)
 const showCreatePasskey = ref(false)
@@ -17,6 +17,9 @@ const showPasskeyList = ref(false)
 const showRenamePasskey = ref(false)
 const currentPasskeyId = ref(null)
 const currentPasskeyName = ref('')
+const codeToRedeem = ref(''); // 卡密输入状态
+
+const passkeyData = ref([])
 
 const { t } = useI18n({
     messages: {
@@ -34,8 +37,19 @@ const { t } = useI18n({
             created_at: 'Created At',
             updated_at: 'Updated At',
             actions: 'Actions',
-            renamePasskey: 'Rename Passkey',
             renamePasskeyNamePlaceholder: 'Please enter the new passkey name',
+
+            // New Recharge Messages
+            userSettings: 'User Settings',
+            baseInfo: 'Basic Info',
+            userEmail: 'Email',
+            userRole: 'Role',
+            currentBalance: 'Current Balance',
+            redeemCode: 'Recharge Code',
+            enterCode: 'Enter Recharge Code',
+            redeem: 'Redeem',
+            successRedeem: 'Redeem successful!',
+            // End New Messages
         },
         zh: {
             logout: '退出登录',
@@ -51,8 +65,19 @@ const { t } = useI18n({
             created_at: '创建时间',
             updated_at: '更新时间',
             actions: '操作',
-            renamePasskey: '重命名 Passkey',
             renamePasskeyNamePlaceholder: '请输入新的 Passkey 名称',
+
+            // New Recharge Messages
+            userSettings: '个人中心',
+            baseInfo: '基本信息',
+            userEmail: '用户邮箱',
+            userRole: '用户角色',
+            currentBalance: '当前余额',
+            redeemCode: '卡密兑换',
+            enterCode: '输入卡密',
+            redeem: '兑换',
+            successRedeem: '兑换成功！',
+            // End New Messages
         }
     }
 });
@@ -61,6 +86,40 @@ const { t } = useI18n({
 const logout = async () => {
     userJwt.value = '';
     location.reload()
+}
+
+// === Recharge Code Logic ===
+const handleRedeem = async () => {
+    if (!codeToRedeem.value) {
+        message.warning("卡密不能为空");
+        return;
+    }
+    
+    // 假设 api.redeemCode 已在 api/index.js 中定义
+    try {
+        const res = await api.redeemCode(codeToRedeem.value);
+        if (res.success) {
+            // 刷新用户余额
+            await api.getUserSettings(message); 
+            message.success(t('successRedeem') + ` ${res.new_balance} (新余额)`);
+            codeToRedeem.value = '';
+        } else {
+            message.error(res.message || "兑换失败");
+        }
+    } catch (error) {
+        message.error(error.message || "兑换失败");
+    }
+};
+
+// === Passkey Logic ===
+const fetchPasskeyList = async () => {
+    try {
+        const data = await api.fetch(`/user_api/passkey`)
+        passkeyData.value = data
+    } catch (e) {
+        console.error(e)
+        message.error(e.message)
+    }
 }
 
 const createPasskey = async () => {
@@ -95,6 +154,25 @@ const createPasskey = async () => {
     }
 }
 
+const renamePasskey = async () => {
+    try {
+        await api.fetch(`/user_api/passkey/rename`, {
+            method: 'POST',
+            body: JSON.stringify({
+                passkey_name: currentPasskeyName.value,
+                passkey_id: currentPasskeyId.value
+            })
+        })
+        await fetchPasskeyList()
+    } catch (e) {
+        console.error(e)
+        message.error(e.message)
+    } finally {
+        currentPasskeyName.value = ''
+        showRenamePasskey.value = false
+    }
+}
+
 const passkeyColumns = [
     {
         title: "Passkey ID",
@@ -120,11 +198,12 @@ const passkeyColumns = [
                 [
                     h(NButton,
                         {
-                            tertiary: true,
+                            secondary: true,
                             type: "primary",
                             onClick: () => {
                                 showRenamePasskey.value = true;
                                 currentPasskeyId.value = row.passkey_id;
+                                currentPasskeyName.value = row.passkey_name;
                             }
                         },
                         { default: () => t('renamePasskey') }
@@ -146,8 +225,9 @@ const passkeyColumns = [
                         {
                             trigger: () => h(NButton,
                                 {
-                                    tertiary: true,
+                                    secondary: true,
                                     type: "error",
+                                    style: "margin-left: 8px;"
                                 },
                                 { default: () => t('deletePasskey') }
                             ),
@@ -160,56 +240,59 @@ const passkeyColumns = [
     }
 ]
 
-const passkeyData = ref([])
-
-const fetchPasskeyList = async () => {
-    try {
-        const data = await api.fetch(`/user_api/passkey`)
-        passkeyData.value = data
-    } catch (e) {
-        console.error(e)
-        message.error(e.message)
-    }
-}
-
-const renamePasskey = async () => {
-    try {
-        await api.fetch(`/user_api/passkey/rename`, {
-            method: 'POST',
-            body: JSON.stringify({
-                passkey_name: currentPasskeyName.value,
-                passkey_id: currentPasskeyId.value
-            })
-        })
-        await fetchPasskeyList()
-    } catch (e) {
-        console.error(e)
-        message.error(e.message)
-    } finally {
-        currentPasskeyName.value = ''
-        showRenamePasskey.value = false
-    }
-}
 </script>
 
 <template>
     <div class="center" v-if="userSettings.user_email">
-        <n-card :bordered="false" embedded>
-            <n-button @click="showPasskeyList = true; fetchPasskeyList();" secondary block strong>
-                {{ t('showPasskeyList') }}
-            </n-button>
-            <n-button @click="showCreatePasskey = true" type="primary" secondary block strong>
-                {{ t('createPasskey') }}
-            </n-button>
-            <n-alert :show-icon="false" :bordered="false">
-                <span>
-                    {{ t('passordTip') }}
-                </span>
-            </n-alert>
-            <n-button @click="showLogout = true" secondary block strong>
-                {{ t('logout') }}
-            </n-button>
+        <n-card :bordered="false" embedded style="max-width: 800px;">
+            <n-tabs type="line" :value="'info'" animated>
+                <n-tab-pane name="info" :tab="t('baseInfo')">
+                    <n-form :label-width="120" label-placement="left">
+                        <n-form-item :label="t('userEmail')">
+                            <n-input :value="userSettings.user_email" disabled />
+                        </n-form-item>
+                        <n-form-item :label="t('userRole')">
+                            <n-tag type="info">{{ userSettings.user_role?.role || 'Normal' }}</n-tag>
+                        </n-form-item>
+                        <n-form-item :label="t('currentBalance')">
+                            <n-tag type="success" size="large">{{ userSettings.balance }}</n-tag>
+                        </n-form-item>
+
+                        <n-divider>{{ t('redeemCode') }}</n-divider>
+
+                        <n-form-item :label="t('enterCode')">
+                            <n-space style="width: 100%;">
+                                <n-input v-model:value="codeToRedeem" :placeholder="t('enterCode')" style="flex-grow: 1;" @keyup.enter="handleRedeem" />
+                                <n-button type="success" :loading="loading" @click="handleRedeem">
+                                    {{ t('redeem') }}
+                                </n-button>
+                            </n-space>
+                        </n-form-item>
+                    </n-form>
+                </n-tab-pane>
+
+                <n-tab-pane name="security" :tab="t('security')">
+                    <n-alert :show-icon="false" :bordered="false" type="info" style="margin-bottom: 15px;">
+                        <span>
+                            {{ t('passordTip') }}
+                        </span>
+                    </n-alert>
+
+                    <n-space vertical>
+                        <n-button @click="showPasskeyList = true; fetchPasskeyList();" secondary block strong>
+                            {{ t('showPasskeyList') }}
+                        </n-button>
+                        <n-button @click="showCreatePasskey = true" type="primary" secondary block strong>
+                            {{ t('createPasskey') }}
+                        </n-button>
+                        <n-button @click="showLogout = true" secondary block strong>
+                            {{ t('logout') }}
+                        </n-button>
+                    </n-space>
+                </n-tab-pane>
+            </n-tabs>
         </n-card>
+
         <n-modal v-model:show="showCreatePasskey" preset="dialog" :title="t('createPasskey')">
             <n-input v-model:value="passkeyName" :placeholder="t('passkeyNamePlaceholder')" />
             <template #action>
@@ -218,6 +301,7 @@ const renamePasskey = async () => {
                 </n-button>
             </template>
         </n-modal>
+
         <n-modal v-model:show="showRenamePasskey" preset="dialog" :title="t('renamePasskey')">
             <n-input v-model:value="currentPasskeyName" :placeholder="t('renamePasskeyNamePlaceholder')" />
             <template #action>
@@ -226,9 +310,11 @@ const renamePasskey = async () => {
                 </n-button>
             </template>
         </n-modal>
-        <n-modal v-model:show="showPasskeyList" preset="card" :title="t('showPasskeyList')">
+
+        <n-modal v-model:show="showPasskeyList" preset="card" :title="t('showPasskeyList')" style="width: 80%;">
             <n-data-table :columns="passkeyColumns" :data="passkeyData" :bordered="false" embedded />
         </n-modal>
+
         <n-modal v-model:show="showLogout" preset="dialog" :title="t('logout')">
             <p>{{ t('logoutConfirm') }}</p>
             <template #action>
@@ -246,14 +332,13 @@ const renamePasskey = async () => {
     justify-content: center;
 }
 
-
 .n-card {
     max-width: 800px;
     text-align: left;
+    margin-top: 20px;
 }
 
-.n-button {
-    margin-top: 10px;
-    margin-bottom: 10px;
+.n-form-item {
+    margin-bottom: 12px;
 }
 </style>
