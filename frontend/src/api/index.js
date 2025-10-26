@@ -216,6 +216,13 @@ const bindUserAddress = async () => {
     }
 }
 
+const redeemCode = async (code) => {
+    return await apiFetch(`/user_api/redeem_code`, {
+        method: 'POST',
+        body: { code }
+    });
+}
+
 export const api = {
     fetch: apiFetch,
     getSettings,
@@ -225,4 +232,5 @@ export const api = {
     adminShowAddressCredential,
     adminDeleteAddress,
     bindUserAddress,
+    redeemCode, // <-- 新增导出
 }
