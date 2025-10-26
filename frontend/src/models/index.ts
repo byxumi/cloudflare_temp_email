@@ -13,3 +13,12 @@ export type UserOauth2Settings = {
     enableMailAllowList?: boolean | undefined;
     mailAllowList?: string[] | undefined;
 }
+
+export type DomainPricingConfig = {
+    defaultCost: number;
+    domainPrices: Record<string, number | 'free'>;
+    roleOverrides: Record<string, {
+        defaultCostOverride?: number | 'free';
+        domainPricesOverride?: Record<string, number | 'free'>;
+    }>;
+};
