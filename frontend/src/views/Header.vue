@@ -19,7 +19,7 @@ const notification = useNotification()
 
 const {
     toggleDark, isDark, isTelegram, showAdminPage,
-    showAuth, auth, loading, openSettings, userSettings, adminAuth // <-- 关键：确保 adminAuth 被正确解构
+    showAuth, auth, loading, openSettings, userSettings
 } = useGlobalState()
 const route = useRoute()
 const router = useRouter()
@@ -32,18 +32,8 @@ const menuValue = computed(() => {
     return "home";
 });
 
-// MODIFIED: 统一认证函数，处理 Admin 认证和普通访问认证
 const authFunc = async () => {
     try {
-        // 如果是 Admin 认证弹窗，使用 adminAuth
-        if (showAdminPage.value) {
-            // 重新调用 API，Worker 会检查最新的 adminAuth 值
-            await api.fetch('/admin/address'); 
-        }
-        // 如果是普通访问认证弹窗，使用 auth
-        if (showAuth.value) {
-            await api.fetch('/open_api/settings'); 
-        }
         location.reload()
     } catch (error) {
         message.error(error.message || "error");
@@ -66,8 +56,6 @@ const { locale, t } = useI18n({
             light: 'Light',
             accessHeader: 'Access Password',
             accessTip: 'Please enter the correct access password',
-            adminAccessHeader: 'Admin Access Password', // <-- 新增 Admin 提示
-            adminAccessTip: 'Please enter the correct Admin access password',
             home: 'Home',
             menu: 'Menu',
             user: 'User',
@@ -79,8 +67,6 @@ const { locale, t } = useI18n({
             light: '亮色',
             accessHeader: '访问密码',
             accessTip: '请输入站点访问密码',
-            adminAccessHeader: '管理员访问密码', // <-- 新增 Admin 提示
-            adminAccessTip: '请输入正确的管理员访问密码',
             home: '主页',
             menu: '菜单',
             user: '用户',
@@ -276,7 +262,6 @@ onMounted(async () => {
                 <n-menu :options="menuOptions" />
             </n-drawer-content>
         </n-drawer>
-
         <n-modal v-model:show="showAuth" :closable="false" :closeOnEsc="false" :maskClosable="false" preset="dialog"
             :title="t('accessHeader')">
             <p>{{ t('accessTip') }}</p>
@@ -287,18 +272,6 @@ onMounted(async () => {
                 </n-button>
             </template>
         </n-modal>
-        
-        <n-modal v-model:show="showAdminAuth" :closable="false" :closeOnEsc="false" :maskClosable="false" preset="dialog"
-            :title="t('adminAccessHeader')">
-            <p>{{ t('adminAccessTip') }}</p>
-            <n-input v-model:value="adminAuth" type="password" show-password-on="click" />
-            <template #action>
-                <n-button :loading="loading" @click="authFunc" type="primary">
-                    {{ t('ok') }}
-                </n-button>
-            </template>
-        </n-modal>
-
     </div>
 </template>
 
