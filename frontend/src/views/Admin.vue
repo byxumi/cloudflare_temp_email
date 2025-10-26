@@ -1,4 +1,3 @@
-// frontend/src/views/Admin.vue
 <script setup>
 import { NTabs, NTabPane, NMessageProvider, NButton, useMessage, NTag, NIcon, NDivider } from 'naive-ui';
 import { api } from '../api';
@@ -6,7 +5,7 @@ import { userSettings, toggleTheme, theme } from '../store';
 import { useI18n } from 'vue-i18n';
 
 // 导入所有 Admin 子组件
-import DomainPricingConfig from './admin/DomainPricingConfig.vue'; // <-- 关键新增导入
+import DomainPricingConfig from './admin/DomainPricingConfig.vue'; 
 import WorkerConfig from './admin/WorkerConfig.vue';
 import Account from './admin/Account.vue';
 import Maintenance from './admin/Maintenance.vue';
@@ -50,7 +49,7 @@ const { t } = useI18n({
       qucickSetup: 'Quick Setup',
       telegram: 'Telegram',
       accountSettings: 'Account Settings',
-      domainPricingConfig: 'Domain Pricing Config', // <-- 关键新增消息
+      domainPricingConfig: 'Domain Pricing Config', 
       userOauth2Settings: 'User Oauth2 Settings',
       roleAddressConfig: 'Role Address Config',
       rechargeCodeManager: 'Recharge Code Manager', // <-- 新增消息
@@ -73,7 +72,7 @@ const { t } = useI18n({
       qucickSetup: '快速设置',
       telegram: 'Telegram',
       accountSettings: '账户设置',
-      domainPricingConfig: '域名定价配置', // <-- 关键新增消息
+      domainPricingConfig: '域名定价配置', 
       userOauth2Settings: '用户 Oauth2 配置',
       roleAddressConfig: '角色地址配置',
       rechargeCodeManager: '卡密管理', // <-- 新增消息
@@ -111,6 +110,9 @@ const { t } = useI18n({
         </n-tab-pane>
         <n-tab-pane name="userManagement" :tab="t('userManagement')">
           <UserManagement />
+        </n-tab-pane>
+        <n-tab-pane name="rechargeCodeManager" :tab="t('rechargeCodeManager')">
+          <RechargeCodeManager />
         </n-tab-pane>
         <n-tab-pane name="createAccount" :tab="t('createAccount')">
           <CreateAccount />
