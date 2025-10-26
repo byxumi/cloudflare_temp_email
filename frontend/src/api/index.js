@@ -1,3 +1,4 @@
+// frontend/src/api/index.js
 import { useGlobalState } from '../store'
 import { h } from 'vue'
 import axios from 'axios'
@@ -58,11 +59,11 @@ const getOpenSettings = async (message, notification) => {
     try {
         const res = await apiFetch("/open_api/settings");
         
-        // 关键修复 1: 确保 domains 始终是一个数组，用于安全映射
+        // 关键修复 1: 确保 domains 始终是一个数组，以防 Worker 返回 null/undefined
         const domainsArray = Array.isArray(res && res["domains"]) ? res["domains"] : [];
         const domainLabels = Array.isArray(res && res["domainLabels"]) ? res["domainLabels"] : [];
         
-        // 关键修复 2: 恢复错误提示，如果 domainsArray 为空则报错
+        // 关键修复 2: 恢复错误提示 (这是用户最终的要求)
         if (domainsArray.length < 1) { 
             message.error("No domains found, please check your worker settings");
         }
@@ -163,8 +164,7 @@ const getUserSettings = async (message) => {
         const res = await api.fetch("/user_api/settings")
         Object.assign(userSettings.value, {
             ...res,
-            // 关键新增：获取余额
-            balance: res.balance || 0 
+            balance: res.balance || 0 // <-- 关键新增：获取余额
         })
         // auto refresh user jwt
         if (userSettings.value.new_user_token) {
