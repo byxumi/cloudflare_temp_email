@@ -56,17 +56,11 @@ const apiFetch = async (path, options = {}) => {
 
 const getOpenSettings = async (message, notification) => {
     try {
-        const res = await apiFetch("/open_api/settings");
-        
-        // 关键修复 1: 确保 domains 始终是一个数组，用于安全映射
-        const domainsArray = Array.isArray(res && res["domains"]) ? res["domains"] : [];
-        const domainLabels = Array.isArray(res && res["domainLabels"]) ? res["domainLabels"] : [];
-        
-        // 关键修改 2: 恢复错误提示，如果 domainsArray 为空则报错
-        if (domainsArray.length < 1) { 
+        const res = await api.fetch("/open_api/settings");
+        const domainLabels = res["domainLabels"] || [];
+        if (res["domains"]?.length < 1) {
             message.error("No domains found, please check your worker settings");
         }
-        
         Object.assign(openSettings.value, {
             ...res,
             title: res["title"] || "",
@@ -75,15 +69,12 @@ const getOpenSettings = async (message, notification) => {
             maxAddressLen: res["maxAddressLen"] || 30,
             needAuth: res["needAuth"] || false,
             defaultDomains: res["defaultDomains"] || [],
-            
-            // 使用安全的 domainsArray 进行映射
-            domains: domainsArray.map((domain, index) => {
+            domains: res["domains"].map((domain, index) => {
                 return {
                     label: domainLabels.length > index ? domainLabels[index] : domain,
                     value: domain
                 }
             }),
-            
             adminContact: res["adminContact"] || "",
             enableUserCreateEmail: res["enableUserCreateEmail"] || false,
             disableAnonymousUserCreateEmail: res["disableAnonymousUserCreateEmail"] || false,
@@ -97,7 +88,6 @@ const getOpenSettings = async (message, notification) => {
             isS3Enabled: res["isS3Enabled"] || false,
             enableAddressPassword: res["enableAddressPassword"] || false,
         });
-        
         if (openSettings.value.needAuth) {
             showAuth.value = true;
         }
@@ -115,15 +105,8 @@ const getOpenSettings = async (message, notification) => {
                 }
             });
         }
-        
-        // 关键修复 3: 返回 API 响应数据
-        return res; 
-        
     } catch (error) {
         message.error(error.message || "error");
-        // 关键修复 4: 错误时返回一个包含空数组的安全对象
-        return { domains: [], domainLabels: [], defaultDomains: [] };
-        
     } finally {
         openSettings.value.fetched = true;
     }
@@ -161,10 +144,7 @@ const getUserSettings = async (message) => {
     try {
         if (!userJwt.value) return;
         const res = await api.fetch("/user_api/settings")
-        Object.assign(userSettings.value, {
-            ...res,
-            balance: res.balance || 0 // <-- 确保获取余额
-        })
+        Object.assign(userSettings.value, res)
         // auto refresh user jwt
         if (userSettings.value.new_user_token) {
             try {
