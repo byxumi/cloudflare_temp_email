@@ -1,7 +1,8 @@
+// frontend/src/views/admin/DomainPricingConfig.vue (完整代码)
 <script setup>
 import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n'
-import { NButton, NInputNumber, NTag, NDivider, NCollapse, NCollapseItem, NFormItemRow, NAlert, NSelect, useMessage, NFlex } from 'naive-ui';
+import { NButton, NInputNumber, NTag, NDivider, NCollapse, NCollapseItem, NFormItemRow, NAlert, NSelect, useMessage, NFlex, NCard } from 'naive-ui';
 import { api } from '../../api'
 
 const message = useMessage()
@@ -69,13 +70,13 @@ const fetchData = async () => {
         Object.assign(config.value, pricingRes);
         
         // 2. 获取系统角色列表
-        // 假设 Admin API 有一个 /admin/user_roles 端点
         const rolesRes = await api.fetch(`/admin/user_roles`); 
         systemRoles.value = rolesRes.map(r => r.role);
 
         // 3. 获取域名列表
         const openSettings = await api.getOpenSettings(message); 
-        domainsOptions.value = openSettings.domains.map(d => ({ label: d, value: d }));
+        // 关键：openSettings.domains 已经是 [{label: x, value: y}] 格式
+        domainsOptions.value = openSettings.domains.map(d => ({ label: d.label, value: d.value }));
 
     } catch (error) {
         message.error(error.message || "获取配置失败");
