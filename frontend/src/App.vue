@@ -1,143 +1,227 @@
-<script setup>
-import { darkTheme, NGlobalStyle, zhCN } from 'naive-ui'
-import { computed, onMounted } from 'vue'
-import { useScript } from '@unhead/vue'
-import { useI18n } from 'vue-i18n'
-import { useGlobalState } from './store'
-import { useIsMobile } from './utils/composables'
-import Header from './views/Header.vue';
-import Footer from './views/Footer.vue';
-import { api } from './api'
+import { useGlobalState } from '../store'
+import { h } from 'vue'
+import axios from 'axios'
 
+import i18n from '../i18n'
+
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 const {
-  isDark, loading, useSideMargin, telegramApp, isTelegram
-} = useGlobalState()
-const adClient = import.meta.env.VITE_GOOGLE_AD_CLIENT;
-const adSlot = import.meta.env.VITE_GOOGLE_AD_SLOT;
-const { locale } = useI18n({});
-const theme = computed(() => isDark.value ? darkTheme : null)
-const localeConfig = computed(() => locale.value == 'zh' ? zhCN : null)
-const isMobile = useIsMobile()
-const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
-const showAd = computed(() => !isMobile.value && adClient && adSlot);
-const gridMaxCols = computed(() => showAd.value ? 8 : 12);
+    loading, auth, jwt, settings, openSettings,
+    userOpenSettings, userSettings, announcement,
+    showAuth, adminAuth, showAdminAuth, userJwt
+} = useGlobalState();
 
-onMounted(async () => {
-
-  try {
-    await api.getUserSettings();
-  } catch (error) {
-    console.error(error);
-  }
-
-  const token = import.meta.env.VITE_CF_WEB_ANALY_TOKEN;
-
-  const exist = document.querySelector('script[src="https://static.cloudflareinsights.com/beacon.min.js"]') !== null
-  if (token && !exist) {
-    const script = document.createElement('script');
-    script.defer = true;
-    script.src = 'https://static.cloudflareinsights.com/beacon.min.js';
-    script.dataset.cfBeacon = `{ token: ${token} }`;
-    document.body.appendChild(script);
-  }
-
-  // check if google ad is enabled
-  if (showAd.value) {
-    useScript({
-      src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`,
-      async: true,
-      crossorigin: "anonymous",
-    });
-    (window.adsbygoogle = window.adsbygoogle || []).push({});
-    (window.adsbygoogle = window.adsbygoogle || []).push({});
-  }
-
-
-  // check if telegram is enabled
-  const enableTelegram = import.meta.env.VITE_IS_TELEGRAM;
-  if (
-    (typeof enableTelegram === 'boolean' && enableTelegram === true)
-    ||
-    (typeof enableTelegram === 'string' && enableTelegram === 'true')
-  ) {
-    await new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = 'https://telegram.org/js/telegram-web-app.js';
-      script.onload = resolve;
-      script.onerror = reject;
-      document.body.appendChild(script);
-    });
-    telegramApp.value = window.Telegram?.WebApp || {};
-    isTelegram.value = !!window.Telegram?.WebApp?.initData;
-  }
+const instance = axios.create({
+    baseURL: API_BASE,
+    timeout: 30000,
+    validateStatus: (status) => status >= 200 && status <= 500
 });
-</script>
 
-<template>
-  <n-config-provider :locale="localeConfig" :theme="theme">
-    <n-global-style />
-    <n-spin description="loading..." :show="loading">
-      <n-notification-provider container-style="margin-top: 60px;">
-        <n-message-provider container-style="margin-top: 20px;">
-          <n-grid x-gap="12" :cols="gridMaxCols">
-            <n-gi v-if="showSideMargin" span="1">
-              <div class="side" v-if="showAd">
-                <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
-                  data-ad-format="auto" data-full-width-responsive="true"></ins>
-              </div>
-            </n-gi>
-            <n-gi :span="!showSideMargin ? gridMaxCols : (gridMaxCols - 2)">
-              <div class="main">
-                <n-space vertical>
-                  <n-layout style="min-height: 80vh;opacity:0.7;">
-                    <Header />
-                    <router-view></router-view>
-                  </n-layout>
-                  <Footer />
-                </n-space>
-              </div>
-            </n-gi>
-            <n-gi v-if="showSideMargin" span="1">
-              <div class="side" v-if="showAd">
-                <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
-                  data-ad-format="auto" data-full-width-responsive="true"></ins>
-              </div>
-            </n-gi>
-          </n-grid>
-          <n-back-top />
-        </n-message-provider>
-      </n-notification-provider>
-    </n-spin>
-  </n-config-provider>
-</template>
-
-
-<style>
-.n-switch {
-  margin-left: 10px;
-  margin-right: 10px;
-}
-</style>
-
-<style scoped>
-.side {
-  height: 100vh;
+const apiFetch = async (path, options = {}) => {
+    loading.value = true;
+    try {
+        const response = await instance.request(path, {
+            method: options.method || 'GET',
+            data: options.body || null,
+            headers: {
+                'x-lang': i18n.global.locale.value,
+                'x-user-token': options.userJwt || userJwt.value,
+                'x-user-access-token': userSettings.value.access_token,
+                'x-custom-auth': auth.value,
+                'x-admin-auth': adminAuth.value,
+                'Authorization': `Bearer ${jwt.value}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        if (response.status === 401 && path.startsWith("/admin")) {
+            showAdminAuth.value = true;
+        }
+        if (response.status === 401 && openSettings.value.auth) {
+            showAuth.value = true;
+        }
+        if (response.status >= 300) {
+            throw new Error(`[${response.status}]: ${response.data}` || "error");
+        }
+        const data = response.data;
+        return data;
+    } catch (error) {
+        if (error.response) {
+            throw new Error(`Code ${error.response.status}: ${error.response.data}` || "error");
+        }
+        throw error;
+    } finally {
+        loading.value = false;
+    }
 }
 
-.main {
-  height: 100vh;
-  text-align: center;
+const getOpenSettings = async (message, notification) => {
+    try {
+        const res = await apiFetch("/open_api/settings");
+        
+        // 关键修复 1: 确保 domains 始终是一个数组，用于安全映射
+        const domainsArray = Array.isArray(res && res["domains"]) ? res["domains"] : [];
+        const domainLabels = Array.isArray(res && res["domainLabels"]) ? res["domainLabels"] : [];
+        
+        // 关键修改 2: 恢复错误提示，如果 domainsArray 为空则报错
+        if (domainsArray.length < 1) { 
+            message.error("No domains found, please check your worker settings");
+        }
+        
+        Object.assign(openSettings.value, {
+            ...res,
+            title: res["title"] || "",
+            prefix: res["prefix"] || "",
+            minAddressLen: res["minAddressLen"] || 1,
+            maxAddressLen: res["maxAddressLen"] || 30,
+            needAuth: res["needAuth"] || false,
+            defaultDomains: res["defaultDomains"] || [],
+            
+            // 使用安全的 domainsArray 进行映射
+            domains: domainsArray.map((domain, index) => {
+                return {
+                    label: domainLabels.length > index ? domainLabels[index] : domain,
+                    value: domain
+                }
+            }),
+            
+            adminContact: res["adminContact"] || "",
+            enableUserCreateEmail: res["enableUserCreateEmail"] || false,
+            disableAnonymousUserCreateEmail: res["disableAnonymousUserCreateEmail"] || false,
+            disableCustomAddressName: res["disableCustomAddressName"] || false,
+            enableUserDeleteEmail: res["enableUserDeleteEmail"] || false,
+            enableAutoReply: res["enableAutoReply"] || false,
+            enableIndexAbout: res["enableIndexAbout"] || false,
+            copyright: res["copyright"] || openSettings.value.copyright,
+            cfTurnstileSiteKey: res["cfTurnstileSiteKey"] || "",
+            enableWebhook: res["enableWebhook"] || false,
+            isS3Enabled: res["isS3Enabled"] || false,
+            enableAddressPassword: res["enableAddressPassword"] || false,
+        });
+        
+        if (openSettings.value.needAuth) {
+            showAuth.value = true;
+        }
+        if (openSettings.value.announcement
+            && !openSettings.value.fetched
+            && (openSettings.value.announcement != announcement.value
+                || openSettings.value.alwaysShowAnnouncement)
+        ) {
+            announcement.value = openSettings.value.announcement;
+            notification.info({
+                content: () => {
+                    return h("div", {
+                        innerHTML: announcement.value
+                    });
+                }
+            });
+        }
+        
+        // 关键修复 3: 返回 API 响应数据
+        return res; 
+        
+    } catch (error) {
+        message.error(error.message || "error");
+        // 关键修复 4: 错误时返回一个包含空数组的安全对象
+        return { domains: [], domainLabels: [], defaultDomains: [] };
+        
+    } finally {
+        openSettings.value.fetched = true;
+    }
 }
 
-.n-grid {
-  height: 100%;
+const getSettings = async () => {
+    try {
+        if (typeof jwt.value != 'string' || jwt.value.trim() === '' || jwt.value === 'undefined') {
+            return "";
+        }
+        const res = await apiFetch("/api/settings");;
+        settings.value = {
+            address: res["address"],
+            auto_reply: res["auto_reply"],
+            send_balance: res["send_balance"],
+        };
+    } finally {
+        settings.value.fetched = true;
+    }
 }
 
-.n-gi {
-  height: 100%;
+
+const getUserOpenSettings = async (message) => {
+    try {
+        const res = await api.fetch(`/user_api/open_settings`);
+        Object.assign(userOpenSettings.value, res);
+    } catch (error) {
+        message.error(error.message || "fetch settings failed");
+    } finally {
+        userOpenSettings.value.fetched = true;
+    }
 }
 
-.n-space {
-  height: 100%;
+const getUserSettings = async (message) => {
+    try {
+        if (!userJwt.value) return;
+        const res = await api.fetch("/user_api/settings")
+        Object.assign(userSettings.value, {
+            ...res,
+            balance: res.balance || 0 // <-- 确保获取余额
+        })
+        // auto refresh user jwt
+        if (userSettings.value.new_user_token) {
+            try {
+                await api.fetch("/user_api/settings", {
+                    userJwt: userSettings.value.new_user_token,
+                })
+                userJwt.value = userSettings.value.new_user_token;
+                console.log("User JWT updated successfully");
+            }
+            catch (error) {
+                console.error("Failed to update user JWT", error);
+            }
+        }
+    } catch (error) {
+        message?.error(error.message || "error");
+    } finally {
+        userSettings.value.fetched = true;
+    }
 }
-</style>
+
+const adminShowAddressCredential = async (id) => {
+    try {
+        const { jwt: addressCredential } = await apiFetch(`/admin/show_password/${id}`);
+        return addressCredential;
+    } catch (error) {
+        throw error;
+    }
+}
+
+const adminDeleteAddress = async (id) => {
+    try {
+        await apiFetch(`/admin/delete_address/${id}`, {
+            method: 'DELETE'
+        });
+    } catch (error) {
+        throw error;
+    }
+}
+
+const bindUserAddress = async () => {
+    if (!userJwt.value) return;
+    try {
+        await apiFetch(`/user_api/bind_address`, {
+            method: 'POST',
+        });
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const api = {
+    fetch: apiFetch,
+    getSettings,
+    getOpenSettings,
+    getUserOpenSettings,
+    getUserSettings,
+    adminShowAddressCredential,
+    adminDeleteAddress,
+    bindUserAddress,
+}
