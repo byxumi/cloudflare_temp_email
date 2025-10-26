@@ -95,9 +95,9 @@ const refresh = async () => {
           item.content = data.content;
           item.raw = JSON.stringify(data, null, 2);
         } else {
-          item.to_mail = data?.personalizations ? data.personalizations.map(
-            (p) => p.to ? p.to.map((t) => t.email).join(',') : ''
-          ).join(';') : '';
+          item.to_mail = data?.personalizations?.map(
+            (p) => p.to?.map((t) => t.email).join(',')
+          ).join(';');
           item.subject = data.subject;
           item.is_html = (data.content[0]?.type != 'text/plain');
           item.content = data.content[0]?.value;
