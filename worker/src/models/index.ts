@@ -161,3 +161,14 @@ export type RoleConfig = {
 }
 
 export type RoleAddressConfig = Record<string, RoleConfig>;
+
+export type RechargeCode = {
+    id: number;
+    code: string;
+    value: number;
+    expires_at: string | null;
+    created_at: string;
+    created_by: string;
+    used_by: number | null;
+    used_at: string | null;
+};
