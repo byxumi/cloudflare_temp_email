@@ -1,3 +1,4 @@
+// frontend/src/store/index.js
 import { computed, ref } from "vue";
 import {
     createGlobalState, useStorage, useDark, useToggle,
@@ -102,7 +103,7 @@ export const useGlobalState = createGlobalState(
             /** @type {null | {domains: string[] | undefined | null, role: string, prefix: string | undefined | null}} */
             user_role: null,
             /** @type {number} */ 
-            balance: 0, // <-- 新增余额字段
+            balance: 0, // <-- 关键新增
         });
         const showAdminPage = computed(() =>
             !!adminAuth.value
