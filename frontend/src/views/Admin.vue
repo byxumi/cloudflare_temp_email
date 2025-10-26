@@ -26,6 +26,7 @@ import DatabaseManager from './admin/DatabaseManager.vue';
 import Telegram from './admin/Telegram.vue';
 import AccountSettings from './admin/AccountSettings.vue';
 import RoleAddressConfig from './admin/RoleAddressConfig.vue';
+import RechargeCodeManager from './admin/RechargeCodeManager.vue'; // <-- 新增导入
 
 const message = useMessage();
 
@@ -52,6 +53,7 @@ const { t } = useI18n({
       domainPricingConfig: 'Domain Pricing Config', // <-- 关键新增消息
       userOauth2Settings: 'User Oauth2 Settings',
       roleAddressConfig: 'Role Address Config',
+      rechargeCodeManager: 'Recharge Code Manager', // <-- 新增消息
     },
     zh: {
       userManagement: '用户管理',
@@ -74,6 +76,7 @@ const { t } = useI18n({
       domainPricingConfig: '域名定价配置', // <-- 关键新增消息
       userOauth2Settings: '用户 Oauth2 配置',
       roleAddressConfig: '角色地址配置',
+      rechargeCodeManager: '卡密管理', // <-- 新增消息
     }
   }
 });
