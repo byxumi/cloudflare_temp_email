@@ -20,7 +20,7 @@ const notification = useNotification()
 const {
     toggleDark, isDark, isTelegram, showAdminPage,
     showAuth, auth, loading, openSettings, userSettings, adminAuth,
-    showAdminAuth
+    showAdminAuth // <-- 确保 showAdminAuth 可用
 } = useGlobalState()
 const route = useRoute()
 const router = useRouter()
@@ -29,12 +29,10 @@ const isMobile = useIsMobile()
 const showMobileMenu = ref(false)
 const menuValue = computed(() => {
     if (route.path.includes("user")) return "user";
-    if (route.path.includes("admin")) return "admin";
+    // 关键修改 1: 将 admin 路径检查改为 xumi
+    if (route.path.includes("xumi")) return "admin"; 
     return "home";
 });
-
-// 关键状态定义: 移除原有的 logoClickCount 彩蛋变量，只保留新的安全逻辑
-const logoClickCount = ref(0); 
 
 // 关键修复: Admin 认证触发逻辑，并添加自动刷新
 const authFunc = async () => {
@@ -43,7 +41,8 @@ const authFunc = async () => {
         
         if (showAdminAuth.value) {
             // 1. 如果是 Admin 弹窗，调用 Admin API 验证 adminAuth
-            await api.fetch('/admin/address'); 
+            // 关键修改 2: API 路径改为 /xumi/address (假设 Worker 后端已同步修改)
+            await api.fetch('/xumi/address'); 
             showAdminAuth.value = false; // 成功则关闭弹窗
         }
         else if (showAuth.value) {
@@ -52,7 +51,7 @@ const authFunc = async () => {
             showAuth.value = false; // 成功则关闭弹窗
         }
         
-        // 验证成功后，强制页面重载 (恢复您需要的逻辑)
+        // 验证成功后，立即执行页面重载 (恢复您需要的逻辑)
         location.reload() 
     } catch (error) {
         message.error(error.message || "error");
@@ -107,12 +106,12 @@ const handleAdminNavigation = async () => {
     try {
         loading.value = true;
         
-        // 尝试访问一个 Admin 页面路由 (例如 /admin/address)，强制触发 401 检查
-        await api.fetch(getRouterPathWithLang('/admin/address', locale.value));
+        // 关键修改 3: 尝试访问 /xumi/address，强制触发 401 检查
+        await api.fetch(getRouterPathWithLang('/xumi/address', locale.value));
         
         // 如果 API 调用成功且 showAdminAuth 仍为 false，则可以安全跳转
         if (!showAdminAuth.value) {
-            await router.push(getRouterPathWithLang('/admin', locale.value));
+            await router.push(getRouterPathWithLang('/xumi', locale.value));
         }
 
     } catch (e) {
@@ -122,7 +121,7 @@ const handleAdminNavigation = async () => {
             return; 
         }
         // 如果是其他错误，则继续跳转，让 Admin.vue 处理页面错误
-        await router.push(getRouterPathWithLang('/admin', locale.value));
+        await router.push(getRouterPathWithLang('/xumi', locale.value));
 
     } finally {
         loading.value = false;
@@ -131,9 +130,10 @@ const handleAdminNavigation = async () => {
 }
 
 
+const logoClickCount = ref(0);
 const logoClick = async () => {
-    // 关键修复 1: 删除五次点击进入 Admin 的功能
-    logoClickCount.value = 0; // 重置计数 (虽然没有实际功能，但保留变量初始化)
+    // 关键修改 4: 删除 Logo 点击的五次彩蛋逻辑
+    logoClickCount.value = 0;
     message.info("Admin entry removed.");
 };
 
@@ -186,7 +186,6 @@ const menuOptions = computed(() => [
                 size: "small",
                 type: menuValue.value == "admin" ? "primary" : "default",
                 style: "width: 100%",
-                // MODIFIED: 调用新的 Admin 导航处理函数
                 onClick: handleAdminNavigation
             },
             {
@@ -194,7 +193,7 @@ const menuOptions = computed(() => [
                 icon: () => h(NIcon, { component: AdminPanelSettingsFilled }),
             }
         ),
-        show: false, // <--- 关键修改 2: 隐藏 Admin 菜单图标
+        show: false, // <--- 关键修改 5: 隐藏 Admin 菜单图标
         key: "admin"
     },
     {
