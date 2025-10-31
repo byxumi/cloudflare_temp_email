@@ -24,4 +24,10 @@ export const CONSTANTS = {
     WEBHOOK_KV_USER_SETTINGS_KEY: "temp-mail-webhook-user-settings",
     EMAIL_KV_BLACK_LIST: "temp-mail-email-black-list",
     WEBHOOK_KV_ADMIN_MAIL_SETTINGS_KEY: "temp-mail-webhook-admin-mail-settings",
+  	// KV keys for security
+    ADMIN_LOGIN_ATTEMPTS_KEY: 'admin_login_attempts:', // Key prefix for tracking login failures
+    
+    // Security settings
+    MAX_LOGIN_ATTEMPTS: 5, // 最大尝试次数
+    LOGIN_LOCKOUT_TIME_SECONDS: 60 * 5, // 锁定时间 (5分钟)
 }
