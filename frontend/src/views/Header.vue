@@ -29,8 +29,8 @@ const isMobile = useIsMobile()
 const showMobileMenu = ref(false)
 const menuValue = computed(() => {
     if (route.path.includes("user")) return "user";
-    // 关键修改 1: 将 admin 路径检查改为 xumi
-    if (route.path.includes("xumi")) return "admin"; 
+    // 关键修改 1: 路径检查改回 admin
+    if (route.path.includes("admin")) return "admin"; 
     return "home";
 });
 
@@ -41,8 +41,8 @@ const authFunc = async () => {
         
         if (showAdminAuth.value) {
             // 1. 如果是 Admin 弹窗，调用 Admin API 验证 adminAuth
-            // 关键修改 2: API 路径改为 /xumi/address (假设 Worker 后端已同步修改)
-            await api.fetch('/xumi/address'); 
+            // 关键修改 2: API 路径改回 /admin/address
+            await api.fetch('/admin/address'); 
             showAdminAuth.value = false; // 成功则关闭弹窗
         }
         else if (showAuth.value) {
@@ -106,12 +106,12 @@ const handleAdminNavigation = async () => {
     try {
         loading.value = true;
         
-        // 关键修改 3: 尝试访问 /xumi/address，强制触发 401 检查
-        await api.fetch(getRouterPathWithLang('/xumi/address', locale.value));
+        // 关键修改 3: 尝试访问 /admin/address，强制触发 401 检查
+        await api.fetch(getRouterPathWithLang('/admin/address', locale.value));
         
         // 如果 API 调用成功且 showAdminAuth 仍为 false，则可以安全跳转
         if (!showAdminAuth.value) {
-            await router.push(getRouterPathWithLang('/xumi', locale.value));
+            await router.push(getRouterPathWithLang('/admin', locale.value));
         }
 
     } catch (e) {
@@ -121,7 +121,7 @@ const handleAdminNavigation = async () => {
             return; 
         }
         // 如果是其他错误，则继续跳转，让 Admin.vue 处理页面错误
-        await router.push(getRouterPathWithLang('/xumi', locale.value));
+        await router.push(getRouterPathWithLang('/admin', locale.value));
 
     } finally {
         loading.value = false;
@@ -186,6 +186,7 @@ const menuOptions = computed(() => [
                 size: "small",
                 type: menuValue.value == "admin" ? "primary" : "default",
                 style: "width: 100%",
+                // MODIFIED: 调用新的 Admin 导航处理函数
                 onClick: handleAdminNavigation
             },
             {
@@ -262,6 +263,13 @@ useHead({
         { name: "description", content: openSettings.value.description || t('title') },
     ]
 });
+
+// 移除五次点击计数功能 (仅保留变量和 info 提示)
+const logoClickCount = ref(0);
+const logoClick = async () => {
+    logoClickCount.value = 0;
+    message.info("Admin entry removed.");
+};
 
 
 onMounted(async () => {
