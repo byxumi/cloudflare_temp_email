@@ -41,15 +41,15 @@ const authFunc = async () => {
         if (showAdminAuth.value) {
             // 1. 如果是 Admin 弹窗，调用 Admin API 验证 adminAuth
             await api.fetch('/admin/address'); 
-            showAdminAuth.value = false; 
+            showAdminAuth.value = false; // 成功则关闭弹窗
         }
         else if (showAuth.value) {
             // 2. 如果是普通访问弹窗，调用公开 API 验证 auth
             await api.fetch('/open_api/settings'); 
-            showAuth.value = false; 
+            showAuth.value = false; // 成功则关闭弹窗
         }
         
-        // 验证成功后，立即执行页面重载 (恢复您需要的逻辑)
+        // 验证成功后，强制页面重载 (恢复您需要的逻辑)
         location.reload() 
     } catch (error) {
         message.error(error.message || "error");
@@ -99,13 +99,12 @@ const { locale, t } = useI18n({
 
 const version = import.meta.env.PACKAGE_VERSION ? `v${import.meta.env.PACKAGE_VERSION}` : "";
 
-// 核心修复函数：在导航前主动检查权限
+// 核心修复函数：在导航前主动检查权限 (解决先加载Admin面板再弹密码框的问题)
 const handleAdminNavigation = async () => {
     try {
         loading.value = true;
         
-        // 尝试访问一个 Admin 页面路由 (例如 /admin/address)
-        // api.fetch 如果返回 401，会自动将 showAdminAuth.value 设置为 true
+        // 尝试访问一个 Admin 页面路由 (例如 /admin/address)，强制触发 401 检查
         await api.fetch(getRouterPathWithLang('/admin/address', locale.value));
         
         // 如果 API 调用成功且 showAdminAuth 仍为 false，则可以安全跳转
@@ -127,6 +126,14 @@ const handleAdminNavigation = async () => {
         showMobileMenu.value = false;
     }
 }
+
+
+const logoClickCount = ref(0);
+const logoClick = async () => {
+    // 关键修改 1: 删除五次点击进入 Admin 的功能
+    logoClickCount.value = 0;
+    message.info("Admin entry removed.");
+};
 
 
 const menuOptions = computed(() => [
@@ -185,7 +192,7 @@ const menuOptions = computed(() => [
                 icon: () => h(NIcon, { component: AdminPanelSettingsFilled }),
             }
         ),
-        show: showAdminPage.value,
+        show: false, // <--- 关键修改 2: 隐藏 Admin 菜单图标
         key: "admin"
     },
     {
@@ -255,29 +262,16 @@ useHead({
     ]
 });
 
+// 移除五次点击计数功能 (仅保留变量和 info 提示)
 const logoClickCount = ref(0);
 const logoClick = async () => {
-    if (route.path.includes("admin")) {
-        logoClickCount.value = 0;
-        return;
-    }
-    if (logoClickCount.value >= 5) {
-        logoClickCount.value = 0;
-        message.info("Change to admin Page");
-        loading.value = true;
-        await router.push(getRouterPathWithLang('/admin', locale.value));
-        loading.value = false;
-    } else {
-        logoClickCount.value++;
-    }
-    if (logoClickCount.value > 0) {
-        message.info(`Click ${5 - logoClickCount.value + 1} times to enter the admin page`);
-    }
-}
+    logoClickCount.value = 0;
+    message.info("Admin entry removed.");
+};
+
 
 onMounted(async () => {
-    // 确保 API 调用携带 notification 参数
-    await api.getOpenSettings(message, notification); 
+    await api.getOpenSettings(message, notification);
     // make sure user_id is fetched
     if (!userSettings.value.user_id) await api.getUserSettings(message);
 });
