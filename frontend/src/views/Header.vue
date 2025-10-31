@@ -19,7 +19,8 @@ const notification = useNotification()
 
 const {
     toggleDark, isDark, isTelegram, showAdminPage,
-    showAuth, auth, loading, openSettings, userSettings
+    showAuth, auth, loading, openSettings, userSettings, adminAuth,
+    showAdminAuth // <-- 确保 showAdminAuth 可用
 } = useGlobalState()
 const route = useRoute()
 const router = useRouter()
@@ -32,11 +33,29 @@ const menuValue = computed(() => {
     return "home";
 });
 
+// 关键修复: Admin 认证触发逻辑
 const authFunc = async () => {
     try {
-        location.reload()
+        loading.value = true; 
+        
+        if (showAdminAuth.value) {
+            // 1. 如果是 Admin 弹窗，调用 Admin API 验证 adminAuth
+            // api.fetch 会在 401 时自动设置 showAdminAuth = true
+            await api.fetch('/admin/address'); 
+            showAdminAuth.value = false; // 成功则关闭弹窗
+        }
+        else if (showAuth.value) {
+            // 2. 如果是普通访问弹窗，调用公开 API 验证 auth
+            await api.fetch('/open_api/settings'); 
+            showAuth.value = false; // 成功则关闭弹窗
+        }
+        
+        // 验证成功后重载页面，让路由重新加载并获取权限
+        location.reload() 
     } catch (error) {
         message.error(error.message || "error");
+    } finally {
+        loading.value = false;
     }
 }
 
@@ -56,6 +75,8 @@ const { locale, t } = useI18n({
             light: 'Light',
             accessHeader: 'Access Password',
             accessTip: 'Please enter the correct access password',
+            adminAccessHeader: 'Admin Access Password', 
+            adminAccessTip: 'Please enter the correct Admin access password',
             home: 'Home',
             menu: 'Menu',
             user: 'User',
@@ -67,6 +88,8 @@ const { locale, t } = useI18n({
             light: '亮色',
             accessHeader: '访问密码',
             accessTip: '请输入站点访问密码',
+            adminAccessHeader: '管理员访问密码', 
+            adminAccessTip: '请输入正确的管理员访问密码',
             home: '主页',
             menu: '菜单',
             user: '用户',
@@ -76,6 +99,36 @@ const { locale, t } = useI18n({
 });
 
 const version = import.meta.env.PACKAGE_VERSION ? `v${import.meta.env.PACKAGE_VERSION}` : "";
+
+// 核心修复函数：在导航前主动检查权限
+const handleAdminNavigation = async () => {
+    try {
+        loading.value = true;
+        
+        // 尝试访问一个 Admin 页面路由 (例如 /admin/address)
+        // api.fetch 如果返回 401，会自动将 showAdminAuth.value 设置为 true
+        await api.fetch(getRouterPathWithLang('/admin/address', locale.value));
+        
+        // 如果 API 调用成功且 showAdminAuth 仍为 false，则可以安全跳转
+        if (!showAdminAuth.value) {
+            await router.push(getRouterPathWithLang('/admin', locale.value));
+        }
+
+    } catch (e) {
+        // 如果 API 调用因 401 以外的原因失败，则阻止跳转，等待用户认证
+        if (showAdminAuth.value) {
+            // 认证弹窗已弹出，不进行路由跳转
+            return; 
+        }
+        // 如果是其他错误，则继续跳转，让 Admin.vue 处理页面错误
+        await router.push(getRouterPathWithLang('/admin', locale.value));
+
+    } finally {
+        loading.value = false;
+        showMobileMenu.value = false;
+    }
+}
+
 
 const menuOptions = computed(() => [
     {
@@ -125,12 +178,8 @@ const menuOptions = computed(() => [
                 size: "small",
                 type: menuValue.value == "admin" ? "primary" : "default",
                 style: "width: 100%",
-                onClick: async () => {
-                    loading.value = true;
-                    await router.push(getRouterPathWithLang('/admin', locale.value));
-                    loading.value = false;
-                    showMobileMenu.value = false;
-                }
+                // MODIFIED: 调用新的 Admin 导航处理函数
+                onClick: handleAdminNavigation
             },
             {
                 default: () => "Admin",
@@ -262,6 +311,7 @@ onMounted(async () => {
                 <n-menu :options="menuOptions" />
             </n-drawer-content>
         </n-drawer>
+
         <n-modal v-model:show="showAuth" :closable="false" :closeOnEsc="false" :maskClosable="false" preset="dialog"
             :title="t('accessHeader')">
             <p>{{ t('accessTip') }}</p>
@@ -272,6 +322,18 @@ onMounted(async () => {
                 </n-button>
             </template>
         </n-modal>
+        
+        <n-modal v-model:show="showAdminAuth" :closable="false" :closeOnEsc="false" :maskClosable="false" preset="dialog"
+            :title="t('adminAccessHeader')">
+            <p>{{ t('adminAccessTip') }}</p>
+            <n-input v-model:value="adminAuth" type="password" show-password-on="click" />
+            <template #action>
+                <n-button :loading="loading" @click="authFunc" type="primary">
+                    {{ t('ok') }}
+                </n-button>
+            </template>
+        </n-modal>
+
     </div>
 </template>
 
