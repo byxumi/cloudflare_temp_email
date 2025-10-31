@@ -15,8 +15,8 @@ import admin_mail_api from './admin_mail_api'
 import { sendMailbyAdmin } from './send_mail'
 import db_api from './db_api'
 import { EmailRuleSettings } from '../models'
-import domain_pricing_api from './domain_pricing_api';
-import recharge_code_api from './recharge_code_api'; // <-- NEW IMPORT
+import domain_pricing_api from './domain_pricing_api'; // <-- 关键新增
+import recharge_code_api from './recharge_code_api'; // <-- 关键新增
 
 export const api = new Hono<HonoCustomType>()
 
@@ -351,6 +351,14 @@ api.post('/admin/role_address_config', admin_user_api.saveRoleAddressConfig)
 api.get('/admin/users/bind_address/:user_id', admin_user_api.getBindedAddresses)
 api.post('/admin/users/bind_address', admin_user_api.bindAddress)
 
+// NEW: Domain Pricing Config
+api.get('/admin/domain_pricing_config', domain_pricing_api.getDomainPricingConfig); 
+api.post('/admin/domain_pricing_config', domain_pricing_api.saveDomainPricingConfig);
+
+// NEW: Recharge Code Management
+api.get('/admin/recharge_codes', recharge_code_api.getCodes);
+api.post('/admin/recharge_codes', recharge_code_api.createCode);
+
 // user oauth2 settings
 api.get('/admin/user_oauth2_settings', oauth2_settings.getUserOauth2Settings)
 api.post('/admin/user_oauth2_settings', oauth2_settings.saveUserOauth2Settings)
@@ -374,11 +382,3 @@ api.post("/admin/send_mail", sendMailbyAdmin);
 api.get('admin/db_version', db_api.getVersion);
 api.post('admin/db_initialize', db_api.initialize);
 api.post('admin/db_migration', db_api.migrate);
-
-// Domain Pricing Config
-api.get('/admin/domain_pricing_config', domain_pricing_api.getDomainPricingConfig); 
-api.post('/admin/domain_pricing_config', domain_pricing_api.saveDomainPricingConfig);
-
-// NEW: Recharge Code Management
-api.get('/admin/recharge_codes', recharge_code_api.getCodes);
-api.post('/admin/recharge_codes', recharge_code_api.createCode);
