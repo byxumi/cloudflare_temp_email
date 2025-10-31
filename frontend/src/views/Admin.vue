@@ -29,7 +29,7 @@ const isMobile = useIsMobile()
 const showMobileMenu = ref(false)
 const menuValue = computed(() => {
     if (route.path.includes("user")) return "user";
-    // 关键修改 1: 路径检查改回 admin
+    // 路径检查改回 admin
     if (route.path.includes("admin")) return "admin"; 
     return "home";
 });
