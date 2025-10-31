@@ -33,24 +33,23 @@ const menuValue = computed(() => {
     return "home";
 });
 
-// 关键修复: Admin 认证触发逻辑
+// 关键修复: Admin 认证触发逻辑，并添加自动刷新
 const authFunc = async () => {
     try {
         loading.value = true; 
         
         if (showAdminAuth.value) {
             // 1. 如果是 Admin 弹窗，调用 Admin API 验证 adminAuth
-            // api.fetch 会在 401 时自动设置 showAdminAuth = true
             await api.fetch('/admin/address'); 
-            showAdminAuth.value = false; // 成功则关闭弹窗
+            showAdminAuth.value = false; 
         }
         else if (showAuth.value) {
             // 2. 如果是普通访问弹窗，调用公开 API 验证 auth
             await api.fetch('/open_api/settings'); 
-            showAuth.value = false; // 成功则关闭弹窗
+            showAuth.value = false; 
         }
         
-        // 验证成功后重载页面，让路由重新加载并获取权限
+        // 验证成功后，立即执行页面重载 (恢复您需要的逻辑)
         location.reload() 
     } catch (error) {
         message.error(error.message || "error");
@@ -277,7 +276,8 @@ const logoClick = async () => {
 }
 
 onMounted(async () => {
-    await api.getOpenSettings(message, notification);
+    // 确保 API 调用携带 notification 参数
+    await api.getOpenSettings(message, notification); 
     // make sure user_id is fetched
     if (!userSettings.value.user_id) await api.getUserSettings(message);
 });
