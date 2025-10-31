@@ -20,7 +20,7 @@ const notification = useNotification()
 const {
     toggleDark, isDark, isTelegram, showAdminPage,
     showAuth, auth, loading, openSettings, userSettings, adminAuth,
-    showAdminAuth // <-- 确保 showAdminAuth 可用
+    showAdminAuth
 } = useGlobalState()
 const route = useRoute()
 const router = useRouter()
@@ -32,6 +32,9 @@ const menuValue = computed(() => {
     if (route.path.includes("admin")) return "admin";
     return "home";
 });
+
+// 关键状态定义: 移除原有的 logoClickCount 彩蛋变量，只保留新的安全逻辑
+const logoClickCount = ref(0); 
 
 // 关键修复: Admin 认证触发逻辑，并添加自动刷新
 const authFunc = async () => {
@@ -128,10 +131,9 @@ const handleAdminNavigation = async () => {
 }
 
 
-const logoClickCount = ref(0);
 const logoClick = async () => {
-    // 关键修改 1: 删除五次点击进入 Admin 的功能
-    logoClickCount.value = 0;
+    // 关键修复 1: 删除五次点击进入 Admin 的功能
+    logoClickCount.value = 0; // 重置计数 (虽然没有实际功能，但保留变量初始化)
     message.info("Admin entry removed.");
 };
 
@@ -261,13 +263,6 @@ useHead({
         { name: "description", content: openSettings.value.description || t('title') },
     ]
 });
-
-// 移除五次点击计数功能 (仅保留变量和 info 提示)
-const logoClickCount = ref(0);
-const logoClick = async () => {
-    logoClickCount.value = 0;
-    message.info("Admin entry removed.");
-};
 
 
 onMounted(async () => {
