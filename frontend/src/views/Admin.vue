@@ -63,7 +63,6 @@ const { t } = useI18n({ //
       userOauth2Settings: 'User Oauth2 Settings', //
       roleAddressConfig: 'Role Address Config', //
       rechargeCodeManager: 'Recharge Code Manager', //
-      // 新增：侧边栏大类
       adminDashboard: 'Admin Dashboard', //
       userSystem: 'User System', //
       mailSystem: 'Mail System', //
@@ -91,7 +90,6 @@ const { t } = useI18n({ //
       userOauth2Settings: '用户 Oauth2 配置', //
       roleAddressConfig: '角色地址配置', //
       rechargeCodeManager: '卡密管理', //
-      // 新增：侧边栏大类
       adminDashboard: '管理概览', //
       userSystem: '用户系统', //
       mailSystem: '邮件系统', //
@@ -197,7 +195,25 @@ const handleMenuUpdate = (key) => { //
 </script>
 
 <template>
-  <div style="max-width: 1200px; margin: auto;"> <n-message-provider> <n-layout has-sider> <n-layout-sider  <div style="padding: 10px;"> <n-tabs v-if="isMobile" type="line" justify-content="center" animated v-model:value="currentTab" @update:value="handleMenuUpdate"> <n-tab-pane name="statistics" :tab="t('statistics')"> <component :is="Statistics" /> </n-tab-pane>
+  <div style="max-width: 1200px; margin: auto;"> <n-message-provider> <n-layout has-sider> <n-layout-sider 
+                v-if="!isMobile"
+                bordered
+                collapse-mode="width"
+                :collapsed-width="64"
+                :width="240"
+                :native-scrollbar="false"
+                show-trigger="arrow-circle"
+                collapsed
+            > <n-menu 
+                    :collapsed="false"
+                    :collapsed-width="64"
+                    :collapsed-icon-size="22"
+                    :options="sideMenuOptions"
+                    :value="currentTab"
+                    @update:value="handleMenuUpdate"
+                /> </n-layout-sider>
+
+            <n-layout-content> <div style="padding: 10px;"> <n-tabs v-if="isMobile" type="line" justify-content="center" animated v-model:value="currentTab" @update:value="handleMenuUpdate"> <n-tab-pane name="statistics" :tab="t('statistics')"> <component :is="Statistics" /> </n-tab-pane>
                          <n-tab-pane name="userManagement" :tab="t('userSystem')"> <n-tabs type="bar" justify-content="center" animated> <n-tab-pane name="userManagement" :tab="t('userManagement')"><UserManagement /></n-tab-pane> <n-tab-pane name="rechargeCodeManager" :tab="t('rechargeCodeManager')"><RechargeCodeManager /></n-tab-pane> <n-tab-pane name="domainPricingConfig" :tab="t('domainPricingConfig')"><DomainPricingConfig /></n-tab-pane> <n-tab-pane name="accountSettings" :tab="t('accountSettings')"><AccountSettings /></n-tab-pane> </n-tabs>
                         </n-tab-pane>
                         <n-tab-pane name="mails" :tab="t('mailSystem')"> <n-tabs type="bar" justify-content="center" animated> <n-tab-pane name="mails" :tab="t('mails')"><WorkerMail /></n-tab-pane> <n-tab-pane name="sendMail" :tab="t('sendMail')"><SendMail /></n-tab-pane> </n-tabs>
