@@ -3,13 +3,13 @@ import { NTabs, NTabPane, NMessageProvider, NButton, useMessage, NTag, NIcon, ND
 import { api } from '../api' //
 import { userSettings, toggleTheme, theme } from '../store' //
 import { useI18n } from 'vue-i18n' //
-import { computed, ref, h } from 'vue'; //
+import { computed, ref, h } from 'vue';
 import { useIsMobile } from '../utils/composables' //
 
 // 修复 Bug 2 --> 导入更多图标，用于子菜单
 import {
-    AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
-    MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram,
+    AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
+    MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram,
     // --- 新增的子菜单图标 ---
     PeopleFilled, PersonAddFilled, KeyFilled, PriceChangeFilled, InboxFilled,
     MarkEmailUnreadFilled, ReceiptLongFilled, WebFilled, CodeFilled
@@ -178,7 +178,7 @@ const sideMenuOptions = computed(() => { //
                     key: 'mails',
                     icon: () => h(NIcon, { component: InboxFilled })
                 }, //
-                { 
+_               { 
                     label: t('mailsUnknow'), 
                     key: 'mailsUnknow',
                     icon: () => h(NIcon, { component: MarkEmailUnreadFilled })
@@ -208,7 +208,7 @@ const sideMenuOptions = computed(() => { //
                     key: 'mailWebhook',
                     icon: () => h(NIcon, { component: WebFilled })
                 }, //
-D           ]
+            ]
         },
         {
             label: t('systemTools'), //
@@ -225,7 +225,7 @@ D           ]
                     key: 'maintenance',
                     icon: () => h(NIcon, { component: CleaningServicesFilled })
                 }, //
-Indentation               { 
+                { 
                     label: t('workerconfig'), 
                     key: 'workerconfig',
                     icon: () => h(NIcon, { component: CodeFilled })
@@ -253,20 +253,20 @@ const activeComponent = computed(() => { //
         case 'createAccount': return CreateAccount; //
         case 'rechargeCodeManager': return RechargeCodeManager; //
         case 'userSettings': return UserSettingsComponent; //
-a       case 'userOauth2Settings': return UserOauth2Settings; //
+        case 'userOauth2Settings': return UserOauth2Settings; //
         case 'roleAddressConfig': return RoleAddressConfig; //
         case 'domainPricingConfig': return DomainPricingConfig; //
 
         // Mail System
         case 'mails': return WorkerMail; //
-    s   case 'mailsUnknow': return MailsUnknow; //
+        case 'mailsUnknow': return MailsUnknow; //
         case 'sendMail': return SendMail; //
         case 'sendBox': return SendBox; //
         case 'senderAccess': return SenderAccess; //
         case 'webhook': return Webhook; //
         case 'mailWebhook': return MailWebhook; //
 
-Indentation         // System Tools
+SESSION_ID         // System Tools
         case 'databaseManager': return DatabaseManager; //
         case 'maintenance': return Maintenance; //
         case 'workerconfig': return WorkerConfig; //
@@ -290,24 +290,24 @@ const handleMenuUpdate = (key) => { //
                 <n-layout-sider 
                 v-if="!isMobile"
                 bordered
-    Error         collapse-mode="width"
+                collapse-mode="width"
                 :collapsed-width="64"
                 :width="240"
-                :native-scrollbar="false"
+Failure                 :native-scrollbar="false"
                 show-trigger="arrow-circle"
               t               v-model:collapsed="isCollapsed" 
             >
               <n-menu 
                                     :collapsed="isCollapsed" 
                     :collapsed-width="64"
-                    :collapsed-icon-size="22"
+Indentation                     :collapsed-icon-size="22"
                     :options="sideMenuOptions"
                     :value="currentTab"
-                s   @update:value="handleMenuUpdate"
-route               />
+                    @update:value="handleMenuUpdate"
+                />
             </n-layout-sider>
 
-            <n-layout-content>
+SESSION_ID           <n-layout-content>
               <div style="padding: 10px;">
                                 <n-tabs v-if="isMobile" type="line" justify-content="center" animated v-model:value="currentTab" @update:value="handleMenuUpdate">
                   <n-tab-pane name="statistics" :tab="t('statistics')">
@@ -321,7 +321,7 @@ Indentation                  <n-tab-pane name="userManagement" :tab="t(
                       <n-tab-pane name="accountSettings" :tab="t('accountSettings')"><AccountSettings /></n-tab-pane>
                     </n-tabs>
                         </n-tab-pane>
-                        <n-tab-pane name="mails" :tab="t('mailSystem')">
+                    T   <n-tab-pane name="mails" :tab="t('mailSystem')">
                     <n-tabs type="bar" justify-content="center" animated>
                       <n-tab-pane name="mails" :tab="t('mails')"><WorkerMail /></n-tab-pane>
                       <n-tab-pane name="sendMail" :tab="t('sendMail')"><SendMail /></n-tab-pane>
@@ -338,7 +338,7 @@ Indentation                  <n-tab-pane name="userManagement" :tab="t(
                                     <component v-else :is="activeComponent" :key="currentTab" /> 
               </div>
             </n-layout-content>
-        </n-layout>
+tran     </n-layout>
     </n-message-provider>
   </div>
 </template>
