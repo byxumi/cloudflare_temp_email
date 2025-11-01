@@ -3,13 +3,13 @@ import { NTabs, NTabPane, NMessageProvider, NButton, useMessage, NTag, NIcon, ND
 import { api } from '../api' //
 import { userSettings, toggleTheme, theme } from '../store' //
 import { useI18n } from 'vue-i18n' //
-import { computed, ref, h } from 'vue'; //
+import { computed, ref, h } from 'vue';
 import { useIsMobile } from '../utils/composables' //
 
 // 修复 Bug 2 --> 导入更多图标，用于子菜单
 import {
-    AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
-    MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram,
+    AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
+    MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram,
     // --- 新增的子菜单图标 ---
     PeopleFilled, PersonAddFilled, KeyFilled, PriceChangeFilled, InboxFilled,
     MarkEmailUnreadFilled, ReceiptLongFilled, WebFilled, CodeFilled
@@ -42,7 +42,7 @@ const message = useMessage(); //
 const isMobile = useIsMobile(); //
 
 // 修复 Bug 1 --> 添加一个 ref 来控制侧边栏的折叠状态
-const isCollapsed = ref(true); // 默认折叠，和您截图一致
+const isCollapsed = ref(true); // 默认折叠
 
 // 关键修复：将默认 Tab 从 'address' 改为 'statistics'
 const currentTab = ref('statistics'); //
@@ -295,7 +295,6 @@ const handleMenuUpdate = (key) => { //
                 :width="240"
                 :native-scrollbar="false"
                 show-trigger="arrow-circle"
-                
                               v-model:collapsed="isCollapsed" 
             >
               <n-menu 
@@ -305,7 +304,7 @@ const handleMenuUpdate = (key) => { //
                     :options="sideMenuOptions"
                     :value="currentTab"
                     @update:value="handleMenuUpdate"
-                />
+        _         />
             </n-layout-sider>
 
             <n-layout-content>
