@@ -295,7 +295,8 @@ const handleMenuUpdate = (key) => { //
                 :width="240"
                 :native-scrollbar="false"
                 show-trigger="arrow-circle"
-                              v-model:collapsed="isCollapsed" 
+                              :collapsed="isCollapsed" 
+                @update:collapsed="isCollapsed = $event"
             >
               <n-menu 
                                     :collapsed="isCollapsed" 
