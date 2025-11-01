@@ -5,14 +5,10 @@ import { userSettings, toggleTheme, theme } from '../store' //
 import { useI18n } from 'vue-i18n' //
 import { computed, ref, h } from 'vue';
 import { useIsMobile } from '../utils/composables' //
-
-// 修复 Bug 2 --> 导入更多图标，用于子菜单
 import {
-    AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
-    MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram,
-    // --- 新增的子菜单图标 ---
-    PeopleFilled, PersonAddFilled, KeyFilled, PriceChangeFilled, InboxFilled,
-    MarkEmailUnreadFilled, ReceiptLongFilled, WebFilled, CodeFilled
+    // 恢复为原始导入，移除了子菜单图标
+    AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
+    MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram
 } from '@vicons/material'; // 导入图标
 
 // 导入所有 Admin 子组件
@@ -41,8 +37,7 @@ import RechargeCodeManager from './admin/RechargeCodeManager.vue'; //
 const message = useMessage(); //
 const isMobile = useIsMobile(); //
 
-// 修复 Bug 1 --> 添加一个 ref 来控制侧边栏的折叠状态
-const isCollapsed = ref(true); // 默认折叠
+// 撤销 Bug 1 的修复: 移除了 isCollapsed = ref(true)
 
 // 关键修复：将默认 Tab 从 'address' 改为 'statistics'
 const currentTab = ref('statistics'); //
@@ -106,7 +101,7 @@ const { t } = useI18n({ //
   }
 });
 
-// 修复 Bug 2 --> 为所有子菜单项 (children) 添加 icon 属性
+// 撤销 Bug 2 的修复: 移除了所有 children 里的 icon 属性
 const sideMenuOptions = computed(() => { //
     return [ //
         {
@@ -114,16 +109,8 @@ const sideMenuOptions = computed(() => { //
             key: 'group-dashboard', //
             icon: () => h(NIcon, { component: InsightsFilled }), //
             children: [ //
-                { 
-                    label: t('statistics'), 
-                    key: 'statistics',
-                    icon: () => h(NIcon, { component: InsightsFilled })
-                }, //
-                { 
-                    label: t('accountSettings'), 
-                    key: 'accountSettings',
-                    icon: () => h(NIcon, { component: AdminPanelSettingsFilled })
-                }, //
+                { label: t('statistics'), key: 'statistics' }, //
+                { label: t('accountSettings'), key: 'accountSettings' }, //
             ]
         },
         {
@@ -131,41 +118,13 @@ const sideMenuOptions = computed(() => { //
             key: 'group-user', //
             icon: () => h(NIcon, { component: ManageAccountsFilled }), //
             children: [ //
-                { 
-                    label: t('userManagement'), 
-                    key: 'userManagement',
-                    icon: () => h(NIcon, { component: PeopleFilled })
-                }, //
-                { 
-                    label: t('createAccount'), 
-                    key: 'createAccount',
-                    icon: () => h(NIcon, { component: PersonAddFilled })
-                }, //
-                { 
-                    label: t('rechargeCodeManager'), 
-                    key: 'rechargeCodeManager',
-                    icon: () => h(NIcon, { component: KeyFilled })
-                }, //
-                { 
-                    label: t('userSettings'), 
-                    key: 'userSettings',
-                    icon: () => h(NIcon, { component: SettingsFilled })
-                }, //
-                { 
-                    label: t('userOauth2Settings'), 
-                    key: 'userOauth2Settings',
-                    icon: () => h(NIcon, { component: LockFilled })
-                }, //
-                { 
-                    label: t('roleAddressConfig'), 
-                    key: 'roleAddressConfig',
-                    icon: () => h(NIcon, { component: AdminPanelSettingsFilled })
-                }, //
-                { 
-                    label: t('domainPricingConfig'), 
-                    key: 'domainPricingConfig',
-                    icon: () => h(NIcon, { component: PriceChangeFilled })
-                }, //
+                { label: t('userManagement'), key: 'userManagement' }, //
+                { label: t('createAccount'), key: 'createAccount' }, //
+                { label: t('rechargeCodeManager'), key: 'rechargeCodeManager' }, //
+                { label: t('userSettings'), key: 'userSettings' }, //
+                { label: t('userOauth2Settings'), key: 'userOauth2Settings' }, //
+                { label: t('roleAddressConfig'), key: 'roleAddressConfig' }, //
+                { label: t('domainPricingConfig'), key: 'domainPricingConfig' }, //
             ]
         },
         {
@@ -173,41 +132,13 @@ const sideMenuOptions = computed(() => { //
             key: 'group-mail', //
             icon: () => h(NIcon, { component: MailFilled }), //
             children: [ //
-                { 
-                    label: t('mails'), 
-                    key: 'mails',
-                    icon: () => h(NIcon, { component: InboxFilled })
-                }, //
-_               { 
-                    label: t('mailsUnknow'), 
-                    key: 'mailsUnknow',
-                    icon: () => h(NIcon, { component: MarkEmailUnreadFilled })
-                }, //
-                { 
-                    label: t('sendMail'), 
-                    key: 'sendMail',
-                    icon: () => h(NIcon, { component: SendFilled })
-                }, //
-                { 
-                    label: t('sendBox'), 
-                    key: 'sendBox',
-                    icon: () => h(NIcon, { component: ReceiptLongFilled })
-                }, //
-                { 
-                    label: t('senderAccess'), 
-                    key: 'senderAccess',
-                    icon: () => h(NIcon, { component: LockFilled })
-                }, //
-                { 
-                    label: t('webhook'), 
-                    key: 'webhook',
-                    icon: () => h(NIcon, { component: WebFilled })
-                }, //
-                { 
-                    label: t('mailWebhook'), 
-                    key: 'mailWebhook',
-                    icon: () => h(NIcon, { component: WebFilled })
-                }, //
+                { label: t('mails'), key: 'mails' }, //
+                { label: t('mailsUnknow'), key: 'mailsUnknow' }, //
+                { label: t('sendMail'), key: 'sendMail' }, //
+                { label: t('sendBox'), key: 'sendBox' }, //
+                { label: t('senderAccess'), key: 'senderAccess' }, //
+                { label: t('webhook'), key: 'webhook' }, //
+                { label: t('mailWebhook'), key: 'mailWebhook' }, //
             ]
         },
         {
@@ -215,26 +146,10 @@ _               {
             key: 'group-tools', //
             icon: () => h(NIcon, { component: SettingsFilled }), //
             children: [ //
-                { 
-                    label: t('databaseManager'), 
-                    key: 'databaseManager',
-                    icon: () => h(NIcon, { component: DataObjectFilled })
-                }, //
-                { 
-                    label: t('maintenance'), 
-                    key: 'maintenance',
-                    icon: () => h(NIcon, { component: CleaningServicesFilled })
-                }, //
-                { 
-                    label: t('workerconfig'), 
-                    key: 'workerconfig',
-                    icon: () => h(NIcon, { component: CodeFilled })
-                }, //
-                { 
-                    label: t('telegram'), 
-                    key: 'telegram',
-                    icon: () => h(NIcon, { component: Telegram })
-                }, //
+                { label: t('databaseManager'), key: 'databaseManager' }, //
+                { label: t('maintenance'), key: 'maintenance' }, //
+                { label: t('workerconfig'), key: 'workerconfig' }, //
+                { label: t('telegram'), key: 'telegram' }, //
             ]
         },
     ];
@@ -266,7 +181,7 @@ const activeComponent = computed(() => { //
         case 'webhook': return Webhook; //
         case 'mailWebhook': return MailWebhook; //
 
-SESSION_ID         // System Tools
+        // System Tools
         case 'databaseManager': return DatabaseManager; //
         case 'maintenance': return Maintenance; //
         case 'workerconfig': return WorkerConfig; //
@@ -293,27 +208,27 @@ const handleMenuUpdate = (key) => { //
                 collapse-mode="width"
                 :collapsed-width="64"
                 :width="240"
-Failure                 :native-scrollbar="false"
+                :native-scrollbar="false"
                 show-trigger="arrow-circle"
-              t               v-model:collapsed="isCollapsed" 
+                collapsed
             >
               <n-menu 
-                                    :collapsed="isCollapsed" 
+                    :collapsed="false"
                     :collapsed-width="64"
-Indentation                     :collapsed-icon-size="22"
+                    :collapsed-icon-size="22"
                     :options="sideMenuOptions"
                     :value="currentTab"
                     @update:value="handleMenuUpdate"
                 />
             </n-layout-sider>
 
-SESSION_ID           <n-layout-content>
+            <n-layout-content>
               <div style="padding: 10px;">
                                 <n-tabs v-if="isMobile" type="line" justify-content="center" animated v-model:value="currentTab" @update:value="handleMenuUpdate">
                   <n-tab-pane name="statistics" :tab="t('statistics')">
                     <component :is="Statistics" />
                   </n-tab-pane>
-Indentation                  <n-tab-pane name="userManagement" :tab="t('userSystem')">
+                         <n-tab-pane name="userManagement" :tab="t('userSystem')">
                     <n-tabs type="bar" justify-content="center" animated>
                       <n-tab-pane name="userManagement" :tab="t('userManagement')"><UserManagement /></n-tab-pane>
                       <n-tab-pane name="rechargeCodeManager" :tab="t('rechargeCodeManager')"><RechargeCodeManager /></n-tab-pane>
@@ -321,7 +236,7 @@ Indentation                  <n-tab-pane name="userManagement" :tab="t(
                       <n-tab-pane name="accountSettings" :tab="t('accountSettings')"><AccountSettings /></n-tab-pane>
                     </n-tabs>
                         </n-tab-pane>
-                    T   <n-tab-pane name="mails" :tab="t('mailSystem')">
+                        <n-tab-pane name="mails" :tab="t('mailSystem')">
                     <n-tabs type="bar" justify-content="center" animated>
                       <n-tab-pane name="mails" :tab="t('mails')"><WorkerMail /></n-tab-pane>
                       <n-tab-pane name="sendMail" :tab="t('sendMail')"><SendMail /></n-tab-pane>
@@ -338,7 +253,7 @@ Indentation                  <n-tab-pane name="userManagement" :tab="t(
                                     <component v-else :is="activeComponent" :key="currentTab" /> 
               </div>
             </n-layout-content>
-tran     </n-layout>
+        </n-layout>
     </n-message-provider>
   </div>
 </template>
