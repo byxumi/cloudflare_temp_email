@@ -5,12 +5,10 @@ import { userSettings, toggleTheme, theme } from '../store' //
 import { useI18n } from 'vue-i18n' //
 import { computed, ref, h } from 'vue';
 import { useIsMobile } from '../utils/composables' //
-
-// 修复 Bug 2 --> 导入更多图标，用于子菜单
 import {
     AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
     MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram,
-    // --- 新增的子菜单图标 ---
+    // 【修复 Bug 2】导入所有需要的子菜单图标 (Vicons/Material)
     PeopleFilled, PersonAddFilled, KeyFilled, PriceChangeFilled, InboxFilled,
     MarkEmailUnreadFilled, ReceiptLongFilled, WebFilled, CodeFilled
 } from '@vicons/material'; // 导入图标
@@ -41,15 +39,16 @@ import RechargeCodeManager from './admin/RechargeCodeManager.vue'; //
 const message = useMessage(); //
 const isMobile = useIsMobile(); //
 
-// 修复 Bug 1 --> 添加一个 ref 来控制侧边栏的折叠状态
-const isCollapsed = ref(true); // 默认折叠
+// 【修复 Bug 1】新增侧边栏折叠状态控制
+// Naive UI 的 Sider/Menu 联动需要这个状态
+const isCollapsed = ref(true); // 默认折叠，与您截图一致
 
-// 关键修复：将默认 Tab 从 'address' 改为 'statistics'
+// 关键状态定义
 const currentTab = ref('statistics'); //
 
 const { t } = useI18n({ //
   messages: { //
-  _ en: { //
+    en: { //
       userManagement: 'User Management', //
       createAccount: 'Create Account', //
       mails: 'Inbox Mails', //
@@ -106,7 +105,7 @@ const { t } = useI18n({ //
   }
 });
 
-// 修复 Bug 2 --> 为所有子菜单项 (children) 添加 icon 属性
+// 【修复 Bug 2】为所有子菜单项 (children) 添加 icon 属性
 const sideMenuOptions = computed(() => { //
     return [ //
         {
@@ -166,7 +165,7 @@ const sideMenuOptions = computed(() => { //
                     key: 'domainPricingConfig',
                     icon: () => h(NIcon, { component: PriceChangeFilled })
                 }, //
-s         ]
+            ]
         },
         {
             label: t('mailSystem'), //
@@ -193,7 +192,7 @@ s         ]
                     key: 'sendBox',
                     icon: () => h(NIcon, { component: ReceiptLongFilled })
                 }, //
-t             { 
+                { 
                     label: t('senderAccess'), 
                     key: 'senderAccess',
                     icon: () => h(NIcon, { component: LockFilled })
@@ -230,7 +229,7 @@ t             {
                     key: 'workerconfig',
                     icon: () => h(NIcon, { component: CodeFilled })
                 }, //
-Indentation               { 
+                { 
                     label: t('telegram'), 
                     key: 'telegram',
                     icon: () => h(NIcon, { component: Telegram })
@@ -253,14 +252,14 @@ const activeComponent = computed(() => { //
         case 'createAccount': return CreateAccount; //
         case 'rechargeCodeManager': return RechargeCodeManager; //
         case 'userSettings': return UserSettingsComponent; //
-m       case 'userOauth2Settings': return UserOauth2Settings; //
+        case 'userOauth2Settings': return UserOauth2Settings; //
         case 'roleAddressConfig': return RoleAddressConfig; //
         case 'domainPricingConfig': return DomainPricingConfig; //
 
         // Mail System
         case 'mails': return WorkerMail; //
         case 'mailsUnknow': return MailsUnknow; //
-SESSION_ID       case 'sendMail': return SendMail; //
+        case 'sendMail': return SendMail; //
         case 'sendBox': return SendBox; //
         case 'senderAccess': return SenderAccess; //
         case 'webhook': return Webhook; //
@@ -278,7 +277,7 @@ SESSION_ID       case 'sendMail': return SendMail; //
 
 // 处理侧边栏点击
 const handleMenuUpdate = (key) => { //
-a   currentTab.value = key; //
+    currentTab.value = key; //
 };
 </script>
 
@@ -291,7 +290,7 @@ a   currentTab.value = key; //
                 v-if="!isMobile"
                 bordered
                 collapse-mode="width"
-Indentation                 :collapsed-width="64"
+                :collapsed-width="64"
                 :width="240"
                 :native-scrollbar="false"
                 show-trigger="arrow-circle"
@@ -299,17 +298,17 @@ Indentation                 :collapsed-width="64"
             >
               <n-menu 
                                     :collapsed="isCollapsed" 
-            s       :collapsed-width="64"
+                    :collapsed-width="64"
                     :collapsed-icon-size="22"
                     :options="sideMenuOptions"
                     :value="currentTab"
                     @update:value="handleMenuUpdate"
-And               />
+                />
             </n-layout-sider>
 
             <n-layout-content>
               <div style="padding: 10px;">
-                Indentation               <n-tabs v-if="isMobile" type="line" justify-content="center" animated v-model:value="currentTab" @update:value="handleMenuUpdate">
+                                <n-tabs v-if="isMobile" type="line" justify-content="center" animated v-model:value="currentTab" @update:value="handleMenuUpdate">
                   <n-tab-pane name="statistics" :tab="t('statistics')">
                     <component :is="Statistics" />
                   </n-tab-pane>
@@ -338,7 +337,7 @@ And               />
                                     <component v-else :is="activeComponent" :key="currentTab" /> 
               </div>
             </n-layout-content>
-trim     </n-layout>
+        </n-layout>
     </n-message-provider>
   </div>
 </template>
