@@ -6,9 +6,8 @@ import { useI18n } from 'vue-i18n' //
 import { computed, ref, h } from 'vue';
 import { useIsMobile } from '../utils/composables' //
 import {
-    // 恢复为原始导入，移除了子菜单图标
-    AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
-    MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram
+    AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
+    MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram
 } from '@vicons/material'; // 导入图标
 
 // 导入所有 Admin 子组件
@@ -37,233 +36,206 @@ import RechargeCodeManager from './admin/RechargeCodeManager.vue'; //
 const message = useMessage(); //
 const isMobile = useIsMobile(); //
 
-// 撤销 Bug 1 的修复: 移除了 isCollapsed = ref(true)
-
 // 关键修复：将默认 Tab 从 'address' 改为 'statistics'
 const currentTab = ref('statistics'); //
 
 const { t } = useI18n({ //
-  messages: { //
-    en: { //
-      userManagement: 'User Management', //
-      createAccount: 'Create Account', //
-      mails: 'Inbox Mails', //
-      mailsUnknow: 'Unknown Mails', //
-      senderAccess: 'Sender Access', //
-      sendBox: 'Send Box', //
-      statistics: 'Statistics', //
-      userSettings: 'User Settings', //
-      webhook: 'Webhook Settings', //
-      mailWebhook: 'Mail Webhook Settings', //
-      sendMail: 'Send Mail', //
-      workerconfig: 'Worker Config', //
-      databaseManager: 'Database Manager', //
-      maintenance: 'Maintenance', //
-      qucickSetup: 'Quick Setup', //
-      telegram: 'Telegram', //
-      accountSettings: 'Account Settings', //
-      domainPricingConfig: 'Domain Pricing Config', //
-      userOauth2Settings: 'User Oauth2 Settings', //
-      roleAddressConfig: 'Role Address Config', //
-      rechargeCodeManager: 'Recharge Code Manager', //
-      adminDashboard: 'Admin Dashboard', //
-      userSystem: 'User System', //
-      mailSystem: 'Mail System', //
-      systemTools: 'System Tools', //
-    },
-    zh: { //
-      userManagement: '用户管理', //
-      createAccount: '创建账户', //
-      mails: '收件箱', //
-      mailsUnknow: '未知收件箱', //
-      senderAccess: '发件权限', //
-      sendBox: '发件箱', //
-      statistics: '统计', //
-      userSettings: '用户设置', //
-      webhook: 'Webhook 配置', //
-      mailWebhook: '邮件 Webhook 配置', //
-      sendMail: '发送邮件', //
-      workerconfig: 'Worker 配置', //
-      databaseManager: '数据库管理', //
-      maintenance: '维护', //
-      qucickSetup: '快速设置', //
-      telegram: 'Telegram', //
-      accountSettings: '账户设置', //
-      domainPricingConfig: '域名定价配置', //
-      userOauth2Settings: '用户 Oauth2 配置', //
-      roleAddressConfig: '角色地址配置', //
-      rechargeCodeManager: '卡密管理', //
-      adminDashboard: '管理概览', //
-      userSystem: '用户系统', //
-      mailSystem: '邮件系统', //
-      systemTools: '系统工具', //
-    }
-  }
+  messages: { //
+    en: { //
+      userManagement: 'User Management', //
+      createAccount: 'Create Account', //
+      mails: 'Inbox Mails', //
+      mailsUnknow: 'Unknown Mails', //
+      senderAccess: 'Sender Access', //
+      sendBox: 'Send Box', //
+      statistics: 'Statistics', //
+      userSettings: 'User Settings', //
+      webhook: 'Webhook Settings', //
+      mailWebhook: 'Mail Webhook Settings', //
+      sendMail: 'Send Mail', //
+      workerconfig: 'Worker Config', //
+      databaseManager: 'Database Manager', //
+      maintenance: 'Maintenance', //
+      qucickSetup: 'Quick Setup', //
+      telegram: 'Telegram', //
+      accountSettings: 'Account Settings', //
+      domainPricingConfig: 'Domain Pricing Config', //
+      userOauth2Settings: 'User Oauth2 Settings', //
+      roleAddressConfig: 'Role Address Config', //
+      rechargeCodeManager: 'Recharge Code Manager', //
+      adminDashboard: 'Admin Dashboard', //
+      userSystem: 'User System', //
+      mailSystem: 'Mail System', //
+      systemTools: 'System Tools', //
+    },
+    zh: { //
+      userManagement: '用户管理', //
+      createAccount: '创建账户', //
+      mails: '收件箱', //
+      mailsUnknow: '未知收件箱', //
+      senderAccess: '发件权限', //
+      sendBox: '发件箱', //
+      statistics: '统计', //
+      userSettings: '用户设置', //
+      webhook: 'Webhook 配置', //
+      mailWebhook: '邮件 Webhook 配置', //
+      sendMail: '发送邮件', //
+      workerconfig: 'Worker 配置', //
+      databaseManager: '数据库管理', //
+      maintenance: '维护', //
+      qucickSetup: '快速设置', //
+      telegram: 'Telegram', //
+      accountSettings: '账户设置', //
+      domainPricingConfig: '域名定价配置', //
+      userOauth2Settings: '用户 Oauth2 配置', //
+      roleAddressConfig: '角色地址配置', //
+      rechargeCodeManager: '卡密管理', //
+      adminDashboard: '管理概览', //
+      userSystem: '用户系统', //
+      mailSystem: '邮件系统', //
+      systemTools: '系统工具', //
+    }
+  }
 });
 
-// 撤销 Bug 2 的修复: 移除了所有 children 里的 icon 属性
+// 定义侧边栏的菜单结构
 const sideMenuOptions = computed(() => { //
-    return [ //
-        {
-            label: t('adminDashboard'), //
-            key: 'group-dashboard', //
-            icon: () => h(NIcon, { component: InsightsFilled }), //
-            children: [ //
-                { label: t('statistics'), key: 'statistics' }, //
-                { label: t('accountSettings'), key: 'accountSettings' }, //
-            ]
-        },
-        {
-            label: t('userSystem'), //
-            key: 'group-user', //
-            icon: () => h(NIcon, { component: ManageAccountsFilled }), //
-            children: [ //
-                { label: t('userManagement'), key: 'userManagement' }, //
-                { label: t('createAccount'), key: 'createAccount' }, //
-                { label: t('rechargeCodeManager'), key: 'rechargeCodeManager' }, //
-                { label: t('userSettings'), key: 'userSettings' }, //
-                { label: t('userOauth2Settings'), key: 'userOauth2Settings' }, //
-                { label: t('roleAddressConfig'), key: 'roleAddressConfig' }, //
-                { label: t('domainPricingConfig'), key: 'domainPricingConfig' }, //
-            ]
-        },
-        {
-            label: t('mailSystem'), //
-            key: 'group-mail', //
-            icon: () => h(NIcon, { component: MailFilled }), //
-            children: [ //
-                { label: t('mails'), key: 'mails' }, //
-                { label: t('mailsUnknow'), key: 'mailsUnknow' }, //
-                { label: t('sendMail'), key: 'sendMail' }, //
-                { label: t('sendBox'), key: 'sendBox' }, //
-                { label: t('senderAccess'), key: 'senderAccess' }, //
-                { label: t('webhook'), key: 'webhook' }, //
-                { label: t('mailWebhook'), key: 'mailWebhook' }, //
-            ]
-        },
-        {
-            label: t('systemTools'), //
-            key: 'group-tools', //
-            icon: () => h(NIcon, { component: SettingsFilled }), //
-            children: [ //
-                { label: t('databaseManager'), key: 'databaseManager' }, //
-                { label: t('maintenance'), key: 'maintenance' }, //
-                { label: t('workerconfig'), key: 'workerconfig' }, //
-                { label: t('telegram'), key: 'telegram' }, //
-            ]
-        },
-    ];
+    return [ //
+        {
+            label: t('adminDashboard'), //
+            key: 'group-dashboard', //
+            icon: () => h(NIcon, { component: InsightsFilled }), //
+            children: [ //
+                { label: t('statistics'), key: 'statistics' }, //
+                { label: t('accountSettings'), key: 'accountSettings' }, //
+            ]
+        },
+        {
+            label: t('userSystem'), //
+            key: 'group-user', //
+            icon: () => h(NIcon, { component: ManageAccountsFilled }), //
+            children: [ //
+                { label: t('userManagement'), key: 'userManagement' }, //
+                { label: t('createAccount'), key: 'createAccount' }, //
+                { label: t('rechargeCodeManager'), key: 'rechargeCodeManager' }, //
+                { label: t('userSettings'), key: 'userSettings' }, //
+                { label: t('userOauth2Settings'), key: 'userOauth2Settings' }, //
+                { label: t('roleAddressConfig'), key: 'roleAddressConfig' }, //
+                { label: t('domainPricingConfig'), key: 'domainPricingConfig' }, //
+            ]
+        },
+        {
+            label: t('mailSystem'), //
+            key: 'group-mail', //
+            icon: () => h(NIcon, { component: MailFilled }), //
+            children: [ //
+                { label: t('mails'), key: 'mails' }, //
+                { label: t('mailsUnknow'), key: 'mailsUnknow' }, //
+                { label: t('sendMail'), key: 'sendMail' }, //
+                { label: t('sendBox'), key: 'sendBox' }, //
+                { label: t('senderAccess'), key: 'senderAccess' }, //
+                { label: t('webhook'), key: 'webhook' }, //
+                { label: t('mailWebhook'), key: 'mailWebhook' }, //
+            ]
+        },
+        {
+            label: t('systemTools'), //
+            key: 'group-tools', //
+            icon: () => h(NIcon, { component: SettingsFilled }), //
+            children: [ //
+                { label: t('databaseManager'), key: 'databaseManager' }, //
+                { label: t('maintenance'), key: 'maintenance' }, //
+                { label: t('workerconfig'), key: 'workerconfig' }, //
+                { label: t('telegram'), key: 'telegram' }, //
+            ]
+        },
+    ];
 });
 
 // 用于渲染当前活动组件的计算属性
 const activeComponent = computed(() => { //
-    const key = currentTab.value; //
-    switch (key) { //
-        // Dashboard
-        case 'statistics': return Statistics; //
-        case 'accountSettings': return AccountSettings; //
+    const key = currentTab.value; //
+    switch (key) { //
+        // Dashboard
+        case 'statistics': return Statistics; //
+        case 'accountSettings': return AccountSettings; //
 
-        // User System
-        case 'userManagement': return UserManagement; //
-        case 'createAccount': return CreateAccount; //
-        case 'rechargeCodeManager': return RechargeCodeManager; //
-        case 'userSettings': return UserSettingsComponent; //
-        case 'userOauth2Settings': return UserOauth2Settings; //
-        case 'roleAddressConfig': return RoleAddressConfig; //
-        case 'domainPricingConfig': return DomainPricingConfig; //
+        // User System
+        case 'userManagement': return UserManagement; //
+        case 'createAccount': return CreateAccount; //
+        case 'rechargeCodeManager': return RechargeCodeManager; //
+        case 'userSettings': return UserSettingsComponent; //
+        case 'userOauth2Settings': return UserOauth2Settings; //
+        case 'roleAddressConfig': return RoleAddressConfig; //
+        case 'domainPricingConfig': return DomainPricingConfig; //
 
-        // Mail System
-        case 'mails': return WorkerMail; //
-        case 'mailsUnknow': return MailsUnknow; //
-        case 'sendMail': return SendMail; //
-        case 'sendBox': return SendBox; //
-        case 'senderAccess': return SenderAccess; //
-        case 'webhook': return Webhook; //
-        case 'mailWebhook': return MailWebhook; //
+        // Mail System
+        case 'mails': return WorkerMail; //
+        case 'mailsUnknow': return MailsUnknow; //
+        case 'sendMail': return SendMail; //
+        case 'sendBox': return SendBox; //
+        case 'senderAccess': return SenderAccess; //
+        case 'webhook': return Webhook; //
+        case 'mailWebhook': return MailWebhook; //
 
-        // System Tools
-        case 'databaseManager': return DatabaseManager; //
-        case 'maintenance': return Maintenance; //
-        case 'workerconfig': return WorkerConfig; //
-        case 'telegram': return TelegramManager; //
-        
-        default: return Statistics; //
-    }
+        // System Tools
+        case 'databaseManager': return DatabaseManager; //
+        case 'maintenance': return Maintenance; //
+        case 'workerconfig': return WorkerConfig; //
+        case 'telegram': return TelegramManager; //
+        
+        default: return Statistics; //
+    }
 });
 
 // 处理侧边栏点击
 const handleMenuUpdate = (key) => { //
-    currentTab.value = key; //
+    currentTab.value = key; //
 };
 </script>
 
 <template>
-  <div style="max-width: 1200px; margin: auto;">
-    <n-message-provider>
-      <n-layout has-sider>
-        
-                <n-layout-sider 
-                v-if="!isMobile"
-                bordered
-                collapse-mode="width"
-                :collapsed-width="64"
-                :width="240"
-                :native-scrollbar="false"
-                show-trigger="arrow-circle"
-                collapsed
-            >
-              <n-menu 
-                    :collapsed="false"
-                    :collapsed-width="64"
-                    :collapsed-icon-size="22"
-                    :options="sideMenuOptions"
-                    :value="currentTab"
-                    @update:value="handleMenuUpdate"
-                />
-            </n-layout-sider>
+  <div style="max-width: 1200px; margin: auto;"> <n-message-provider> <n-layout has-sider> <n-layout-sider 
+                v-if="!isMobile"
+                bordered
+                collapse-mode="width"
+                :collapsed-width="64"
+                :width="240"
+                :native-scrollbar="false"
+                show-trigger="arrow-circle"
+                collapsed
+            > <n-menu 
+                    :collapsed="false"
+                    :collapsed-width="64"
+                    :collapsed-icon-size="22"
+                    :options="sideMenuOptions"
+                    :value="currentTab"
+                    @update:value="handleMenuUpdate"
+                /> </n-layout-sider>
 
-            <n-layout-content>
-              <div style="padding: 10px;">
-                                <n-tabs v-if="isMobile" type="line" justify-content="center" animated v-model:value="currentTab" @update:value="handleMenuUpdate">
-                  <n-tab-pane name="statistics" :tab="t('statistics')">
-                    <component :is="Statistics" />
-                  </n-tab-pane>
-                         <n-tab-pane name="userManagement" :tab="t('userSystem')">
-                    <n-tabs type="bar" justify-content="center" animated>
-                      <n-tab-pane name="userManagement" :tab="t('userManagement')"><UserManagement /></n-tab-pane>
-                      <n-tab-pane name="rechargeCodeManager" :tab="t('rechargeCodeManager')"><RechargeCodeManager /></n-tab-pane>
-                      <n-tab-pane name="domainPricingConfig" :tab="t('domainPricingConfig')"><DomainPricingConfig /></n-tab-pane>
-                      <n-tab-pane name="accountSettings" :tab="t('accountSettings')"><AccountSettings /></n-tab-pane>
+            <n-layout-content> <div style="padding: 10px;"> <n-tabs v-if="isMobile" type="line" justify-content="center" animated v-model:value="currentTab" @update:value="handleMenuUpdate"> <n-tab-pane name="statistics" :tab="t('statistics')"> <component :is="Statistics" /> </n-tab-pane>
+                         <n-tab-pane name="userManagement" :tab="t('userSystem')"> <n-tabs type="bar" justify-content="center" animated> <n-tab-pane name="userManagement" :tab="t('userManagement')"><UserManagement /></n-tab-pane> <n-tab-pane name="rechargeCodeManager" :tab="t('rechargeCodeManager')"><RechargeCodeManager /></n-tab-pane> <n-tab-pane name="domainPricingConfig" :tab="t('domainPricingConfig')"><DomainPricingConfig /></n-tab-pane> <n-tab-pane name="accountSettings" :tab="t('accountSettings')"><AccountSettings /></n-tab-pane> </n-tabs>
+                        </n-tab-pane>
+                        <n-tab-pane name="mails" :tab="t('mailSystem')"> <n-tabs type="bar" justify-content="center" animated> <n-tab-pane name="mails" :tab="t('mails')"><WorkerMail /></n-tab-pane> <n-tab-pane name="sendMail" :tab="t('sendMail')"><SendMail /></n-tab-pane> </n-tabs>
+                        </n-tab-pane>
+                        <n-tab-pane name="maintenance" :tab="t('maintenance')"> <n-tabs type="bar" justify-content="center" animated> <n-tab-pane name="maintenance" :tab="t('maintenance')"><Maintenance /></n-tab-pane> <n-tab-pane name="databaseManager" :tab="t('databaseManager')"><DatabaseManager /></n-tab-pane> </n-tabs>
+                        </n-tab-pane>
+
                     </n-tabs>
-                        </n-tab-pane>
-                        <n-tab-pane name="mails" :tab="t('mailSystem')">
-                    <n-tabs type="bar" justify-content="center" animated>
-                      <n-tab-pane name="mails" :tab="t('mails')"><WorkerMail /></n-tab-pane>
-                      <n-tab-pane name="sendMail" :tab="t('sendMail')"><SendMail /></n-tab-pane>
-                    </n-tabs>
-                        </n-tab-pane>
-                        <n-tab-pane name="maintenance" :tab="t('maintenance')">
-                    <n-tabs type="bar" justify-content="center" animated>
-                      <n-tab-pane name="maintenance" :tab="t('maintenance')"><Maintenance /></n-tab-pane>
-                      <n-tab-pane name="databaseManager" :tab="t('databaseManager')"><DatabaseManager /></n-tab-pane>
-                    </n-tabs>
-                        </n-tab-pane>
-                    </n-tabs>
-                    
-                                    <component v-else :is="activeComponent" :key="currentTab" /> 
-              </div>
-            </n-layout-content>
-        </n-layout>
-    </n-message-provider>
-  </div>
+                    
+                    <component v-else :is="activeComponent" :key="currentTab" />  </div>
+            </n-layout-content>
+        </n-layout>
+    </n-message-provider>
+  </div>
 </template>
 
 <style scoped>
 /* 侧边栏和布局样式 */
 .n-layout-sider {
-    min-height: 100vh;
+    min-height: 100vh;
 }
 .n-layout-content {
-    min-height: 100vh;
+    min-height: 100vh;
 }
 </style>
