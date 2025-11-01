@@ -334,6 +334,7 @@ const handleMenuUpdate = (key) => { //
                       <n-tab-pane name="databaseManager" :tab="t('databaseManager')"><DatabaseManager /></n-tab-pane>
                     </n-tabs>
                         </n-tab-pane>
+
                     </n-tabs>
                     
                                     <component v-else :is="activeComponent" :key="currentTab" /> 
