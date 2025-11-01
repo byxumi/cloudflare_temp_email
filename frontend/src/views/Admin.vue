@@ -5,10 +5,12 @@ import { userSettings, toggleTheme, theme } from '../store' //
 import { useI18n } from 'vue-i18n' //
 import { computed, ref, h } from 'vue';
 import { useIsMobile } from '../utils/composables' //
+
+// 【修复 Bug 2】导入所有需要的图标
 import {
     AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
     MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram,
-    // 【修复 Bug 2】导入所有需要的子菜单图标 (Vicons/Material)
+    // 新增的子菜单图标
     PeopleFilled, PersonAddFilled, KeyFilled, PriceChangeFilled, InboxFilled,
     MarkEmailUnreadFilled, ReceiptLongFilled, WebFilled, CodeFilled
 } from '@vicons/material'; // 导入图标
@@ -40,7 +42,6 @@ const message = useMessage(); //
 const isMobile = useIsMobile(); //
 
 // 【修复 Bug 1】新增侧边栏折叠状态控制
-// Naive UI 的 Sider/Menu 联动需要这个状态
 const isCollapsed = ref(true); // 默认折叠，与您截图一致
 
 // 关键状态定义
