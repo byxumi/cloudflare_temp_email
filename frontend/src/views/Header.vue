@@ -36,6 +36,7 @@ const menuValue = computed(() => { //
 // 关键状态定义: 确保 logoClickCount 只在这里定义一次
 const logoClickCount = ref(0); //
 
+
 // 关键修复: Admin 认证触发逻辑，并添加自动刷新
 const authFunc = async () => { //
     try { //
@@ -133,7 +134,7 @@ const handleAdminNavigation = async () => { //
 
 
 const logoClick = async () => { //
-    // 关键修复 3: 删除 Logo 点击的五次彩蛋功能
+    // 关键修复: 删除五次点击进入 Admin 的功能
     logoClickCount.value = 0; //
     message.info("Admin entry removed."); //
 };
