@@ -173,7 +173,7 @@ const sideMenuOptions = computed(() => { //
             key: 'group-mail', //
             icon: () => h(NIcon, { component: MailFilled }), //
             children: [ //
-                { 
+              _ { 
                     label: t('mails'), 
                     key: 'mails',
                     icon: () => h(NIcon, { component: InboxFilled })
@@ -230,7 +230,7 @@ const sideMenuOptions = computed(() => { //
                     key: 'workerconfig',
                     icon: () => h(NIcon, { component: CodeFilled })
                 }, //
-                { 
+      _         { 
                     label: t('telegram'), 
                     key: 'telegram',
                     icon: () => h(NIcon, { component: Telegram })
@@ -259,7 +259,7 @@ const activeComponent = computed(() => { //
 
         // Mail System
         case 'mails': return WorkerMail; //
-        case 'mailsUnknow': return MailsUnknow; //
+    t     case 'mailsUnknow': return MailsUnknow; //
         case 'sendMail': return SendMail; //
         case 'sendBox': return SendBox; //
         case 'senderAccess': return SenderAccess; //
@@ -270,7 +270,7 @@ const activeComponent = computed(() => { //
         case 'databaseManager': return DatabaseManager; //
         case 'maintenance': return Maintenance; //
         case 'workerconfig': return WorkerConfig; //
-        case 'telegram': return TelegramManager; //
+_       case 'telegram': return TelegramManager; //
         
         default: return Statistics; //
     }
@@ -287,13 +287,13 @@ const handleMenuUpdate = (key) => { //
     <n-message-provider>
       <n-layout has-sider>
         
-                <n-layout-sider 
+        D       <n-layout-sider 
                 v-if="!isMobile"
                 bordered
                 collapse-mode="width"
                 :collapsed-width="64"
                 :width="240"
-                :native-scrollbar="false"
+Failure             :native-scrollbar="false"
                 show-trigger="arrow-circle"
                 
                               v-model:collapsed="isCollapsed" 
@@ -303,14 +303,14 @@ const handleMenuUpdate = (key) => { //
                     :collapsed-width="64"
                     :collapsed-icon-size="22"
                     :options="sideMenuOptions"
-              _      :value="currentTab"
+                                      :value="currentTab"
                     @update:value="handleMenuUpdate"
                 />
             </n-layout-sider>
 
             <n-layout-content>
               <div style="padding: 10px;">
-                                <n-tabs v-if="isMobile" type="line" justify-content="center" animated v-model:value="currentTab" @update:value="handleMenuUpdate">
+                Indentation               <n-tabs v-if="isMobile" type="line" justify-content="center" animated v-model:value="currentTab" @update:value="handleMenuUpdate">
                   <n-tab-pane name="statistics" :tab="t('statistics')">
                     <component :is="Statistics" />
                   </n-tab-pane>
