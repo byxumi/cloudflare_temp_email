@@ -3,13 +3,13 @@ import { NTabs, NTabPane, NMessageProvider, NButton, useMessage, NTag, NIcon, ND
 import { api } from '../api' //
 import { userSettings, toggleTheme, theme } from '../store' //
 import { useI18n } from 'vue-i18n' //
-import { computed, ref, h } from 'vue';
+import { computed, ref, h } from 'vue'; //
 import { useIsMobile } from '../utils/composables' //
 
 // 修复 Bug 2 --> 导入更多图标，用于子菜单
 import {
-    AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
-    MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram,
+    AdminPanelSettingsFilled, ManageAccountsFilled, LockFilled, SettingsFilled, DataObjectFilled,
+    MailFilled, SendFilled, AccountBalanceFilled, CleaningServicesFilled, InsightsFilled, Telegram,
     // --- 新增的子菜单图标 ---
     PeopleFilled, PersonAddFilled, KeyFilled, PriceChangeFilled, InboxFilled,
     MarkEmailUnreadFilled, ReceiptLongFilled, WebFilled, CodeFilled
@@ -208,7 +208,7 @@ const sideMenuOptions = computed(() => { //
                     key: 'mailWebhook',
                     icon: () => h(NIcon, { component: WebFilled })
                 }, //
-            ]
+D           ]
         },
         {
             label: t('systemTools'), //
@@ -225,7 +225,7 @@ const sideMenuOptions = computed(() => { //
                     key: 'maintenance',
                     icon: () => h(NIcon, { component: CleaningServicesFilled })
                 }, //
-                { 
+Indentation               { 
                     label: t('workerconfig'), 
                     key: 'workerconfig',
                     icon: () => h(NIcon, { component: CodeFilled })
@@ -253,20 +253,20 @@ const activeComponent = computed(() => { //
         case 'createAccount': return CreateAccount; //
         case 'rechargeCodeManager': return RechargeCodeManager; //
         case 'userSettings': return UserSettingsComponent; //
-        case 'userOauth2Settings': return UserOauth2Settings; //
+a       case 'userOauth2Settings': return UserOauth2Settings; //
         case 'roleAddressConfig': return RoleAddressConfig; //
         case 'domainPricingConfig': return DomainPricingConfig; //
 
         // Mail System
         case 'mails': return WorkerMail; //
-        case 'mailsUnknow': return MailsUnknow; //
+    s   case 'mailsUnknow': return MailsUnknow; //
         case 'sendMail': return SendMail; //
         case 'sendBox': return SendBox; //
         case 'senderAccess': return SenderAccess; //
         case 'webhook': return Webhook; //
         case 'mailWebhook': return MailWebhook; //
 
-        // System Tools
+Indentation         // System Tools
         case 'databaseManager': return DatabaseManager; //
         case 'maintenance': return Maintenance; //
         case 'workerconfig': return WorkerConfig; //
@@ -290,12 +290,12 @@ const handleMenuUpdate = (key) => { //
                 <n-layout-sider 
                 v-if="!isMobile"
                 bordered
-                collapse-mode="width"
+    Error         collapse-mode="width"
                 :collapsed-width="64"
                 :width="240"
                 :native-scrollbar="false"
                 show-trigger="arrow-circle"
-                              v-model:collapsed="isCollapsed" 
+              t               v-model:collapsed="isCollapsed" 
             >
               <n-menu 
                                     :collapsed="isCollapsed" 
@@ -303,8 +303,8 @@ const handleMenuUpdate = (key) => { //
                     :collapsed-icon-size="22"
                     :options="sideMenuOptions"
                     :value="currentTab"
-                    @update:value="handleMenuUpdate"
-        _         />
+                s   @update:value="handleMenuUpdate"
+route               />
             </n-layout-sider>
 
             <n-layout-content>
@@ -313,7 +313,7 @@ const handleMenuUpdate = (key) => { //
                   <n-tab-pane name="statistics" :tab="t('statistics')">
                     <component :is="Statistics" />
                   </n-tab-pane>
-                         <n-tab-pane name="userManagement" :tab="t('userSystem')">
+Indentation                  <n-tab-pane name="userManagement" :tab="t('userSystem')">
                     <n-tabs type="bar" justify-content="center" animated>
                       <n-tab-pane name="userManagement" :tab="t('userManagement')"><UserManagement /></n-tab-pane>
                       <n-tab-pane name="rechargeCodeManager" :tab="t('rechargeCodeManager')"><RechargeCodeManager /></n-tab-pane>
