@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { Jwt } from 'hono/utils/jwt'
 
 import settings from './settings';
 import user from './user';
@@ -6,7 +7,8 @@ import bind_address from './bind_address';
 import passkey from './passkey';
 import oauth2 from './oauth2';
 import user_mail_api from './user_mail_api';
-import  userUseRechargeCode from './recharge_code_api';
+// 【修复】使用命名导入
+import { userUseRechargeCode } from './recharge_code_api';
 
 export const api = new Hono<HonoCustomType>();
 
@@ -43,5 +45,5 @@ api.post('/user_api/passkey/register_response', passkey.registerResponse);
 api.post('/user_api/passkey/authenticate_request', passkey.authenticateRequest);
 api.post('/user_api/passkey/authenticate_response', passkey.authenticateResponse);
 
-// Recharge Code Usage
-api.post('/recharge_code', userUseRechargeCode)
+// 【修复】Recharge Code Usage
+api.post('/user_api/recharge_code', userUseRechargeCode)
