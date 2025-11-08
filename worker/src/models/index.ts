@@ -113,4 +113,37 @@ export class Model {
             'UPDATE recharge_codes SET used_at = ?, user_id = ? WHERE code = ? AND used_at IS NULL'
         ).bind(usedAt, userId, code).run();
     }
+
+	  // --- Recharge Code methods (New) ---
+    async insertRechargeCode(code: Omit<RechargeCode, 'id' | 'used_at' | 'user_id'>): Promise<D1Result> {
+        return this.db.prepare(
+            'INSERT INTO recharge_codes (code, value, created_at, used_at, user_id) VALUES (?, ?, ?, ?, ?)'
+        ).bind(code.code, code.value, code.created_at, null, null).run();
+    }
+
+    async getRechargeCode(code: string): Promise<RechargeCode | null> {
+        const { results } = await this.db.prepare('SELECT * FROM recharge_codes WHERE code = ?').bind(code).all<RechargeCode>();
+        return results ? (results[0] || null) : null;
+    }
+
+    async getRechargeCodes(limit: number, offset: number): Promise<RechargeCode[]> {
+        const { results } = await this.db.prepare('SELECT * FROM recharge_codes ORDER BY created_at DESC LIMIT ? OFFSET ?').bind(limit, offset).all<RechargeCode>();
+        return results || [];
+    }
+
+    async countRechargeCodes(): Promise<number> {
+        const { results } = await this.db.prepare('SELECT COUNT(*) as count FROM recharge_codes').all<{ count: number }>();
+        return results ? results[0].count : 0;
+    }
+
+    async deleteRechargeCode(code: string): Promise<D1Result> {
+        return this.db.prepare('DELETE FROM recharge_codes WHERE code = ?').bind(code).run();
+    }
+
+    async useRechargeCode(code: string, userId: string, usedAt: number): Promise<D1Result> {
+        return this.db.prepare(
+            'UPDATE recharge_codes SET used_at = ?, user_id = ? WHERE code = ? AND used_at IS NULL'
+        ).bind(usedAt, userId, code).run();
+    }
+}
 }
