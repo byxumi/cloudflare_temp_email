@@ -1,4 +1,3 @@
-// worker/src/admin_api/recharge_code_api.ts
 import { Env, RechargeCode } from '../types';
 import { Model } from '../models';
 import { jsonResponse } from '../utils';
@@ -12,7 +11,7 @@ export async function adminCreateRechargeCode(request: Request, env: Env): Promi
 
     const model = new Model(env.DB);
     const now = Math.floor(Date.now() / 1000);
-    const codes: Omit<RechargeCode, 'id' | 'used_at' | 'user_id'>[] = [];
+    const codes = [];
     
     for (let i = 0; i < count; i++) {
         codes.push({
