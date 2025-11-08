@@ -146,4 +146,3 @@ export class Model {
         ).bind(usedAt, userId, code).run();
     }
 }
-}
