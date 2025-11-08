@@ -2,7 +2,6 @@ import { Context } from "hono";
 import { createMimeMessage } from "mimetext";
 import type { HonoCustomType, UserRole, AnotherWorker } from "./types"; // 确保导入 HonoCustomType, UserRole, AnotherWorker
 
-// 【新增】jsonResponse 函数，用于 API 响应
 export const jsonResponse = (data: any, status: number = 200) => {
     return new Response(JSON.stringify(data), {
         status: status,
@@ -329,7 +328,7 @@ export default {
     getAnotherWorkerList,
     getPasswords,
     getAdminPasswords,
-  A   getEnvStringList,
+    getEnvStringList, // 【修复】移除了 'A'
     sendAdminInternalMail,
     checkCfTurnstile,
     checkUserPassword,
