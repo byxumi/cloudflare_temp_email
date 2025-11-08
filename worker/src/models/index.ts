@@ -1,53 +1,21 @@
 import { D1Database, D1Result } from '@cloudflare/workers-types';
-// 确保导入了所有在 types.d.ts 中定义的类型
-import { 
+// 【修复】从 types.d.ts 导入所有类型，以便重新导出
+import type {
     Passkey, AdminWebhookSettings, WebhookMail, CleanupSettings, 
     GeoData, UserSettings, UserInfo, WebhookSettings, 
-    UserOauth2Settings, EmailRuleSettings, RoleConfig, RoleAddressConfig 
-} from '../types'; 
+    UserOauth2Settings, EmailRuleSettings, RoleConfig, RoleAddressConfig,
+    User, EmailRecord, // 假设 User 和 EmailRecord 在 types.d.ts 中
+    RechargeCode // 确保 RechargeCode 也在 types.d.ts 中
+} from '../types';
 
-// 假设 User 和 EmailRecord 类型在您的环境中已定义（通常在 types.d.ts 或此处）
-// 如果它们不在 types.d.ts，我们在这里临时定义它们（如果 User 和 EmailRecord 在 types.d.ts，请忽略这些定义）
-export interface User {
-    id: number;
-    user_id: string;
-    email: string;
-    password?: string;
-    quota_size: number;
-    used_quota_size: number;
-    free_email_time_expire: number;
-    role: string;
-    created_at: number;
-    updated_at: number;
-    telegram_chat_id?: string;
-    telegram_user_id?: string;
-}
-
-export interface EmailRecord {
-    id: number;
-    user_id: string;
-    receiver: string;
-    sender: string;
-    subject: string;
-    body: string;
-    created_at: number;
-    updated_at: number;
-    mail_id: string;
-    seen: boolean;
-    s3_key?: string;
-    sender_ip?: string;
-}
-
-// 【新增】定义 RechargeCode 接口，因为它不在您提供的 types.d.ts 中
-export interface RechargeCode {
-    id: number;
-    code: string;
-    value: number; // 充值天数
-    created_at: number;
-    used_at: number | null;
-    user_id: string | null;
-}
-
+// 【修复】重新导出所有类型，供其他模块使用
+export type {
+    Passkey, AdminWebhookSettings, WebhookMail, CleanupSettings, 
+    GeoData, UserSettings, UserInfo, WebhookSettings, 
+    UserOauth2Settings, EmailRuleSettings, RoleConfig, RoleAddressConfig,
+    User, EmailRecord,
+    RechargeCode
+};
 
 export class Model {
     private db: D1Database;
