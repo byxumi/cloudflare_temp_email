@@ -16,6 +16,11 @@ import { sendMailbyAdmin } from './send_mail'
 import db_api from './db_api'
 import ip_blacklist_settings from './ip_blacklist_settings'
 import { EmailRuleSettings } from '../models'
+import { 
+    adminCreateRechargeCode, 
+    adminListRechargeCodes, 
+    adminDeleteRechargeCode 
+} from './recharge_code_api';
 
 export const api = new Hono<HonoCustomType>()
 
@@ -377,3 +382,8 @@ api.post('admin/db_migration', db_api.migrate);
 // IP blacklist settings
 api.get("/admin/ip_blacklist/settings", ip_blacklist_settings.getIpBlacklistSettings);
 api.post("/admin/ip_blacklist/settings", ip_blacklist_settings.saveIpBlacklistSettings);
+
+// Recharge Code Management
+api.post('/recharge_codes', adminCreateRechargeCode)
+api.get('/recharge_codes', adminListRechargeCodes)
+api.delete('/recharge_codes', adminDeleteRechargeCode)
