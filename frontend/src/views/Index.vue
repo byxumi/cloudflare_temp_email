@@ -2,7 +2,7 @@
 import { defineAsyncComponent, onMounted, watch, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { useMessage, NButton, NIcon, NCard, NSpace, NModal } from 'naive-ui'
+import { useMessage, NButton, NIcon, NCard, NSpace, NModal, NSpin } from 'naive-ui'
 import { User } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
@@ -23,12 +23,14 @@ import SimpleIndex from './index/SimpleIndex.vue';
 import UserLogin from './user/UserLogin.vue'
 import AddressManagement from './user/AddressManagement.vue'
 
-const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt } = useGlobalState()
+// [关键] 引入 jwt，用于判断是否应该尝试恢复邮箱状态
+const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt, jwt } = useGlobalState()
 const message = useMessage()
 const route = useRoute()
 const router = useRouter()
 const isMobile = useIsMobile()
 const showLoginModal = ref(false)
+const initLoading = ref(false) // 初始加载状态
 
 const SendMail = defineAsyncComponent(() => {
   loading.value = true;
@@ -102,7 +104,6 @@ const saveToS3 = async (mail_id, filename, blob) => {
       method: 'POST',
       body: JSON.stringify({ key: `${mail_id}/${filename}` })
     });
-    // upload to s3 by formdata
     const formData = new FormData();
     formData.append(filename, blob);
     await fetch(url, {
@@ -139,6 +140,18 @@ watch(route, () => {
 })
 
 onMounted(async () => {
+  // [关键修复] 刷新页面时，如果本地有 jwt 但 settings 为空，主动拉取 settings
+  if (jwt.value && !settings.value.address) {
+    initLoading.value = true;
+    try {
+      await api.getSettings();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      initLoading.value = false;
+    }
+  }
+
   if (route.query.mail_id) {
     showMailIdQuery.value = true;
     mailIdQuery.value = route.query.mail_id;
@@ -207,10 +220,14 @@ onMounted(async () => {
         </n-tabs>
       </div>
 
-      <div v-else-if="userJwt" style="padding: 20px;">
+      <div v-else-if="userJwt && !jwt" style="padding: 20px;">
         <n-card :title="t('addressManagement')">
           <AddressManagement />
         </n-card>
+      </div>
+
+      <div v-else-if="userJwt && jwt" style="padding: 50px; text-align: center;">
+        <n-spin size="large" />
       </div>
 
       <div v-else class="landing-container">
