@@ -200,70 +200,48 @@ const bindUserAddress = async () => {
     }
 }
 
+// --- 新增：卡密相关 API 方法 (纯 JS) ---
 
-// --- 计费系统 API ---
-
-    // 用户: 获取余额
-    getUserBalance: async () => {
-        try {
-            const res = await apiFetch('/user_api/billing/balance');
-            return res.balance || 0;
-        } catch (error) {
-            console.error(error);
-            return 0;
-        }
-    },
-
-    // 用户: 卡密充值
-    redeemCard: async (code) => {
-        return await apiFetch('/user_api/billing/redeem', {
+const adminCreateRechargeCode = async (value, count) => {
+    try {
+        await apiFetch('/admin/recharge_codes', {
             method: 'POST',
-            body: JSON.stringify({ code })
+            body: { value, count }
         });
-    },
-
-    // 用户: 购买邮箱
-    buyAddress: async (name, domain) => {
-        return await apiFetch('/user_api/billing/buy_address', {
-            method: 'POST',
-            body: JSON.stringify({ name, domain })
-        });
-    },
-
-    // 用户: 获取当前交易记录
-    getUserTransactions: async (limit, offset) => {
-        return await apiFetch(`/user_api/billing/transactions?limit=${limit}&offset=${offset}`);
-    },
-
-    // 管理员: 获取卡密列表
-    adminGetCards: async (limit, offset) => {
-        return await apiFetch(`/admin/billing/cards?limit=${limit}&offset=${offset}`);
-    },
-
-    // 管理员: 生成卡密
-    adminGenerateCards: async (amount, count, expires_at, max_uses) => {
-        return await apiFetch('/admin/billing/cards/generate', {
-            method: 'POST',
-            body: JSON.stringify({ amount, count, expires_at, max_uses })
-        });
-    },
-
-    // 管理员: 获取定价列表
-    adminGetPrices: async () => {
-        return await apiFetch(`/admin/billing/prices`);
-    },
-
-    // 管理员: 设置定价
-    adminSetPrice: async (domain, role_text, price) => {
-        return await apiFetch('/admin/billing/prices', {
-            method: 'POST',
-            body: JSON.stringify({ domain, role_text, price })
-        });
+    } catch (error) {
+        throw error;
     }
-    // 获取特定域名的价格
-    getDomainPrice: async (domain) => {
-        return await apiFetch(`/user_api/billing/price?domain=${domain}`);
-    },
+}
+
+const adminListRechargeCodes = async (limit = 10, offset = 0) => {
+    try {
+        return await apiFetch(`/admin/recharge_codes?limit=${limit}&offset=${offset}`);
+    } catch (error) {
+        throw error;
+    }
+}
+
+const adminDeleteRechargeCode = async (code) => {
+    try {
+        await apiFetch('/admin/recharge_codes', {
+            method: 'DELETE',
+            body: { code }
+        });
+    } catch (error) {
+        throw error;
+    }
+}
+
+const userUseRechargeCode = async (code) => {
+    try {
+        return await apiFetch('/user_api/recharge_code', {
+            method: 'POST',
+            body: { code }
+        });
+    } catch (error) {
+        throw error;
+    }
+}
 
 export const api = {
     fetch: apiFetch,
@@ -274,4 +252,9 @@ export const api = {
     adminShowAddressCredential,
     adminDeleteAddress,
     bindUserAddress,
+    // 导出新方法
+    adminCreateRechargeCode,
+    adminListRechargeCodes,
+    adminDeleteRechargeCode,
+    userUseRechargeCode,
 }
