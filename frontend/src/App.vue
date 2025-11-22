@@ -24,7 +24,6 @@ const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
 // [UI 美化] 深度定制主题变量
 const themeOverrides = computed(() => {
-  // 玻璃背景不透明度
   const alpha = 0.75; 
   
   const glassBg = isDark.value 
@@ -49,13 +48,10 @@ const themeOverrides = computed(() => {
       borderRadius: '12px',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       
-      // 基础背景透明
       bodyColor: transparent,
-      // 组件背景
       cardColor: glassBg,
       modalColor: glassBg,
       popoverColor: glassBg,
-      // 表格表头稍微深一点，增加对比度
       tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)', 
       inputColor: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
     },
@@ -78,9 +74,7 @@ const themeOverrides = computed(() => {
       borderColor: glassBorder
     },
     DataTable: {
-      // 表格整体透明，依赖外层容器的玻璃效果
       color: transparent,
-      // 单元格透明
       tdColor: transparent,
       tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
       borderColor: glassBorder,
@@ -130,7 +124,7 @@ const themeOverrides = computed(() => {
     },
     Tabs: {
       tabBorderRadius: '10px',
-      panePadding: '16px', // 增加内边距，因为我们要给 pane 加背景了
+      panePadding: '16px',
       tabColor: transparent,
       tabBorderColor: transparent
     },
@@ -254,9 +248,8 @@ body {
   margin-right: 10px;
 }
 
-/* === 全局玻璃拟态核心样式 === */
+/* === 全局玻璃拟态样式 === */
 
-/* 1. 通用容器：卡片、弹窗等 */
 .n-card, 
 .n-modal, 
 .n-drawer, 
@@ -270,47 +263,69 @@ body {
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15) !important;
 }
 
-/* 深色模式微调 */
 [data-theme='dark'] .n-card,
 [data-theme='dark'] .n-modal,
 [data-theme='dark'] .n-dialog {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-/* 2. [关键修改] 标签页内容容器 (.n-tab-pane) 增加毛玻璃效果 */
-/* 这解决了 AddressManagement 等直接放在 Tab 里的组件透明看不清的问题 */
+/* [核心] 标签页 Tab 按钮毛玻璃效果 */
+/* 针对用户中心的地址管理、收件箱等按钮，以及 Admin 功能栏 */
+.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
+  /* 默认未选中状态：半透明毛玻璃 */
+  background-color: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  margin-right: 6px !important;
+  border-radius: 8px 8px 0 0 !important;
+  transition: all 0.3s ease !important;
+}
+
+/* 激活状态的 Tab */
+.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
+  background-color: rgba(255, 255, 255, 0.85) !important; /* 激活时更不透明 */
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+  border-bottom: none !important;
+}
+
+/* 深色模式下的 Tab */
+[data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
+  background-color: rgba(30, 30, 35, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
+  background-color: rgba(30, 30, 35, 0.85) !important;
+}
+
+/* Tab 内容区域 */
 .n-tabs .n-tab-pane {
-  /* 使用主题中定义的 glassBg 逻辑，这里手动设置一个通用的半透明背景 */
   background-color: rgba(255, 255, 255, 0.65) !important;
   backdrop-filter: blur(16px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  border-radius: 16px !important;
-  margin-top: 10px; /* 与 Tab 标题拉开一点距离 */
-  padding: 20px !important; /* 增加内边距 */
+  border-radius: 0 16px 16px 16px !important; /* 配合 Tab 按钮的圆角 */
+  margin-top: -1px; /* 连接 Tab */
+  padding: 20px !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
 }
 
-/* 深色模式下的 Tab 内容背景 */
 [data-theme='dark'] .n-tabs .n-tab-pane {
   background-color: rgba(30, 30, 35, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-/* 3. 输入框 */
 .n-input .n-input-wrapper {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* 4. 表格：背景透明，依赖外层容器 */
 .n-data-table, 
 .n-data-table .n-data-table-th, 
 .n-data-table .n-data-table-td {
   background-color: transparent !important;
 }
 
-/* 5. Layout 透明 */
 .n-layout, .n-layout-header, .n-layout-footer, .n-layout-sider {
   background-color: transparent !important;
 }
@@ -328,7 +343,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(255, 255, 255, 0.1); 
+  background: rgba(255, 255, 255, 0.1);
   pointer-events: none;
   z-index: 0;
   transition: background 0.3s ease;
