@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NDataTable, NPagination, NModal, NForm, NFormItem, NInputNumber } from 'naive-ui'
+import { useMessage } from 'naive-ui'
 import { api } from '../../api'
 
 const message = useMessage()
@@ -56,7 +56,6 @@ const fetchData = async () => {
 const handleGenerate = async () => {
     loading.value = true
     try {
-        // 后端接收的是元，会自动转为分
         const res = await api.adminGenerateCards(genForm.value.amount, genForm.value.count)
         if (res.success) {
             message.success(t('generateSuccess'))
@@ -85,7 +84,7 @@ const columns = [
         title: t('amount'), 
         key: 'amount',
         render(row) {
-            return (row.amount / 100).toFixed(2) // 分转元显示
+            return (row.amount / 100).toFixed(2)
         }
     },
     { title: t('status'), key: 'status' },

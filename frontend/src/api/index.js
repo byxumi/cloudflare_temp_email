@@ -200,49 +200,6 @@ const bindUserAddress = async () => {
     }
 }
 
-// --- 新增：卡密相关 API 方法 ---
-
-const adminCreateRechargeCode = async (value, count) => {
-    try {
-        await apiFetch('/admin/recharge_codes', {
-            method: 'POST',
-            body: { value, count }
-        });
-    } catch (error) {
-        throw error;
-    }
-}
-
-const adminListRechargeCodes = async (limit = 10, offset = 0) => {
-    try {
-        return await apiFetch(`/admin/recharge_codes?limit=${limit}&offset=${offset}`);
-    } catch (error) {
-        throw error;
-    }
-}
-
-const adminDeleteRechargeCode = async (code) => {
-    try {
-        await apiFetch('/admin/recharge_codes', {
-            method: 'DELETE',
-            body: { code }
-        });
-    } catch (error) {
-        throw error;
-    }
-}
-
-const userUseRechargeCode = async (code) => {
-    try {
-        return await apiFetch('/user_api/recharge_code', {
-            method: 'POST',
-            body: { code }
-        });
-    } catch (error) {
-        throw error;
-    }
-}
-
 export const api = {
     fetch: apiFetch,
     getSettings,
@@ -252,11 +209,48 @@ export const api = {
     adminShowAddressCredential,
     adminDeleteAddress,
     bindUserAddress,
-    // 导出卡密方法
-    adminCreateRechargeCode,
-    adminListRechargeCodes,
-    adminDeleteRechargeCode,
-    userUseRechargeCode,
-    // 别名兼容，防止 "is not a function"
-    adminGetCards: adminListRechargeCodes 
+
+    // --- 计费系统 API ---
+    getUserBalance: async () => {
+        try {
+            const res = await apiFetch('/user_api/billing/balance');
+            return res.balance || 0;
+        } catch (error) {
+            console.error(error);
+            return 0;
+        }
+    },
+    getDomainPrice: async (domain) => {
+        return await apiFetch(`/user_api/billing/price?domain=${domain}`);
+    },
+    redeemCard: async (code) => {
+        return await apiFetch('/user_api/billing/redeem', {
+            method: 'POST',
+            body: JSON.stringify({ code })
+        });
+    },
+    buyAddress: async (name, domain) => {
+        return await apiFetch('/user_api/billing/buy_address', {
+            method: 'POST',
+            body: JSON.stringify({ name, domain })
+        });
+    },
+    adminGetCards: async (limit, offset) => {
+        return await apiFetch(`/admin/billing/cards?limit=${limit}&offset=${offset}`);
+    },
+    adminGenerateCards: async (amount, count, expires_at, max_uses) => {
+        return await apiFetch('/admin/billing/cards/generate', {
+            method: 'POST',
+            body: JSON.stringify({ amount, count, expires_at, max_uses })
+        });
+    },
+    adminGetPrices: async () => {
+        return await apiFetch(`/admin/billing/prices`);
+    },
+    adminSetPrice: async (domain, role_text, price) => {
+        return await apiFetch('/admin/billing/prices', {
+            method: 'POST',
+            body: JSON.stringify({ domain, role_text, price })
+        });
+    }
 }

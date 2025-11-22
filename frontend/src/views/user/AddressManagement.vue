@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NTag, NButton, NModal, NForm, NFormItem, NInput, NSelect, NAlert, NSpin } from 'naive-ui'
+import { useMessage, NButton, NTag } from 'naive-ui'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
@@ -25,10 +25,8 @@ const { t } = useI18n({
             balance: 'Your Balance: ',
             insufficientBalance: 'Insufficient balance',
             confirmPurchase: 'Confirm Purchase',
-            purchaseTip: 'This operation will deduct ',
             createSuccess: 'Created Successfully',
             unbindSuccess: 'Unbind Successfully',
-            loadingPrice: 'Loading price...'
         },
         zh: {
             createAddress: '新建邮箱地址',
@@ -46,10 +44,8 @@ const { t } = useI18n({
             balance: '您的余额：',
             insufficientBalance: '余额不足',
             confirmPurchase: '确认购买',
-            purchaseTip: '本次操作将扣除 ',
             createSuccess: '创建成功',
             unbindSuccess: '解绑成功',
-            loadingPrice: '正在查询价格...'
         }
     }
 })
@@ -60,17 +56,14 @@ const showCreateModal = ref(false)
 const createLoading = ref(false)
 const priceLoading = ref(false)
 
-// 表单数据
 const form = ref({
     name: '',
     domain: null
 })
 
-// 价格相关数据
-const currentPriceCents = ref(0) // 单位：分
-const userBalanceCents = ref(0)  // 单位：分
+const currentPriceCents = ref(0)
+const userBalanceCents = ref(0)
 
-// 域名选项
 const domainOptions = computed(() => {
     return (openSettings.value.domains || []).map(d => ({
         label: d.label || d.value,
@@ -78,7 +71,6 @@ const domainOptions = computed(() => {
     }))
 })
 
-// 获取已绑定地址列表
 const fetchData = async () => {
     loading.value = true
     try {
@@ -91,14 +83,12 @@ const fetchData = async () => {
     }
 }
 
-// 获取余额
 const fetchBalance = async () => {
     try {
         userBalanceCents.value = await api.getUserBalance()
     } catch (e) { console.error(e) }
 }
 
-// 监听域名变化，查询价格
 watch(() => form.value.domain, async (newDomain) => {
     if (!newDomain) {
         currentPriceCents.value = 0
@@ -115,7 +105,6 @@ watch(() => form.value.domain, async (newDomain) => {
     }
 })
 
-// 打开创建弹窗
 const openCreateModal = async () => {
     form.value.name = ''
     form.value.domain = domainOptions.value.length > 0 ? domainOptions.value[0].value : null
@@ -123,11 +112,9 @@ const openCreateModal = async () => {
     await fetchBalance()
 }
 
-// 执行创建/购买
 const handleCreate = async () => {
     if (!form.value.name || !form.value.domain) return
     
-    // 前端简单校验余额
     if (currentPriceCents.value > userBalanceCents.value) {
         message.error(t('insufficientBalance'))
         return
@@ -135,17 +122,14 @@ const handleCreate = async () => {
 
     createLoading.value = true
     try {
-        // 调用后端的购买接口 (purchaseAddress)
-        // 注意：即使是免费的，调用这个接口也没问题，后端会判断 price=0 不扣费
         const res = await api.buyAddress(form.value.name, form.value.domain)
         if (res.success) {
             message.success(t('createSuccess'))
             showCreateModal.value = false
-            fetchData() // 刷新列表
-            fetchBalance() // 刷新余额
+            fetchData()
+            fetchBalance()
         }
     } catch (e) {
-        // 处理 402 余额不足等错误
         if (e.message && e.message.includes('402')) {
             message.error(t('insufficientBalance'))
         } else {
@@ -156,7 +140,6 @@ const handleCreate = async () => {
     }
 }
 
-// 解绑/删除地址
 const handleDelete = async (addressId) => {
     try {
         await api.fetch('/user_api/unbind_address', {
@@ -224,16 +207,12 @@ onMounted(() => {
                             <p style="font-size: 0.9em; color: #666;">
                                 {{ t('balance') }} {{ (userBalanceCents / 100).toFixed(2) }} 元
                             </p>
-                            <n-alert v-if="currentPriceCents > userBalanceCents" type="error" :show-icon="true" style="margin-top: 10px">
-                                {{ t('insufficientBalance') }}
-                            </n-alert>
                         </div>
                         <div v-else>
                             <n-tag type="success">{{ t('free') }}</n-tag>
                         </div>
                     </n-spin>
                 </div>
-
             </n-form>
 
             <template #action>

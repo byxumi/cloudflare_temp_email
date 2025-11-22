@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber } from 'naive-ui'
+import { useMessage, NButton } from 'naive-ui'
 import { api } from '../../api'
 
 const message = useMessage()
@@ -47,7 +47,6 @@ const handleSave = async () => {
     if (!form.value.domain) return message.error("请输入域名")
     loading.value = true
     try {
-        // 发送元给后端
         const res = await api.adminSetPrice(form.value.domain, form.value.role_text, form.value.price)
         if (res.success) {
             message.success('保存成功')
@@ -68,7 +67,7 @@ const columns = [
         title: t('price'), 
         key: 'price',
         render(row) {
-            return (row.price / 100).toFixed(2) // 分转元
+            return (row.price / 100).toFixed(2)
         }
     },
     { title: t('updatedAt'), key: 'updated_at' }
