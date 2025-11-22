@@ -24,7 +24,7 @@ const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
 // [UI 美化] 深度定制主题变量
 const themeOverrides = computed(() => {
-  // 调整不透明度：0.75 (75% 不透明)，保证内容清晰，同时保留透视感
+  // 玻璃背景不透明度
   const alpha = 0.75; 
   
   const glassBg = isDark.value 
@@ -49,13 +49,14 @@ const themeOverrides = computed(() => {
       borderRadius: '12px',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       
-      // 基础背景透明，显示网页壁纸
+      // 基础背景透明
       bodyColor: transparent,
-      // 组件背景设为半透明
+      // 组件背景
       cardColor: glassBg,
       modalColor: glassBg,
       popoverColor: glassBg,
-      tableColor: transparent,
+      // 表格表头稍微深一点，增加对比度
+      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)', 
       inputColor: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
     },
     Card: {
@@ -76,20 +77,20 @@ const themeOverrides = computed(() => {
       borderRadius: '16px',
       borderColor: glassBorder
     },
-    // 表格背景透明，使用外层 Card 的背景
     DataTable: {
+      // 表格整体透明，依赖外层容器的玻璃效果
       color: transparent,
-      thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
+      // 单元格透明
       tdColor: transparent,
       tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
-      borderColor: glassBorder
+      borderColor: glassBorder,
+      borderRadius: '10px'
     },
     List: {
       color: transparent,
       colorHover: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
     },
     Input: {
-      // 输入框背景颜色稍微深一点，便于输入
       color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
       colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.8)',
       border: `1px solid ${glassBorder}`,
@@ -106,7 +107,8 @@ const themeOverrides = computed(() => {
           color: glassBg,
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
           optionColorHover: glassBgHover,
-          padding: '8px'
+          padding: '8px',
+          borderRadius: '12px'
         }
       }
     },
@@ -128,11 +130,10 @@ const themeOverrides = computed(() => {
     },
     Tabs: {
       tabBorderRadius: '10px',
-      panePadding: '16px 0',
+      panePadding: '16px', // 增加内边距，因为我们要给 pane 加背景了
       tabColor: transparent,
       tabBorderColor: transparent
     },
-    // 按钮样式微调
     Button: {
       fontWeight: '500',
       borderRadiusMedium: '10px',
@@ -239,12 +240,10 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === 全局基础样式 === */
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   margin: 0;
-  /* 设置必应壁纸作为全屏背景 */
   background: url('https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN') no-repeat center center fixed;
   background-size: cover;
   background-attachment: fixed; 
@@ -255,9 +254,9 @@ body {
   margin-right: 10px;
 }
 
-/* === 全局玻璃拟态 (Glassmorphism) 效果核心 === */
+/* === 全局玻璃拟态核心样式 === */
 
-/* 1. 容器类组件：添加磨砂模糊和半透明边框 */
+/* 1. 通用容器：卡片、弹窗等 */
 .n-card, 
 .n-modal, 
 .n-drawer, 
@@ -265,46 +264,53 @@ body {
 .n-popover,
 .n-dropdown-menu,
 .n-select-menu {
-  /* 核心：背景模糊 */
   backdrop-filter: blur(16px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-  
-  /* 增强玻璃质感：半透明白色边框 */
   border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  
-  /* 阴影 */
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.15) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15) !important;
 }
 
-/* 深色模式下的边框微调 */
+/* 深色模式微调 */
 [data-theme='dark'] .n-card,
 [data-theme='dark'] .n-modal,
 [data-theme='dark'] .n-dialog {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-/* 2. 输入框玻璃效果 */
+/* 2. [关键修改] 标签页内容容器 (.n-tab-pane) 增加毛玻璃效果 */
+/* 这解决了 AddressManagement 等直接放在 Tab 里的组件透明看不清的问题 */
+.n-tabs .n-tab-pane {
+  /* 使用主题中定义的 glassBg 逻辑，这里手动设置一个通用的半透明背景 */
+  background-color: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 16px !important;
+  margin-top: 10px; /* 与 Tab 标题拉开一点距离 */
+  padding: 20px !important; /* 增加内边距 */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+/* 深色模式下的 Tab 内容背景 */
+[data-theme='dark'] .n-tabs .n-tab-pane {
+  background-color: rgba(30, 30, 35, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 3. 输入框 */
 .n-input .n-input-wrapper {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
 
-/* 3. 标签页内容区透明 */
-.n-tabs .n-tab-pane {
-  background-color: transparent !important;
-  padding: 20px 0;
-}
-
-/* 4. 强制部分组件背景透明，以便透出父级 Card 的背景 */
+/* 4. 表格：背景透明，依赖外层容器 */
 .n-data-table, 
 .n-data-table .n-data-table-th, 
-.n-data-table .n-data-table-td,
-.n-list,
-.n-list .n-list-item {
+.n-data-table .n-data-table-td {
   background-color: transparent !important;
 }
 
-/* 5. Layout 组件完全透明 */
+/* 5. Layout 透明 */
 .n-layout, .n-layout-header, .n-layout-footer, .n-layout-sider {
   background-color: transparent !important;
 }
@@ -316,20 +322,18 @@ body {
   position: relative;
 }
 
-/* 背景遮罩层：调整背景亮度，让文字更清晰 */
 .bg-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(255, 255, 255, 0.1); /* 浅色模式遮罩 */
+  background: rgba(255, 255, 255, 0.1); 
   pointer-events: none;
   z-index: 0;
   transition: background 0.3s ease;
 }
 
-/* 深色模式下加深遮罩 */
 :deep(.n-config-provider--theme-dark) .bg-overlay {
   background: rgba(0, 0, 0, 0.5);
 }
@@ -375,7 +379,6 @@ body {
   padding-bottom: 20px;
 }
 
-/* 页面切换动画：平滑淡入 */
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.3s ease;
