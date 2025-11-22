@@ -1,7 +1,7 @@
 <script setup>
 import { ref, h, onMounted, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n'
-import { NMenu, NButton, NBadge, NTag } from 'naive-ui';
+import { NMenu, NButton, NBadge, NTag, NInputNumber, NFormItem } from 'naive-ui';
 import { MenuFilled } from '@vicons/material'
 
 import { useGlobalState } from '../../store'
@@ -37,6 +37,10 @@ const { t } = useI18n({
             domains: 'Domains',
             roleDonotExist: 'Current Role does not exist',
             userAddressManagement: 'Address Management',
+            balance: 'Balance',
+            topUp: 'Top Up',
+            amount: 'Amount (CNY)',
+            topUpSuccess: 'Top Up Successful'
         },
         zh: {
             success: '成功',
@@ -60,6 +64,10 @@ const { t } = useI18n({
             domains: '域名',
             roleDonotExist: '当前角色不存在',
             userAddressManagement: '地址管理',
+            balance: '余额',
+            topUp: '充值',
+            amount: '金额 (元)',
+            topUpSuccess: '充值成功'
         }
     }
 });
@@ -82,6 +90,9 @@ const showChangeRole = ref(false)
 const showUserAddressManagement = ref(false)
 const userRoles = ref([])
 const curUserRole = ref('')
+const showTopUp = ref(false)
+const topUpAmount = ref(0)
+
 const userRolesOptions = computed(() => {
     return userRoles.value.map(role => {
         return {
@@ -193,6 +204,18 @@ const changeRole = async () => {
     }
 }
 
+const handleTopUp = async () => {
+    try {
+        await api.adminTopUpUser(curUserId.value, topUpAmount.value)
+        message.success(t('topUpSuccess'))
+        showTopUp.value = false
+        await fetchData() // 刷新列表以更新余额
+    } catch (error) {
+        console.log(error)
+        message.error(error.message || "error")
+    }
+}
+
 const columns = [
     {
         title: "ID",
@@ -201,6 +224,14 @@ const columns = [
     {
         title: t('user_email'),
         key: "user_email"
+    },
+    {
+        title: t('balance'),
+        key: "balance",
+        render(row) {
+            // 数据库存储单位为分，显示单位为元
+            return (row.balance ? row.balance / 100 : 0).toFixed(2)
+        }
     },
     {
         title: t('role'),
@@ -257,6 +288,19 @@ const columns = [
                             icon: () => h(MenuFilled),
                             key: "action",
                             children: [
+                                {
+                                    label: () => h(NButton,
+                                        {
+                                            text: true,
+                                            onClick: () => {
+                                                curUserId.value = row.id;
+                                                topUpAmount.value = 0;
+                                                showTopUp.value = true;
+                                            }
+                                        },
+                                        { default: () => t('topUp') }
+                                    ),
+                                },
                                 {
                                     label: () => h(NButton,
                                         {
@@ -393,6 +437,18 @@ onMounted(async () => {
                 </n-button>
             </template>
         </n-modal>
+        
+        <n-modal v-model:show="showTopUp" preset="dialog" :title="t('topUp')">
+            <n-form-item :label="t('amount')">
+                <n-input-number v-model:value="topUpAmount" :precision="2" :step="1" placeholder="0.00" style="width: 100%" />
+            </n-form-item>
+            <template #action>
+                <n-button :loading="loading" @click="handleTopUp" size="small" tertiary type="primary">
+                    {{ t('topUp') }}
+                </n-button>
+            </template>
+        </n-modal>
+
         <n-modal v-model:show="showUserAddressManagement" preset="card" :title="t('userAddressManagement')">
             <UserAddressManagement :user_id="curUserId" />
         </n-modal>
