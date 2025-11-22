@@ -2,7 +2,7 @@
 import { defineAsyncComponent, onMounted, watch, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { useMessage, NButton, NIcon, NCard, NSpace, NModal, NSpin } from 'naive-ui'
+import { useMessage, NButton, NIcon, NCard, NSpace, NModal } from 'naive-ui'
 import { User } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
@@ -30,7 +30,7 @@ const route = useRoute()
 const router = useRouter()
 const isMobile = useIsMobile()
 const showLoginModal = ref(false)
-const initLoading = ref(false) // 初始加载状态
+const initLoading = ref(false)
 
 const SendMail = defineAsyncComponent(() => {
   loading.value = true;
@@ -140,7 +140,6 @@ watch(route, () => {
 })
 
 onMounted(async () => {
-  // [关键修复] 刷新页面时，如果本地有 jwt 但 settings 为空，主动拉取 settings
   if (jwt.value && !settings.value.address) {
     initLoading.value = true;
     try {
@@ -226,10 +225,6 @@ onMounted(async () => {
         </n-card>
       </div>
 
-      <div v-else-if="userJwt && jwt" style="padding: 50px; text-align: center;">
-        <n-spin size="large" />
-      </div>
-
       <div v-else class="landing-container">
         <n-card class="login-card" :bordered="false">
           <n-space vertical align="center" size="large">
@@ -249,7 +244,7 @@ onMounted(async () => {
     </div>
 
     <n-modal v-model:show="showLoginModal" preset="card" style="width: 400px;" :title="t('login')">
-      <UserLogin @login-success="checkLogin" />
+      <UserLogin v-if="showLoginModal" @login-success="checkLogin" />
     </n-modal>
   </div>
 </template>

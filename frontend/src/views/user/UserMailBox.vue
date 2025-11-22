@@ -1,89 +1,58 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n'
-
+import { ref, onMounted } from 'vue'
+import { useMessage } from 'naive-ui'
 import { api } from '../../api'
-import MailBox from '../../components/MailBox.vue';
+import { useGlobalState } from '../../store'
+import MailBox from '../../components/MailBox.vue'
 
+const { userSettings, openSettings } = useGlobalState()
+const message = useMessage()
 
-const { t } = useI18n({
-    messages: {
-        en: {
-            addressQueryTip: 'Leave blank to query all addresses',
-            keywordQueryTip: 'Leave blank to not query by keyword',
-            query: 'Query',
-        },
-        zh: {
-            addressQueryTip: '留空查询所有地址',
-            keywordQueryTip: '留空不按关键字查询',
-            query: '查询',
-        }
-    }
-});
+// 这是一个 key，用于强制刷新 MailBox 组件
+const mailBoxKey = ref(Date.now())
 
-const mailBoxKey = ref("")
-const addressFilter = ref();
-const mailKeyword = ref("")
-const addressFilterOptions = ref([]);
-
-const queryMail = () => {
-    addressFilter.value = addressFilter.value ? addressFilter.value.trim() : addressFilter.value;
-    mailKeyword.value = mailKeyword.value.trim();
-    mailBoxKey.value = Date.now();
-}
-
+// [关键修复] 修改 fetchMailData 逻辑，不传 address 参数以获取所有邮件
 const fetchMailData = async (limit, offset) => {
-    return await api.fetch(
-        `/user_api/mails`
-        + `?limit=${limit}`
-        + `&offset=${offset}`
-        + (addressFilter.value ? `&address=${addressFilter.value}` : '')
-        + (mailKeyword.value ? `&keyword=${mailKeyword.value}` : '')
-    );
-}
-
-const fetchAddresData = async () => {
-    try {
-        const { results } = await api.fetch(
-            `/user_api/bind_address`
-        );
-        addressFilterOptions.value = results.map((item) => {
-            return {
-                label: item.name,
-                value: item.name
-            }
-        });
-    } catch (error) {
-        console.log(error)
-        message.error(error.message || "error");
-    }
-}
-
-const deleteMail = async (curMailId) => {
-    await api.fetch(`/user_api/mails/${curMailId}`, { method: 'DELETE' });
+    // 调用 user_api/mails
+    // 后端逻辑：如果不传 address 参数，则返回所有绑定地址的邮件
+    return await api.fetch(`/user_api/mails?limit=${limit}&offset=${offset}`);
 };
 
-watch(addressFilter, async (newValue) => {
-    queryMail();
-});
+const deleteMail = async (mailId) => {
+    await api.fetch(`/user_api/mails/${mailId}`, { method: 'DELETE' });
+};
 
-onMounted(() => {
-    fetchAddresData();
-});
+const saveToS3 = async (mail_id, filename, blob) => {
+    try {
+        const { url } = await api.fetch(`/api/attachment/put_url`, {
+            method: 'POST',
+            body: JSON.stringify({ key: `${mail_id}/${filename}` })
+        });
+        const formData = new FormData();
+        formData.append(filename, blob);
+        await fetch(url, {
+            method: 'PUT',
+            body: formData
+        });
+        message.success("Saved to S3");
+    } catch (error) {
+        console.error(error);
+        message.error(error.message || "Save to S3 error");
+    }
+}
 </script>
 
 <template>
-    <div style="margin-top: 10px;">
-        <n-input-group>
-            <n-select v-model:value="addressFilter" :options="addressFilterOptions" clearable
-                :placeholder="t('addressQueryTip')" />
-            <n-input v-model:value="mailKeyword" :placeholder="t('keywordQueryTip')" @keydown.enter="queryMail" />
-            <n-button @click="queryMail" type="primary" tertiary>
-                {{ t('query') }}
-            </n-button>
-        </n-input-group>
-        <div style="margin-top: 10px;"></div>
-        <MailBox :key="mailBoxKey" :enableUserDeleteEmail="true" :fetchMailData="fetchMailData"
-            :deleteMail="deleteMail" />
+    <div v-if="userSettings.user_email">
+        <MailBox 
+            :key="mailBoxKey"
+            :showEMailTo="true" 
+            :showReply="false"
+            :showSaveS3="openSettings.isS3Enabled"
+            :saveToS3="saveToS3"
+            :enableUserDeleteEmail="true"
+            :fetchMailData="fetchMailData"
+            :deleteMail="deleteMail"
+        />
     </div>
 </template>

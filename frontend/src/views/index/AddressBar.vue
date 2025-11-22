@@ -25,8 +25,6 @@ const {
 const { locale, t } = useI18n({
     messages: {
         en: {
-            addressManage: 'Address Manage',
-            changeAddress: 'Change Address',
             ok: 'OK',
             copy: 'Copy',
             copied: 'Copied',
@@ -38,8 +36,6 @@ const { locale, t } = useI18n({
             userLogin: 'User Login',
         },
         zh: {
-            addressManage: '地址管理',
-            changeAddress: '更换地址',
             ok: '确定',
             copy: '复制',
             copied: '已复制',
@@ -99,18 +95,6 @@ onMounted(async () => {
             <n-alert type="info" :show-icon="false" :bordered="false">
                 <span>
                     <b>{{ addressLabel }}</b>
-                    <n-button v-if="isTelegram" style="margin-left: 10px" @click="showTelegramChangeAddress = true"
-                        size="small" tertiary type="primary">
-                        <n-icon :component="ExchangeAlt" /> {{ t('addressManage') }}
-                    </n-button>
-                    <n-button v-else-if="userJwt" style="margin-left: 10px" @click="showChangeAddress = true"
-                        size="small" tertiary type="primary">
-                        <n-icon :component="ExchangeAlt" /> {{ t('changeAddress') }}
-                    </n-button>
-                    <n-button v-else style="margin-left: 10px" @click="showLocalAddress = true" size="small" tertiary
-                        type="primary">
-                        <n-icon :component="ExchangeAlt" /> {{ t('addressManage') }}
-                    </n-button>
                     <n-button style="margin-left: 10px" @click="copy" size="small" tertiary type="primary">
                         <n-icon :component="Copy" /> {{ t('copy') }}
                     </n-button>
