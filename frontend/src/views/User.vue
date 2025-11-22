@@ -1,140 +1,59 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage } from 'naive-ui'
-import { Plus } from '@vicons/fa'
-
+import { NTabs, NTabPane } from 'naive-ui'
 import { useGlobalState } from '../store'
 import { api } from '../api'
 
-import AddressMangement from './user/AddressManagement.vue';
-import UserSettingsPage from './user/UserSettings.vue';
-import UserBar from './user/UserBar.vue';
-import BindAddress from './user/BindAddress.vue';
-import UserMailBox from './user/UserMailBox.vue';
-import BuyAddress from './user/BuyAddress.vue';
+import UserMailBox from './user/UserMailBox.vue'
+import UserSettings from './user/UserSettings.vue'
+import AddressManagement from './user/AddressManagement.vue'
+import BindAddress from './user/BindAddress.vue'
+import UserLogin from './user/UserLogin.vue'
+// 1. 导入充值组件
+import BuyAddress from './user/BuyAddress.vue'
 
-const {
-    userTab, globalTabplacement, userSettings
-} = useGlobalState()
-
-const message = useMessage()
-const userBalance = ref(0)
-const redeemCode = ref('')
-const redeemLoading = ref(false)
-const showBuyAddress = ref(false)
-
-const { t } = useI18n({
-    messages: {
-        en: {
-            address_management: 'Address Management',
-            user_mail_box_tab: 'Mail Box',
-            user_settings: 'User Settings',
-            bind_address: 'Bind Mail Address',
-            wallet: 'Wallet',
-            balance: 'Balance',
-            redeem: 'Redeem',
-            redeemPlaceholder: 'Enter redemption code',
-            redeemSuccess: 'Redeem Success',
-            buyAddress: 'Buy Address',
-        },
-        zh: {
-            address_management: '地址管理',
-            user_mail_box_tab: '收件箱',
-            user_settings: '用户设置',
-            bind_address: '绑定邮箱地址',
-            wallet: '钱包',
-            balance: '当前余额',
-            redeem: '充值',
-            redeemPlaceholder: '输入卡密',
-            redeemSuccess: '充值成功',
-            buyAddress: '购买邮箱',
-        }
-    }
-});
-
-const fetchBalance = async () => {
-    try {
-        userBalance.value = await api.getUserBalance();
-    } catch (e) {
-        console.error(e)
-    }
-}
-
-const handleRedeem = async () => {
-    if (!redeemCode.value) return;
-    redeemLoading.value = true;
-    try {
-        const res = await api.redeemCard(redeemCode.value);
-        if (res.success) {
-            message.success(t('redeemSuccess'));
-            redeemCode.value = '';
-            await fetchBalance();
-        }
-    } catch (e) {
-        message.error(e.message || "Redeem failed");
-    } finally {
-        redeemLoading.value = false;
-    }
-}
+const { t } = useI18n()
+const { userJwt } = useGlobalState()
+const activeTab = ref("mailbox")
 
 onMounted(async () => {
-    if (userSettings.value.user_email) {
-        await fetchBalance();
+    if (userJwt.value) {
+        // check jwt
+        try {
+            await api.getUserSettings()
+        } catch (e) {
+            console.error(e)
+            userJwt.value = ""
+        }
     }
 })
-
 </script>
 
 <template>
     <div>
-        <UserBar />
-        <div v-if="userSettings.user_email">
-            <n-card :title="t('wallet')" style="margin-bottom: 10px;" size="small">
-                <template #header-extra>
-                    <n-button type="primary" size="small" @click="showBuyAddress = true">
-                        <template #icon>
-                            <n-icon :component="Plus" />
-                        </template>
-                        {{ t('buyAddress') }}
-                    </n-button>
-                </template>
-                <n-grid x-gap="12" :cols="2">
-                    <n-gi>
-                        <n-statistic :label="t('balance')" :value="userBalance / 100" :precision="2">
-                            <template #prefix>¥</template>
-                        </n-statistic>
-                    </n-gi>
-                    <n-gi>
-                        <n-input-group>
-                            <n-input v-model:value="redeemCode" :placeholder="t('redeemPlaceholder')"
-                                @keydown.enter="handleRedeem" />
-                            <n-button type="primary" @click="handleRedeem" :loading="redeemLoading">
-                                {{ t('redeem') }}
-                            </n-button>
-                        </n-input-group>
-                    </n-gi>
-                </n-grid>
-            </n-card>
-
-            <n-tabs type="card" v-model:value="userTab" :placement="globalTabplacement">
-                <n-tab-pane name="address_management" :tab="t('address_management')">
-                    <AddressMangement />
-                </n-tab-pane>
-                <n-tab-pane name="user_mail_box_tab" :tab="t('user_mail_box_tab')">
+        <UserLogin v-if="!userJwt" />
+        <div v-else>
+            <n-tabs v-model:value="activeTab" type="line" animated>
+                <n-tab-pane name="mailbox" :tab="t('mailbox')">
                     <UserMailBox />
                 </n-tab-pane>
-                <n-tab-pane name="user_settings" :tab="t('user_settings')">
-                    <UserSettingsPage />
+                <n-tab-pane name="address" :tab="t('address_management')">
+                    <AddressManagement />
                 </n-tab-pane>
-                <n-tab-pane name="bind_address" :tab="t('bind_address')">
+                <n-tab-pane name="bind" :tab="t('bind_address')">
                     <BindAddress />
+                </n-tab-pane>
+                <n-tab-pane name="recharge" :tab="t('recharge')">
+                    <BuyAddress />
+                </n-tab-pane>
+                <n-tab-pane name="settings" :tab="t('settings')">
+                    <UserSettings />
                 </n-tab-pane>
             </n-tabs>
         </div>
-
-        <n-modal v-model:show="showBuyAddress" preset="card" :title="t('buyAddress')" style="max-width: 500px">
-            <BuyAddress @success="fetchBalance" @close="showBuyAddress = false" />
-        </n-modal>
     </div>
 </template>
+
+<style scoped>
+</style>

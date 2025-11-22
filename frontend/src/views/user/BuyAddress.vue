@@ -17,7 +17,7 @@ const submit = async () => {
         const res = await api.userUseRechargeCode(code.value)
         message.success(res.message || 'Success')
         code.value = ''
-        // 刷新页面以更新用户信息（如过期时间）
+        // 充值成功后刷新页面以更新状态
         setTimeout(() => {
             location.reload()
         }, 1500)
