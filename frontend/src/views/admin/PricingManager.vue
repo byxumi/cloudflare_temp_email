@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect } from 'naive-ui'
+import { useMessage, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NPopconfirm, NSpace } from 'naive-ui'
 import { api } from '../../api'
 import { useGlobalState } from '../../store'
 
@@ -19,7 +19,13 @@ const { t } = useI18n({
             updatedAt: 'Updated At',
             selectDomain: 'Select Domain',
             selectRole: 'Select Role (Default is "default")',
-            default: 'Default User'
+            default: 'Default User',
+            actions: 'Actions',
+            delete: 'Delete',
+            batchDelete: 'Batch Delete',
+            confirmDelete: 'Confirm delete?',
+            confirmBatchDelete: 'Confirm delete selected items?',
+            deleteSuccess: 'Deleted successfully'
         },
         zh: {
             domain: '域名',
@@ -30,7 +36,13 @@ const { t } = useI18n({
             updatedAt: '更新时间',
             selectDomain: '选择域名',
             selectRole: '选择角色 (默认为 default)',
-            default: '默认用户'
+            default: '默认用户',
+            actions: '操作',
+            delete: '删除',
+            batchDelete: '批量删除',
+            confirmDelete: '确认删除？',
+            confirmBatchDelete: '确认删除选中项？',
+            deleteSuccess: '删除成功'
         }
     }
 })
@@ -40,6 +52,7 @@ const showModal = ref(false)
 const form = ref({ domain: null, role_text: 'default', price: 0.00 })
 const loading = ref(false)
 const roleOptions = ref([{ label: t('default'), value: 'default' }])
+const checkedRowKeys = ref([])
 
 // 域名下拉选项
 const domainOptions = computed(() => {
@@ -54,6 +67,7 @@ const domainOptions = computed(() => {
 
 const fetchData = async () => {
     loading.value = true
+    checkedRowKeys.value = [] // 清空选中
     try {
         if (!openSettings.value.fetched) {
             await api.getOpenSettings(message)
@@ -67,7 +81,6 @@ const fetchData = async () => {
         const roles = await api.adminGetUserRoles()
         if (roles && Array.isArray(roles)) {
             const apiRoles = roles.map(r => ({ label: r.role, value: r.role }))
-            // 始终保留 default 选项
             roleOptions.value = [{ label: t('default'), value: 'default' }, ...apiRoles]
         }
     } catch (e) {
@@ -96,7 +109,29 @@ const handleSave = async () => {
     }
 }
 
+const handleDelete = async (id) => {
+    try {
+        await api.adminDeletePrice(id)
+        message.success(t('deleteSuccess'))
+        fetchData()
+    } catch (e) {
+        message.error(e.message)
+    }
+}
+
+const handleBatchDelete = async () => {
+    if (checkedRowKeys.value.length === 0) return
+    try {
+        await api.adminBatchDeletePrices(checkedRowKeys.value)
+        message.success(t('deleteSuccess'))
+        fetchData()
+    } catch (e) {
+        message.error(e.message)
+    }
+}
+
 const columns = [
+    { type: 'selection' },
     { title: t('domain'), key: 'domain' },
     { title: t('role'), key: 'role_text' },
     { 
@@ -106,7 +141,19 @@ const columns = [
             return (row.price / 100).toFixed(2)
         }
     },
-    { title: t('updatedAt'), key: 'updated_at' }
+    { title: t('updatedAt'), key: 'updated_at' },
+    {
+        title: t('actions'),
+        key: 'actions',
+        render(row) {
+            return h(NPopconfirm, {
+                onPositiveClick: () => handleDelete(row.id)
+            }, {
+                trigger: () => h(NButton, { size: 'tiny', type: 'error', secondary: true }, { default: () => t('delete') }),
+                default: () => t('confirmDelete')
+            })
+        }
+    }
 ]
 
 onMounted(fetchData)
@@ -114,12 +161,27 @@ onMounted(fetchData)
 
 <template>
     <div>
-        <div style="margin-bottom: 10px">
+        <div style="margin-bottom: 10px; display: flex; gap: 10px;">
             <n-button type="primary" @click="showModal = true">{{ t('setPrice') }}</n-button>
-            <n-button style="margin-left: 10px" @click="fetchData">刷新</n-button>
+            <n-popconfirm v-if="checkedRowKeys.length > 0" @positive-click="handleBatchDelete">
+                <template #trigger>
+                    <n-button type="error" secondary>
+                        {{ t('batchDelete') }} ({{ checkedRowKeys.length }})
+                    </n-button>
+                </template>
+                {{ t('confirmBatchDelete') }}
+            </n-popconfirm>
+            <n-button style="margin-left: auto;" @click="fetchData">刷新</n-button>
         </div>
         
-        <n-data-table :columns="columns" :data="data" :loading="loading" :bordered="false" />
+        <n-data-table 
+            :columns="columns" 
+            :data="data" 
+            :loading="loading" 
+            :bordered="false" 
+            :row-key="row => row.id"
+            v-model:checked-row-keys="checkedRowKeys"
+        />
 
         <n-modal v-model:show="showModal" preset="dialog" :title="t('setPrice')">
             <n-form>
