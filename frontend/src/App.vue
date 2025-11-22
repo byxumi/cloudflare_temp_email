@@ -25,9 +25,9 @@ const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
 const showSplash = ref(true)
 
-// [UI 美化] 终极版：增加内发光和细节质感
+// [UI 美化] 终极版：渐变、光感与细节
 const themeOverrides = computed(() => {
-  const alpha = 0.72; // 稍微降低一点点不透明度，更通透
+  const alpha = 0.72;
   
   const glassBg = isDark.value 
     ? `rgba(30, 30, 35, ${alpha})` 
@@ -39,7 +39,7 @@ const themeOverrides = computed(() => {
 
   const glassBorder = isDark.value
     ? 'rgba(255, 255, 255, 0.12)'
-    : 'rgba(255, 255, 255, 0.5)'; // 亮色模式边框稍微减淡
+    : 'rgba(255, 255, 255, 0.6)';
 
   const primaryColor = '#2080f0';
   const transparent = 'transparent';
@@ -49,16 +49,16 @@ const themeOverrides = computed(() => {
       primaryColor: primaryColor,
       primaryColorHover: '#4098fc',
       primaryColorPressed: '#1060c9',
-      borderRadius: '16px', // 全局圆角加大
+      borderRadius: '16px',
       borderRadiusSmall: '8px',
-      fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif', // 优化字体栈
+      fontFamily: '"Inter", "PingFang SC", "Microsoft YaHei", sans-serif',
       
       bodyColor: transparent,
       cardColor: glassBg,
       modalColor: glassBg,
       popoverColor: glassBg,
       tableColor: transparent,
-      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)', 
+      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.02)', 
       inputColor: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
     },
     LoadingBar: {
@@ -70,7 +70,6 @@ const themeOverrides = computed(() => {
       borderRadius: '20px',
       color: glassBg,
       borderColor: glassBorder,
-      // [美化] 增加内发光 (inset shadow) 模拟玻璃厚度
       boxShadow: isDark.value 
         ? '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05)' 
         : '0 8px 32px rgba(31, 38, 135, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.4)'
@@ -81,6 +80,17 @@ const themeOverrides = computed(() => {
       borderColor: glassBorder,
       borderRadius: '24px'
     },
+    // 消息提示也要毛玻璃
+    Message: {
+      color: glassBg,
+      colorInfo: glassBg,
+      colorSuccess: glassBg,
+      colorWarning: glassBg,
+      colorError: glassBg,
+      boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+      borderRadius: '12px',
+      padding: '12px 20px'
+    },
     Dialog: {
       color: glassBg,
       borderRadius: '20px',
@@ -90,7 +100,6 @@ const themeOverrides = computed(() => {
       color: transparent,
       thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.02)',
       tdColor: transparent,
-      // 悬浮行颜色加深
       tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.3)',
       borderColor: glassBorder,
       borderRadius: '12px'
@@ -100,6 +109,8 @@ const themeOverrides = computed(() => {
       colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)',
       border: `1px solid ${glassBorder}`,
       borderRadius: '12px',
+      // 聚焦时取消默认阴影，用 CSS 自定义光晕
+      boxShadowFocus: 'none' 
     },
     Select: {
       peers: {
@@ -107,12 +118,13 @@ const themeOverrides = computed(() => {
           color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
           border: `1px solid ${glassBorder}`,
           borderRadius: '12px',
+          boxShadowFocus: 'none'
         },
         InternalSelectMenu: {
           color: glassBg,
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
           optionColorHover: glassBgHover,
-          padding: '8px',
+          padding: '6px',
           borderRadius: '16px'
         }
       }
@@ -273,14 +285,18 @@ onMounted(async () => {
 body {
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   margin: 0;
   background: url('https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN') no-repeat center center fixed;
   background-size: cover;
   background-attachment: fixed;
-  /* [美化] 增加字间距，提升呼吸感 */
   letter-spacing: 0.02em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* [美化] 自定义文本选中颜色，与主题色一致 */
+::selection {
+  background: rgba(32, 128, 240, 0.3);
+  color: inherit;
 }
 
 /* === 开屏动画 === */
@@ -298,7 +314,6 @@ body {
   justify-content: center;
   align-items: center;
 }
-
 [data-theme='dark'] .splash-screen {
   background: rgba(0, 0, 0, 0.4);
 }
@@ -344,7 +359,6 @@ body {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
 }
-
 @keyframes loader-finish {
   0% { transform: translateX(-100%); }
   50% { transform: translateX(0); }
@@ -360,7 +374,7 @@ body {
   transform: scale(1.1);
 }
 
-/* === 滚动条美化 === */
+/* === 滚动条 === */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -383,7 +397,19 @@ body {
   margin-right: 10px;
 }
 
-/* === 全局玻璃拟态核心 === */
+/* === 玻璃拟态与组件美化 === */
+
+/* 全局消息提示玻璃化 */
+.n-message {
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+}
+[data-theme='dark'] .n-message {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
 .n-card, 
 .n-modal, 
 .n-drawer, 
@@ -397,12 +423,16 @@ body {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.n-card:hover {
+  /* 悬浮时阴影加深，增加层次感 */
+  box-shadow: 0 16px 48px 0 rgba(31, 38, 135, 0.25) !important;
+}
+
 [data-theme='dark'] .n-card,
 [data-theme='dark'] .n-modal {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Tab 内容区 */
 .n-tabs .n-tab-pane {
   background-color: rgba(255, 255, 255, 0.65) !important;
   backdrop-filter: blur(16px) saturate(180%) !important;
@@ -418,7 +448,7 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Tab 按钮优化 */
+/* Tab 按钮 */
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
   background-color: rgba(255, 255, 255, 0.35) !important;
   backdrop-filter: blur(12px);
@@ -447,22 +477,40 @@ body {
   background-color: rgba(40, 40, 45, 0.8) !important;
 }
 
-/* [美化] 按钮点击回弹效果 */
+/* [美化] 按钮：渐变色 + 阴影 + 回弹 */
+.n-button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
 .n-button:active {
   transform: scale(0.96);
 }
-.n-button {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.n-button--primary-type:not(.n-button--ghost) {
+  background-image: linear-gradient(135deg, #2080f0 0%, #006ad5 100%);
+  border: none;
+  box-shadow: 0 4px 14px 0 rgba(32, 128, 240, 0.3);
+}
+.n-button--primary-type:not(.n-button--ghost):hover {
+  background-image: linear-gradient(135deg, #4098fc 0%, #2080f0 100%);
+  box-shadow: 0 6px 20px 0 rgba(32, 128, 240, 0.45);
+  transform: translateY(-1px);
 }
 
-/* 强制透明 */
+/* [美化] 输入框聚焦动效 */
+.n-input {
+  transition: box-shadow 0.3s ease;
+}
+.n-input:focus-within {
+  box-shadow: 0 0 0 4px rgba(32, 128, 240, 0.15);
+}
+.n-input .n-input-wrapper {
+  backdrop-filter: blur(8px);
+}
+
+/* 强制透明区域 */
 .n-data-table, .n-data-table .n-data-table-th, .n-data-table .n-data-table-td,
 .n-list, .n-list .n-list-item,
 .n-layout, .n-layout-header, .n-layout-footer, .n-layout-sider {
   background-color: transparent !important;
-}
-.n-input .n-input-wrapper {
-  backdrop-filter: blur(8px);
 }
 </style>
 
@@ -478,13 +526,11 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  /* 降低一点背景亮度，突出内容 */
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   pointer-events: none;
   z-index: 0;
   transition: background 0.3s ease;
 }
-
 :deep(.n-config-provider--theme-dark) .bg-overlay {
   background: rgba(0, 0, 0, 0.5);
 }
@@ -504,6 +550,7 @@ body {
   padding: 0 16px; 
 }
 
+/* 悬浮胶囊 Header */
 .sticky-header-wrapper {
   position: sticky;
   top: 20px;
@@ -512,11 +559,20 @@ body {
   padding: 12px 24px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
+}
+/* [美化] 移动端吸顶优化 */
+@media (max-width: 768px) {
+  .sticky-header-wrapper {
+    top: 0;
+    margin: 0 -16px 16px -16px;
+    border-radius: 0 0 20px 20px;
+    padding: 12px 16px;
+  }
 }
 
 :deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
@@ -538,6 +594,7 @@ body {
   padding-bottom: 40px;
 }
 
+/* 悬浮胶囊 Footer */
 .floating-footer-wrapper {
   margin-top: auto;
   margin-bottom: 20px;
@@ -551,6 +608,16 @@ body {
   align-self: center;
   width: fit-content;
   min-width: 280px;
+}
+@media (max-width: 768px) {
+  .floating-footer-wrapper {
+    width: 100%;
+    border-radius: 20px 20px 0 0;
+    margin-bottom: 0;
+    border-bottom: none;
+    border-left: none;
+    border-right: none;
+  }
 }
 
 :deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
