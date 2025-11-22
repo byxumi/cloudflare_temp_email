@@ -20,11 +20,10 @@ import Attachment from './index/Attachment.vue';
 import About from './common/About.vue';
 import SimpleIndex from './index/SimpleIndex.vue';
 
-// [新增] 获取 userJwt
 const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt } = useGlobalState()
 const message = useMessage()
 const route = useRoute()
-const router = useRouter() // [新增]
+const router = useRouter()
 const isMobile = useIsMobile()
 
 const SendMail = defineAsyncComponent(() => {
@@ -124,7 +123,7 @@ watch(route, () => {
 })
 
 onMounted(() => {
-  // [新增] 如果检测到用户已登录，自动跳转到用户中心
+  // [新增] 登录状态检测
   if (userJwt.value) {
     router.push('/user')
     return
