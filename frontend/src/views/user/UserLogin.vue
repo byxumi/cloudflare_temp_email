@@ -208,48 +208,53 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="center">
-        <n-tabs v-model:value="tabValue" size="large" v-if="userOpenSettings.fetched" justify-content="space-evenly">
+    <div class="login-wrapper">
+        <n-tabs v-model:value="tabValue" size="large" v-if="userOpenSettings.fetched" justify-content="space-evenly" animated>
             <n-tab-pane name="signin" :tab="t('login')">
-                <n-form>
+                <n-form class="login-form">
                     <n-form-item-row :label="t('email')" required>
-                        <n-input v-model:value="user.email" />
+                        <n-input v-model:value="user.email" placeholder="name@example.com" />
                     </n-form-item-row>
                     <n-form-item-row :label="t('password')" required>
-                        <n-input v-model:value="user.password" type="password" show-password-on="click" />
+                        <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="••••••" />
                     </n-form-item-row>
                     <n-button @click="emailLogin" type="primary" block secondary strong>
                         {{ t('login') }}
                     </n-button>
-                    <n-button @click="showModal = true" type="info" quaternary size="tiny">
-                        {{ t('forgotPassword') }}
-                    </n-button>
+                    <div style="text-align: right; margin-top: 5px;">
+                        <n-button @click="showModal = true" type="info" text size="small">
+                            {{ t('forgotPassword') }}
+                        </n-button>
+                    </div>
+                    
                     <n-divider />
-                    <n-button @click="passkeyLogin" type="primary" block secondary strong>
+                    
+                    <n-button @click="passkeyLogin" type="primary" block secondary strong class="action-btn">
                         <template #icon>
                             <n-icon :component="KeyFilled" />
                         </template>
                         {{ t('loginWithPasskey') }}
                     </n-button>
                     <n-button @click="oauth2Login(item.clientID)" v-for="item in userOpenSettings.oauth2ClientIDs"
-                        :key="item.clientID" block secondary strong>
+                        :key="item.clientID" block secondary strong class="action-btn">
                         {{ t('loginWith', { provider: item.name }) }}
                     </n-button>
                 </n-form>
             </n-tab-pane>
+            
             <n-tab-pane v-if="userOpenSettings.enable" name="signup" :tab="t('register')">
-                <n-form>
+                <n-form class="login-form">
                     <n-form-item-row :label="t('email')" required>
-                        <n-input v-model:value="user.email" />
+                        <n-input v-model:value="user.email" placeholder="name@example.com" />
                     </n-form-item-row>
                     <n-form-item-row :label="t('password')" required>
-                        <n-input v-model:value="user.password" type="password" show-password-on="click" />
+                        <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="••••••" />
                     </n-form-item-row>
                     <Turnstile v-if="userOpenSettings.enableMailVerify" v-model:value="cfToken" />
                     <n-form-item-row v-if="userOpenSettings.enableMailVerify" :label="t('verifyCode')" required>
                         <n-input-group>
-                            <n-input v-model:value="user.code" />
-                            <n-button @click="sendVerificationCode" style="margin-bottom: 0" type="primary" ghost
+                            <n-input v-model:value="user.code" placeholder="123456" />
+                            <n-button @click="sendVerificationCode" type="primary" ghost
                                 :disabled="verifyCodeTimeout > 0">
                                 {{ verifyCodeTimeout > 0 ? t('waitforVerifyCode', { timeout: verifyCodeTimeout })
                                     : t('sendVerificationCode') }}
@@ -257,52 +262,60 @@ onMounted(async () => {
                         </n-input-group>
                     </n-form-item-row>
                 </n-form>
-                <n-button @click="emailSignup" type="primary" block secondary strong>
+                <n-button @click="emailSignup" type="primary" block secondary strong class="action-btn">
                     {{ t('register') }}
                 </n-button>
             </n-tab-pane>
         </n-tabs>
-        <n-modal v-model:show="showModal" style="max-width: 600px;" preset="card" :title="t('forgotPassword')">
-            <n-form v-if="userOpenSettings.enable && userOpenSettings.enableMailVerify">
+
+        <n-modal v-model:show="showModal" style="width: 90%; max-width: 450px;" preset="card" :title="t('forgotPassword')">
+            <n-form v-if="userOpenSettings.enable && userOpenSettings.enableMailVerify" class="login-form">
                 <n-form-item-row :label="t('email')" required>
                     <n-input v-model:value="user.email" />
                 </n-form-item-row>
                 <n-form-item-row :label="t('password')" required>
-                    <n-input v-model:value="user.password" type="password" show-password-on="click" />
+                    <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="New Password" />
                 </n-form-item-row>
                 <Turnstile v-model:value="cfToken" />
                 <n-form-item-row :label="t('verifyCode')" required>
                     <n-input-group>
                         <n-input v-model:value="user.code" />
-                        <n-button @click="sendVerificationCode" style="margin-bottom: 0" type="primary" ghost
+                        <n-button @click="sendVerificationCode" type="primary" ghost
                             :disabled="verifyCodeTimeout > 0">
                             {{ verifyCodeTimeout > 0 ? t('waitforVerifyCode', { timeout: verifyCodeTimeout })
                                 : t('sendVerificationCode') }}
                         </n-button>
                     </n-input-group>
                 </n-form-item-row>
-                <n-button @click="emailSignup" type="primary" block secondary strong>
+                <n-button @click="emailSignup" type="primary" block secondary strong class="action-btn">
                     {{ t('resetPassword') }}
                 </n-button>
             </n-form>
-            <n-alert v-else :show-icon="false" :bordered="false">
-                <span>
-                    {{ t('cannotForgotPassword') }}
-                </span>
+            <n-alert v-else :show-icon="false" :bordered="false" type="warning">
+                {{ t('cannotForgotPassword') }}
             </n-alert>
         </n-modal>
     </div>
 </template>
 
 <style scoped>
-.center {
-    display: flex;
-    text-align: center;
-    place-items: center;
-    justify-content: center;
+.login-wrapper {
+    width: 100%;
+    box-sizing: border-box;
+    /* 移除 flex center，防止挤压 */
+    text-align: left; /* 恢复左对齐 */
 }
 
-.n-button {
+.login-form {
     margin-top: 10px;
+}
+
+.action-btn {
+    margin-top: 15px;
+}
+
+/* 修复表单标签对齐问题 */
+:deep(.n-form-item-label) {
+    justify-content: flex-start;
 }
 </style>
