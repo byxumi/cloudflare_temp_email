@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n'
+import { useMessage } from 'naive-ui'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -26,6 +27,8 @@ import Webhook from './admin/Webhook.vue';
 import MailWebhook from './admin/MailWebhook.vue';
 import WorkerConfig from './admin/WorkerConfig.vue';
 import IpBlacklistSettings from './admin/IpBlacklistSettings.vue';
+import CardManager from './admin/CardManager.vue';
+import PricingManager from './admin/PricingManager.vue';
 
 const {
   adminAuth, showAdminAuth, adminTab, loading,
@@ -78,6 +81,9 @@ const { t } = useI18n({
       about: 'About',
       ok: 'OK',
       mailWebhook: 'Mail Webhook',
+      billing: 'Billing',
+      cardManager: 'Card Management',
+      pricingManager: 'Pricing Management',
     },
     zh: {
       accessHeader: 'Admin 密码',
@@ -107,6 +113,9 @@ const { t } = useI18n({
       about: '关于',
       ok: '确定',
       mailWebhook: '邮件 Webhook',
+      billing: '计费管理',
+      cardManager: '卡密管理',
+      pricingManager: '定价管理',
     }
   }
 });
@@ -184,6 +193,16 @@ onMounted(async () => {
           </n-tab-pane>
           <n-tab-pane name="roleAddressConfig" :tab="t('roleAddressConfig')">
             <RoleAddressConfig />
+          </n-tab-pane>
+        </n-tabs>
+      </n-tab-pane>
+      <n-tab-pane name="billing" :tab="t('billing')">
+        <n-tabs type="bar" justify-content="center" animated>
+          <n-tab-pane name="cardManager" :tab="t('cardManager')">
+            <CardManager />
+          </n-tab-pane>
+          <n-tab-pane name="pricingManager" :tab="t('pricingManager')">
+            <PricingManager />
           </n-tab-pane>
         </n-tabs>
       </n-tab-pane>
