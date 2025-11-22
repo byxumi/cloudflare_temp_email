@@ -1,8 +1,7 @@
 <script setup>
-import { defineAsyncComponent, onMounted, watch, ref } from 'vue'
+import { defineAsyncComponent, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
-import { useMessage } from 'naive-ui'
+import { useRoute } from 'vue-router'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -20,10 +19,9 @@ import Attachment from './index/Attachment.vue';
 import About from './common/About.vue';
 import SimpleIndex from './index/SimpleIndex.vue';
 
-const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt } = useGlobalState()
+const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex } = useGlobalState()
 const message = useMessage()
 const route = useRoute()
-const router = useRouter()
 const isMobile = useIsMobile()
 
 const SendMail = defineAsyncComponent(() => {
@@ -123,12 +121,6 @@ watch(route, () => {
 })
 
 onMounted(() => {
-  // [新增] 登录状态检测
-  if (userJwt.value) {
-    router.push('/user')
-    return
-  }
-
   if (route.query.mail_id) {
     showMailIdQuery.value = true;
     mailIdQuery.value = route.query.mail_id;
