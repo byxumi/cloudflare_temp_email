@@ -102,6 +102,10 @@ export const useGlobalState = createGlobalState(
             /** @type {null | {domains: string[] | undefined | null, role: string, prefix: string | undefined | null}} */
             user_role: null,
         });
+        
+        // [关键修复] 添加 userBalance 全局状态，修复白屏问题
+        const userBalance = ref(0);
+
         const showAdminPage = computed(() =>
             !!adminAuth.value
             || userSettings.value.is_admin
@@ -112,6 +116,7 @@ export const useGlobalState = createGlobalState(
         const userOauth2SessionState = useSessionStorage('userOauth2SessionState', '');
         const userOauth2SessionClientID = useSessionStorage('userOauth2SessionClientID', '');
         const browserFingerprint = ref('');
+        
         return {
             isDark,
             toggleDark,
@@ -137,6 +142,7 @@ export const useGlobalState = createGlobalState(
             indexTab,
             userOpenSettings,
             userSettings,
+            userBalance, // [关键修复] 导出 userBalance
             globalTabplacement,
             useSideMargin,
             useUTCDate,
