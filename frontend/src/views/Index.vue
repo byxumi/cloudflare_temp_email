@@ -21,7 +21,6 @@ import Attachment from './index/Attachment.vue';
 import About from './common/About.vue';
 import SimpleIndex from './index/SimpleIndex.vue';
 import UserLogin from './user/UserLogin.vue'
-// [新增] 引入地址管理组件
 import AddressManagement from './user/AddressManagement.vue'
 
 const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt } = useGlobalState()
@@ -103,6 +102,7 @@ const saveToS3 = async (mail_id, filename, blob) => {
       method: 'POST',
       body: JSON.stringify({ key: `${mail_id}/${filename}` })
     });
+    // upload to s3 by formdata
     const formData = new FormData();
     formData.append(filename, blob);
     await fetch(url, {
@@ -153,13 +153,7 @@ onMounted(async () => {
       <SimpleIndex />
     </div>
     <div v-else>
-      <div v-if="userJwt" style="padding: 20px;">
-        <n-card :title="t('addressManagement')">
-          <AddressManagement />
-        </n-card>
-      </div>
-
-      <div v-else-if="settings.address">
+      <div v-if="settings.address">
         <AddressBar />
         <n-tabs type="card" v-model:value="indexTab" :placement="globalTabplacement">
           <template #prefix v-if="!isMobile">
@@ -211,6 +205,12 @@ onMounted(async () => {
             <About />
           </n-tab-pane>
         </n-tabs>
+      </div>
+
+      <div v-else-if="userJwt" style="padding: 20px;">
+        <n-card :title="t('addressManagement')">
+          <AddressManagement />
+        </n-card>
       </div>
 
       <div v-else class="landing-container">
