@@ -292,7 +292,7 @@ export const api = {
     // 管理员: 获取角色列表
     adminGetUserRoles: async () => {
         return await apiFetch('/admin/user_roles');
-    }
+    },
     // 管理员: 给用户充值
     adminTopUpUser: async (user_id, amount) => {
         return await apiFetch(`/admin/users/${user_id}/topup`, {
