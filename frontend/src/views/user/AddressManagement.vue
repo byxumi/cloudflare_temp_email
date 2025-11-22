@@ -6,8 +6,7 @@ import useClipboard from 'vue-clipboard3'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
-// 引入 userBalance
-const { openSettings, jwt, userBalance } = useGlobalState()
+const { openSettings, jwt, userBalance, userSettings } = useGlobalState()
 const message = useMessage()
 const { toClipboard } = useClipboard()
 
@@ -103,6 +102,16 @@ const domainOptions = computed(() => {
     }))
 })
 
+// [关键] 计算当前角色的前缀
+const currentPrefix = computed(() => {
+    // 优先使用用户角色前缀
+    if (userSettings.value.user_role && typeof userSettings.value.user_role.prefix === 'string') {
+        return userSettings.value.user_role.prefix;
+    }
+    // 否则使用全局配置
+    return openSettings.value.prefix || '';
+})
+
 const fetchData = async () => {
     loading.value = true
     try {
@@ -158,13 +167,12 @@ const handleCreate = async () => {
     }
     createLoading.value = true
     try {
-        // 传递给后端，后端会自动拼接角色前缀
         const res = await api.buyAddress(createForm.value.name, createForm.value.domain)
         if (res.success) {
             message.success(t('createSuccess'))
             showCreateModal.value = false
             fetchData()
-            refreshBalance() // 成功后刷新全局余额
+            refreshBalance()
         }
     } catch (e) {
         if (e.message && e.message.includes('402')) {
@@ -177,7 +185,6 @@ const handleCreate = async () => {
     }
 }
 
-// ... (其他 handler 保持不变，直接复制之前版本的 handleSwitch, handleDelete 等)
 const handleSwitch = async (row) => { try { const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); if (res.jwt) { jwt.value = res.jwt; message.success(t('switched') + row.name); await api.getSettings() } } catch (e) { message.error(e.message) } }
 const handleCopyCredential = async (row) => { try { const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); if (res.jwt) { await toClipboard(res.jwt); message.success(t('copied')) } } catch (e) { message.error(e.message) } }
 const openTransferModal = (row) => { transferForm.value = { addressId: row.id, targetEmail: '' }; showTransferModal.value = true }
@@ -214,7 +221,13 @@ const columns = [
     }
 ]
 
-onMounted(() => { fetchData() })
+onMounted(async () => {
+    // 确保加载了用户信息以便显示正确前缀
+    if (useGlobalState().userJwt.value) {
+        await api.getUserSettings(message);
+    }
+    fetchData();
+})
 </script>
 
 <template>
@@ -231,7 +244,7 @@ onMounted(() => { fetchData() })
             <n-form>
                 <n-form-item :label="t('prefix')">
                     <n-input-group>
-                        <n-input-group-label v-if="openSettings.prefix">{{ openSettings.prefix }}</n-input-group-label>
+                        <n-input-group-label v-if="currentPrefix">{{ currentPrefix }}</n-input-group-label>
                         <n-input v-model:value="createForm.name" placeholder="e.g. boss" />
                         <n-button @click="generateRandom">{{ t('random') }}</n-button>
                     </n-input-group>

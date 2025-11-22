@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMessage, NIcon } from 'naive-ui'
-import { History } from '@vicons/fa'
+import { History, Sync } from '@vicons/fa' // [新增] 引入 Sync 图标
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -13,13 +13,13 @@ import UserBar from './user/UserBar.vue';
 import UserMailBox from './user/UserMailBox.vue';
 import UserTransactions from './user/UserTransactions.vue';
 
-// 引入 userBalance
 const { userTab, globalTabplacement, userSettings, userBalance } = useGlobalState()
 
 const message = useMessage()
 const redeemCode = ref('')
 const redeemLoading = ref(false)
 const showTransactions = ref(false)
+const balanceLoading = ref(false) // [新增] 余额刷新loading状态
 
 const { t } = useI18n({
     messages: {
@@ -33,7 +33,8 @@ const { t } = useI18n({
             redeemPlaceholder: 'Enter redemption code',
             redeemSuccess: 'Redeem Success',
             viewBills: 'View Bills',
-            myBills: 'My Transactions'
+            myBills: 'My Transactions',
+            refreshBalance: 'Refresh Balance'
         },
         zh: {
             address_management: '地址管理',
@@ -45,14 +46,21 @@ const { t } = useI18n({
             redeemPlaceholder: '输入卡密',
             redeemSuccess: '充值成功',
             viewBills: '查看账单',
-            myBills: '我的账单'
+            myBills: '我的账单',
+            refreshBalance: '刷新余额'
         }
     }
 });
 
 const fetchBalance = async () => {
-    // 更新 store 中的 userBalance
-    await api.getUserBalance();
+    balanceLoading.value = true;
+    try {
+        await api.getUserBalance(); // 更新全局 store
+    } catch (e) {
+        console.error(e);
+    } finally {
+        balanceLoading.value = false;
+    }
 }
 
 const handleRedeem = async () => {
@@ -63,7 +71,7 @@ const handleRedeem = async () => {
         if (res.success) {
             message.success(t('redeemSuccess'));
             redeemCode.value = '';
-            await fetchBalance(); // 充值成功后立即刷新
+            await fetchBalance();
         }
     } catch (e) {
         message.error(e.message || "Redeem failed");
@@ -92,8 +100,16 @@ onMounted(async () => {
                 </template>
                 <n-grid x-gap="12" :cols="2">
                     <n-gi>
-                        <n-statistic :label="t('balance')" :value="userBalance / 100" :precision="2">
+                        <n-statistic :label="t('balance')">
                             <template #prefix>¥</template>
+                            {{ (userBalance / 100).toFixed(2) }}
+                            <template #suffix>
+                                <n-button text style="margin-left: 8px; vertical-align: middle;" @click="fetchBalance" :loading="balanceLoading">
+                                    <template #icon>
+                                        <n-icon :component="Sync" />
+                                    </template>
+                                </n-button>
+                            </template>
                         </n-statistic>
                     </n-gi>
                     <n-gi>
