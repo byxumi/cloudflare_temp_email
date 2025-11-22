@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NDataTable, NPagination, NModal, NForm, NFormItem, NInputNumber, NDatePicker } from 'naive-ui'
+import { useMessage, NButton, NDataTable, NPagination, NModal, NForm, NFormItem, NInputNumber, NDatePicker, NPopconfirm, NSpace, NTag } from 'naive-ui'
 import { api } from '../../api'
 
 const message = useMessage()
@@ -20,7 +20,13 @@ const { t } = useI18n({
             generateSuccess: 'Generated Successfully',
             downloadTip: 'Cards have been downloaded automatically.',
             validFrom: 'Valid From',
-            validUntil: 'Valid Until'
+            validUntil: 'Valid Until',
+            actions: 'Actions',
+            delete: 'Delete',
+            disable: 'Disable',
+            enable: 'Enable',
+            confirmDelete: 'Are you sure you want to delete this card?',
+            operateSuccess: 'Operation Successful'
         },
         zh: {
             generate: '生成卡密',
@@ -35,18 +41,23 @@ const { t } = useI18n({
             generateSuccess: '生成成功',
             downloadTip: '卡密文件已自动下载',
             validFrom: '生效时间',
-            validUntil: '失效时间'
+            validUntil: '失效时间',
+            actions: '操作',
+            delete: '删除',
+            disable: '停止',
+            enable: '启动',
+            confirmDelete: '确定要删除这张卡密吗？',
+            operateSuccess: '操作成功'
         }
     }
 })
 
 const data = ref([])
 const showModal = ref(false)
-// 表单数据
 const genForm = ref({ 
     amount: 1.00, 
     count: 10,
-    timeRange: null, // [start, end]
+    timeRange: null,
     max_uses: 1
 })
 const loading = ref(false)
@@ -70,7 +81,6 @@ const fetchData = async () => {
 const handleGenerate = async () => {
     loading.value = true
     try {
-        // 处理时间
         let starts_at = null
         let expires_at = null
         if (genForm.value.timeRange && genForm.value.timeRange.length === 2) {
@@ -106,6 +116,34 @@ const handleGenerate = async () => {
     }
 }
 
+// 删除卡密
+const handleDelete = async (id) => {
+    try {
+        const res = await api.adminDeleteCard(id)
+        if (res.success) {
+            message.success(t('operateSuccess'))
+            fetchData()
+        }
+    } catch (e) {
+        message.error(e.message)
+    }
+}
+
+// 切换状态 (停止/启动)
+const handleToggleStatus = async (row) => {
+    const newStatus = row.status === 'active' ? 'disabled' : 'active'
+    try {
+        const res = await api.adminUpdateCardStatus(row.id, newStatus)
+        if (res.success) {
+            message.success(t('operateSuccess'))
+            // 仅更新本地数据，避免全量刷新导致的闪烁
+            row.status = newStatus
+        }
+    } catch (e) {
+        message.error(e.message)
+    }
+}
+
 const columns = [
     { title: 'ID', key: 'id', width: 60 },
     { title: t('code'), key: 'code', width: 200, ellipsis: { tooltip: true } },
@@ -114,19 +152,51 @@ const columns = [
         key: 'amount',
         render(row) { return (row.amount / 100).toFixed(2) }
     },
-    { title: t('status'), key: 'status' },
-    { title: t('usedCount'), key: 'used_count' },
     { 
-        title: t('validFrom'), 
-        key: 'starts_at', 
-        width: 160,
-        render(row) { return row.starts_at ? new Date(row.starts_at).toLocaleString() : '-' } 
+        title: t('status'), 
+        key: 'status',
+        render(row) {
+            let type = 'default'
+            let label = row.status
+            if (row.status === 'active') type = 'success'
+            else if (row.status === 'disabled') type = 'error'
+            else if (row.status === 'used') type = 'info'
+            
+            return h(NTag, { type, size: 'small' }, { default: () => label })
+        }
     },
+    { title: t('usedCount'), key: 'used_count' },
     { 
         title: t('validUntil'), 
         key: 'expires_at', 
         width: 160,
-        render(row) { return row.expires_at ? new Date(row.expires_at).toLocaleString() : '-' } 
+        render(row) { return row.expires_at ? new Date(row.expires_at).toLocaleDateString() : '-' } 
+    },
+    {
+        title: t('actions'),
+        key: 'actions',
+        width: 150,
+        fixed: 'right',
+        render(row) {
+            return h(NSpace, null, {
+                default: () => [
+                    // 只有 active 或 disabled 状态的卡密才允许切换状态，已使用的(used)通常不让改
+                    (row.status === 'active' || row.status === 'disabled') ? h(NButton, {
+                        size: 'small',
+                        type: row.status === 'active' ? 'warning' : 'success',
+                        secondary: true,
+                        onClick: () => handleToggleStatus(row)
+                    }, { default: () => row.status === 'active' ? t('disable') : t('enable') }) : null,
+                    
+                    h(NPopconfirm, {
+                        onPositiveClick: () => handleDelete(row.id)
+                    }, {
+                        trigger: () => h(NButton, { size: 'small', type: 'error', secondary: true }, { default: () => t('delete') }),
+                        default: () => t('confirmDelete')
+                    })
+                ]
+            })
+        }
     }
 ]
 

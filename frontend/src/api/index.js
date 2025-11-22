@@ -263,3 +263,18 @@ export const api = {
         });
     }
 }
+
+// 管理员: 删除卡密
+    adminDeleteCard: async (id) => {
+        return await apiFetch(`/admin/billing/cards/${id}`, {
+            method: 'DELETE'
+        });
+    },
+
+    // 管理员: 更新卡密状态 (停止/启动)
+    adminUpdateCardStatus: async (id, status) => {
+        return await apiFetch(`/admin/billing/cards/${id}/status`, {
+            method: 'POST',
+            body: JSON.stringify({ status })
+        });
+    },
