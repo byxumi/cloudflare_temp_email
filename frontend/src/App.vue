@@ -22,24 +22,34 @@ const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
-// [新增] UI 美化配置：自定义主题
+// [修改] UI 美化配置：玻璃拟态主题
 const themeOverrides = computed(() => ({
   common: {
-    // 使用更现代的蓝色作为主色调
     primaryColor: '#2080f0',
     primaryColorHover: '#4098fc',
     primaryColorPressed: '#1060c9',
-    // 更大的圆角
     borderRadius: '10px',
     borderRadiusSmall: '6px',
-    // 优化字体
     fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    // 让基础背景透明，以便显示壁纸
+    bodyColor: 'transparent',
+    cardColor: isDark.value ? 'rgba(24, 24, 28, 0.65)' : 'rgba(255, 255, 255, 0.75)',
+    modalColor: isDark.value ? 'rgba(24, 24, 28, 0.85)' : 'rgba(255, 255, 255, 0.9)',
   },
   Card: {
-    borderRadius: '12px',
+    borderRadius: '16px',
+    // 卡片背景半透明
+    color: isDark.value ? 'rgba(24, 24, 28, 0.65)' : 'rgba(255, 255, 255, 0.75)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     boxShadow: isDark.value 
-      ? '0 4px 12px rgba(0, 0, 0, 0.2)' 
-      : '0 4px 24px rgba(0, 0, 0, 0.04)' // 更柔和的卡片阴影
+      ? '0 8px 32px rgba(0, 0, 0, 0.4)' 
+      : '0 8px 32px rgba(31, 38, 135, 0.15)'
+  },
+  Layout: {
+    color: 'transparent',
+    headerColor: 'transparent',
+    footerColor: 'transparent',
+    siderColor: 'transparent'
   },
   Button: {
     fontWeight: '500',
@@ -47,7 +57,12 @@ const themeOverrides = computed(() => ({
     borderRadiusLarge: '10px'
   },
   Tabs: {
-    tabBorderRadius: '8px'
+    tabBorderRadius: '8px',
+    panePadding: '12px 0'
+  },
+  Input: {
+    color: isDark.value ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.4)',
+    colorFocus: isDark.value ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.6)',
   }
 }))
 
@@ -148,43 +163,63 @@ onMounted(async () => {
 </template>
 
 <style>
-/* 全局字体优化 */
+/* 全局字体优化 & 背景图片 */
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* 添加背景图片 - 您可以替换此URL为自己的图片 */
+  background: url('https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN') no-repeat center center fixed;
+  background-size: cover;
+  transition: background 0.5s ease;
 }
 
 .n-switch {
   margin-left: 10px;
   margin-right: 10px;
 }
+
+/* 卡片玻璃拟态效果 */
+.n-card {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 输入框也稍微透明一点，增加质感 */
+.n-input .n-input-wrapper {
+  backdrop-filter: blur(4px);
+}
+
+/* 确保 Layout 背景透明，不遮挡壁纸 */
+.n-layout, .n-layout-header, .n-layout-footer {
+  background-color: transparent !important;
+}
 </style>
 
 <style scoped>
 .app-container {
   min-height: 100vh;
-  /* 背景色由 Naive UI 的 Global Style 控制，适配深色模式 */
+  /* 去掉这里的背景色，让 body 的背景图透出来 */
 }
 
 .main-grid {
   min-height: 100vh;
-  max-width: 1440px; /* 限制最大宽度，大屏更美观 */
-  margin: 0 auto;    /* 居中 */
+  max-width: 1440px; 
+  margin: 0 auto;
 }
 
 .main-content {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  /* 增加左右内边距，避免内容贴边 */
   padding: 0 16px; 
 }
 
 .router-container {
-  flex: 1; /* 撑满剩余空间，确保 Footer 到底部 */
+  flex: 1;
   width: 100%;
-  max-width: 1000px; /* 内容区域限制宽度 */
-  margin: 0 auto;    /* 内容区域居中 */
+  max-width: 1000px;
+  margin: 0 auto;
   padding-top: 20px;
   padding-bottom: 40px;
 }
@@ -201,14 +236,13 @@ body {
 }
 
 .app-footer {
-  margin-top: auto; /* 配合 flex:1 确保到底部 */
+  margin-top: auto;
   padding-bottom: 20px;
 }
 
-/* 页面切换动画 */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.25s ease;
 }
 
 .fade-enter-from,
