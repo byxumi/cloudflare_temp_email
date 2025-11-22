@@ -15,6 +15,7 @@ import { email } from './email';
 import { scheduled } from './scheduled';
 import { getAdminPasswords, getPasswords, getBooleanValue, getStringArray } from './utils';
 import { checkAccessControl } from './ip_blacklist';
+import { api as billingApi } from './billing';
 
 const API_PATHS = [
 	"/api/",
@@ -260,6 +261,7 @@ app.route('/', commonApi)
 app.route('/', mailsApi)
 app.route('/', userApi)
 app.route('/', adminApi)
+app.route('/', billingApi);
 app.route('/', apiSendMail)
 app.route('/', telegramApi)
 
