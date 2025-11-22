@@ -200,7 +200,7 @@ const bindUserAddress = async () => {
     }
 }
 
-// --- 新增：卡密相关 API 方法 (纯 JS) ---
+// --- 新增：卡密相关 API 方法 ---
 
 const adminCreateRechargeCode = async (value, count) => {
     try {
@@ -252,9 +252,11 @@ export const api = {
     adminShowAddressCredential,
     adminDeleteAddress,
     bindUserAddress,
-    // 导出新方法
+    // 导出卡密方法
     adminCreateRechargeCode,
     adminListRechargeCodes,
     adminDeleteRechargeCode,
     userUseRechargeCode,
+    // 为了兼容您的旧代码可能使用的名字
+    adminGetCards: adminListRechargeCodes 
 }
