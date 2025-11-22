@@ -22,16 +22,22 @@ const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
-// [核心配置] 玻璃拟态主题变量
+// [核心配置] 深度玻璃拟态主题变量
 const themeOverrides = computed(() => {
-  // 定义半透明背景色
+  // 背景色：大幅降低不透明度
   const glassBg = isDark.value 
-    ? 'rgba(30, 30, 35, 0.65)' 
-    : 'rgba(255, 255, 255, 0.70)';
+    ? 'rgba(30, 30, 35, 0.6)' 
+    : 'rgba(255, 255, 255, 0.65)';
   
+  const glassBgHover = isDark.value 
+    ? 'rgba(40, 40, 45, 0.7)' 
+    : 'rgba(255, 255, 255, 0.75)';
+
   const glassBorder = isDark.value
     ? 'rgba(255, 255, 255, 0.08)'
     : 'rgba(255, 255, 255, 0.4)';
+
+  const transparent = 'transparent';
 
   return {
     common: {
@@ -39,22 +45,20 @@ const themeOverrides = computed(() => {
       primaryColorHover: '#4098fc',
       primaryColorPressed: '#1060c9',
       borderRadius: '12px',
-      borderRadiusSmall: '8px',
       fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       
-      // 基础背景透明，让 body 的壁纸透出来
-      bodyColor: 'transparent',
-      // 各类浮层组件的背景色设为半透明
+      bodyColor: 'transparent', // 让 body 背景透出来
       cardColor: glassBg,
       modalColor: glassBg,
       popoverColor: glassBg,
-      tableColor: 'transparent',
+      tableColor: transparent,
+      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+      inputColor: isDark.value ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.4)',
     },
     Card: {
       borderRadius: '16px',
       color: glassBg,
       borderColor: glassBorder,
-      // 更柔和的阴影
       boxShadow: isDark.value 
         ? '0 8px 32px rgba(0, 0, 0, 0.4)' 
         : '0 8px 32px rgba(31, 38, 135, 0.1)'
@@ -63,29 +67,59 @@ const themeOverrides = computed(() => {
       color: glassBg,
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
     },
-    Layout: {
-      color: 'transparent',
-      headerColor: 'transparent',
-      footerColor: 'transparent',
-      siderColor: 'transparent'
+    Dialog: {
+      color: glassBg,
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
     },
-    Button: {
-      fontWeight: '500',
-      borderRadiusMedium: '10px',
-      borderRadiusLarge: '12px'
+    DataTable: {
+      color: transparent,
+      thColor: isDark.value ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)',
+      tdColor: transparent,
+      tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+      borderColor: glassBorder
+    },
+    List: {
+      color: transparent,
+      colorHover: isDark.value ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+    },
+    Input: {
+      color: isDark.value ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.3)',
+      colorFocus: isDark.value ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
+      border: `1px solid ${glassBorder}`,
+      borderRadius: '10px'
+    },
+    Select: {
+      peers: {
+        InternalSelection: {
+          color: isDark.value ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.3)',
+          border: `1px solid ${glassBorder}`,
+          borderRadius: '10px'
+        },
+        InternalSelectMenu: {
+          color: glassBg,
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+          optionColorHover: glassBgHover
+        }
+      }
+    },
+    Dropdown: {
+      color: glassBg,
+      optionColorHover: glassBgHover
+    },
+    Popover: {
+      color: glassBg,
+    },
+    Layout: {
+      color: transparent,
+      headerColor: transparent,
+      footerColor: transparent,
+      siderColor: transparent
     },
     Tabs: {
       tabBorderRadius: '10px',
-      panePadding: '16px 0'
-    },
-    Input: {
-      // 输入框也做轻微透明处理
-      color: isDark.value ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.3)',
-      colorFocus: isDark.value ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.5)',
-      border: `1px solid ${glassBorder}`
-    },
-    Dropdown: {
-      color: glassBg
+      panePadding: '16px 0',
+      tabColor: transparent,
+      tabBorderColor: transparent
     }
   }
 })
@@ -188,15 +222,12 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === 全局样式重置与优化 === */
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   margin: 0;
-  /* 必应每日壁纸 */
   background: url('https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN') no-repeat center center fixed;
   background-size: cover;
-  /* 确保背景固定，内容滚动 */
   background-attachment: fixed; 
 }
 
@@ -205,39 +236,56 @@ body {
   margin-right: 10px;
 }
 
-/* === 核心：全局毛玻璃效果 === */
-/* 覆盖所有常见的容器组件 */
+/* === 全局玻璃拟态核心样式 === */
+
+/* 1. 基础容器：卡片、弹窗、抽屉、对话框 */
 .n-card, 
 .n-modal, 
 .n-drawer, 
-.n-dropdown-menu, 
-.n-popover,
 .n-dialog {
-  /* 模糊 + 饱和度提升(让色彩更鲜艳) */
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  
-  /* 细微的白色半透明边框，增强玻璃质感 */
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15) !important;
+}
+
+/* 2. 弹出层：下拉菜单、选择器菜单、气泡提示 */
+.n-dropdown-menu,
+.n-select-menu,
+.n-popover {
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  background-color: rgba(255, 255, 255, 0.6) !important; /* 强制半透明背景 */
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
 }
 
-/* 输入框特殊处理 */
-.n-input .n-input-wrapper {
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-/* 标签页内容背景透明 */
-.n-tabs .n-tab-pane {
+/* 3. 表格：强制透明背景，让 Card 的毛玻璃透出来 */
+.n-data-table, 
+.n-data-table .n-data-table-th, 
+.n-data-table .n-data-table-td {
   background-color: transparent !important;
 }
 
-/* 列表项悬浮效果增强 */
-.n-list-item:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+/* 4. 输入框：增加磨砂质感 */
+.n-input .n-input-wrapper {
+  backdrop-filter: blur(5px);
 }
 
-/* 确保 Layout 组件完全透明 */
+/* 5. 标签页：内容区透明 */
+.n-tabs .n-tab-pane {
+  background-color: transparent !important;
+  padding: 20px 0;
+}
+
+/* 深色模式适配 (如果在 Dark Mode 下) */
+[data-theme='dark'] .n-dropdown-menu,
+[data-theme='dark'] .n-select-menu,
+[data-theme='dark'] .n-popover {
+  background-color: rgba(30, 30, 35, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* 布局组件透明化 */
 .n-layout, .n-layout-header, .n-layout-footer, .n-layout-sider {
   background-color: transparent !important;
 }
@@ -249,20 +297,24 @@ body {
   position: relative;
 }
 
-/* 背景遮罩：让背景暗一点，突出前景文字 */
 .bg-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.1); /* 浅色遮罩，深色模式可调整为 0.4 */
+  background: rgba(255, 255, 255, 0.1); /* 稍微提亮 */
   pointer-events: none;
   z-index: 0;
 }
 
+/* 深色模式下的遮罩 */
+:deep(.n-config-provider--theme-dark) .bg-overlay {
+  background: rgba(0, 0, 0, 0.4);
+}
+
 .main-grid {
-  position: relative; /* 确保在遮罩之上 */
+  position: relative;
   z-index: 1;
   min-height: 100vh;
   max-width: 1440px; 
@@ -294,7 +346,6 @@ body {
 
 .app-header {
   margin-bottom: 20px;
-  /* 头部也可以加一点点背景 */
   background: transparent;
 }
 
@@ -303,7 +354,6 @@ body {
   padding-bottom: 20px;
 }
 
-/* 页面切换动画：缩放淡入淡出 */
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
