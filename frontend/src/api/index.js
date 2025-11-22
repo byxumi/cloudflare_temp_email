@@ -21,9 +21,7 @@ const instance = axios.create({
 const apiFetch = async (path, options = {}) => {
     loading.value = true;
     try {
-        // Get browser fingerprint for request tracking
         const fingerprint = await getFingerprint();
-
         const response = await instance.request(path, {
             method: options.method || 'GET',
             data: options.body || null,
@@ -212,7 +210,6 @@ export const api = {
 
     // --- 计费系统 API ---
     
-    // 用户: 获取余额 (返回分)
     getUserBalance: async () => {
         try {
             const res = await apiFetch('/user_api/billing/balance');
@@ -222,57 +219,66 @@ export const api = {
             return 0;
         }
     },
-    // 用户: 查询特定域名价格
     getDomainPrice: async (domain) => {
         return await apiFetch(`/user_api/billing/price?domain=${domain}`);
     },
-    // 用户: 卡密充值
     redeemCard: async (code) => {
         return await apiFetch('/user_api/billing/redeem', {
             method: 'POST',
             body: JSON.stringify({ code })
         });
     },
-    // 用户: 购买邮箱
     buyAddress: async (name, domain) => {
         return await apiFetch('/user_api/billing/buy_address', {
             method: 'POST',
             body: JSON.stringify({ name, domain })
         });
     },
-    // 管理员: 获取卡密列表
     adminGetCards: async (limit, offset) => {
         return await apiFetch(`/admin/billing/cards?limit=${limit}&offset=${offset}`);
     },
-    // 管理员: 生成卡密 (包含时效性参数)
     adminGenerateCards: async (amount, count, starts_at, expires_at, max_uses) => {
         return await apiFetch('/admin/billing/cards/generate', {
             method: 'POST',
             body: JSON.stringify({ amount, count, starts_at, expires_at, max_uses })
         });
     },
-    // 管理员: 获取定价列表
     adminGetPrices: async () => {
         return await apiFetch(`/admin/billing/prices`);
     },
-    // 管理员: 设置定价
     adminSetPrice: async (domain, role_text, price) => {
         return await apiFetch('/admin/billing/prices', {
             method: 'POST',
             body: JSON.stringify({ domain, role_text, price })
         });
     },
-    // 管理员: 删除卡密
     adminDeleteCard: async (id) => {
         return await apiFetch(`/admin/billing/cards/${id}`, {
             method: 'DELETE'
         });
     },
-    // 管理员: 更新卡密状态 (停止/启动)
     adminUpdateCardStatus: async (id, status) => {
         return await apiFetch(`/admin/billing/cards/${id}/status`, {
             method: 'POST',
             body: JSON.stringify({ status })
         });
+    },
+    // [新增] 批量删除
+    adminBatchDeleteCards: async (ids) => {
+        return await apiFetch('/admin/billing/cards/batch_delete', {
+            method: 'POST',
+            body: JSON.stringify({ ids })
+        });
+    },
+    // [新增] 批量状态
+    adminBatchUpdateCardStatus: async (ids, status) => {
+        return await apiFetch('/admin/billing/cards/batch_status', {
+            method: 'POST',
+            body: JSON.stringify({ ids, status })
+        });
+    },
+    // [新增] 获取角色列表
+    adminGetUserRoles: async () => {
+        return await apiFetch('/admin/user_roles');
     }
 }

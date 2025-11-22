@@ -6,27 +6,31 @@ import { api } from '../../api'
 import { useGlobalState } from '../../store'
 
 const message = useMessage()
-const { openSettings } = useGlobalState() // 获取全局设置中的域名列表
+const { openSettings } = useGlobalState()
 
 const { t } = useI18n({
     messages: {
         en: {
             domain: 'Domain',
-            role: 'Role (default/vip)',
+            role: 'Role',
             price: 'Price (CNY)',
             save: 'Save',
             setPrice: 'Set Price',
             updatedAt: 'Updated At',
-            selectDomain: 'Select Domain'
+            selectDomain: 'Select Domain',
+            selectRole: 'Select Role (Default is "default")',
+            default: 'Default User'
         },
         zh: {
             domain: '域名',
-            role: '角色 (default/vip)',
+            role: '角色',
             price: '价格 (元)',
             save: '保存',
             setPrice: '设置价格',
             updatedAt: '更新时间',
-            selectDomain: '选择域名'
+            selectDomain: '选择域名',
+            selectRole: '选择角色 (默认为 default)',
+            default: '默认用户'
         }
     }
 })
@@ -35,8 +39,9 @@ const data = ref([])
 const showModal = ref(false)
 const form = ref({ domain: null, role_text: 'default', price: 0.00 })
 const loading = ref(false)
+const roleOptions = ref([{ label: t('default'), value: 'default' }])
 
-// 计算属性：生成域名下拉选项
+// 域名下拉选项
 const domainOptions = computed(() => {
     if (openSettings.value && openSettings.value.domains) {
         return openSettings.value.domains.map(d => ({
@@ -50,12 +55,21 @@ const domainOptions = computed(() => {
 const fetchData = async () => {
     loading.value = true
     try {
-        // 确保获取到最新的域名列表
         if (!openSettings.value.fetched) {
             await api.getOpenSettings(message)
         }
+        
+        // 获取定价列表
         const res = await api.adminGetPrices()
         data.value = res.results || []
+
+        // 获取角色列表并构建选项
+        const roles = await api.adminGetUserRoles()
+        if (roles && Array.isArray(roles)) {
+            const apiRoles = roles.map(r => ({ label: r.role, value: r.role }))
+            // 始终保留 default 选项
+            roleOptions.value = [{ label: t('default'), value: 'default' }, ...apiRoles]
+        }
     } catch (e) {
         message.error(e.message)
     } finally {
@@ -65,6 +79,8 @@ const fetchData = async () => {
 
 const handleSave = async () => {
     if (!form.value.domain) return message.error("Please select a domain")
+    if (!form.value.role_text) form.value.role_text = 'default'
+    
     loading.value = true
     try {
         const res = await api.adminSetPrice(form.value.domain, form.value.role_text, form.value.price)
@@ -116,7 +132,11 @@ onMounted(fetchData)
                     />
                 </n-form-item>
                 <n-form-item :label="t('role')">
-                    <n-input v-model:value="form.role_text" placeholder="default" />
+                    <n-select 
+                        v-model:value="form.role_text" 
+                        :options="roleOptions" 
+                        :placeholder="t('selectRole')" 
+                    />
                 </n-form-item>
                  <n-form-item :label="t('price')">
                     <n-input-number v-model:value="form.price" :precision="2" :step="0.1" placeholder="0.00" />

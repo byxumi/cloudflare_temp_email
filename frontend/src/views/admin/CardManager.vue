@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NDataTable, NPagination, NModal, NForm, NFormItem, NInputNumber, NDatePicker, NPopconfirm, NSpace, NTag } from 'naive-ui'
+import { useMessage, NButton, NDataTable, NPagination, NModal, NForm, NFormItem, NInputNumber, NDatePicker, NPopconfirm, NSpace, NTag, NDropdown } from 'naive-ui'
 import { api } from '../../api'
 
 const message = useMessage()
@@ -23,10 +23,16 @@ const { t } = useI18n({
             validUntil: 'Valid Until',
             actions: 'Actions',
             delete: 'Delete',
-            disable: 'Disable',
-            enable: 'Enable',
-            confirmDelete: 'Are you sure you want to delete this card?',
-            operateSuccess: 'Operation Successful'
+            disable: 'Pause',
+            enable: 'Resume',
+            confirmDelete: 'Delete this card?',
+            operateSuccess: 'Success',
+            batchActions: 'Batch Actions',
+            selected: 'Selected',
+            confirmBatchDelete: 'Confirm delete selected cards?',
+            statusActive: 'Active',
+            statusDisabled: 'Paused',
+            statusUsed: 'Used'
         },
         zh: {
             generate: '生成卡密',
@@ -44,29 +50,32 @@ const { t } = useI18n({
             validUntil: '失效时间',
             actions: '操作',
             delete: '删除',
-            disable: '停止',
-            enable: '启动',
-            confirmDelete: '确定要删除这张卡密吗？',
-            operateSuccess: '操作成功'
+            disable: '暂停',
+            enable: '恢复',
+            confirmDelete: '确认删除此卡密？',
+            operateSuccess: '操作成功',
+            batchActions: '批量操作',
+            selected: '已选择',
+            confirmBatchDelete: '确认删除选中的卡密？',
+            statusActive: '正常',
+            statusDisabled: '已暂停',
+            statusUsed: '已用完'
         }
     }
 })
 
 const data = ref([])
 const showModal = ref(false)
-const genForm = ref({ 
-    amount: 1.00, 
-    count: 10,
-    timeRange: null,
-    max_uses: 1
-})
+const genForm = ref({ amount: 1.00, count: 10, timeRange: null, max_uses: 1 })
 const loading = ref(false)
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+const checkedRowKeys = ref([]) // 选中的ID
 
 const fetchData = async () => {
     loading.value = true
+    checkedRowKeys.value = [] // 刷新时清空选择
     try {
         const res = await api.adminGetCards(pageSize.value, (page.value - 1) * pageSize.value)
         data.value = res.results
@@ -87,15 +96,7 @@ const handleGenerate = async () => {
             starts_at = new Date(genForm.value.timeRange[0]).toISOString()
             expires_at = new Date(genForm.value.timeRange[1]).toISOString()
         }
-
-        const res = await api.adminGenerateCards(
-            genForm.value.amount, 
-            genForm.value.count, 
-            starts_at, 
-            expires_at,
-            genForm.value.max_uses
-        )
-        
+        const res = await api.adminGenerateCards(genForm.value.amount, genForm.value.count, starts_at, expires_at, genForm.value.max_uses)
         if (res.success) {
             message.success(t('generateSuccess'))
             if (res.codes && res.codes.length > 0) {
@@ -116,35 +117,69 @@ const handleGenerate = async () => {
     }
 }
 
-// 删除卡密
+// 批量操作处理
+const handleBatchAction = async (action) => {
+    if (checkedRowKeys.value.length === 0) return;
+    
+    loading.value = true;
+    try {
+        if (action === 'delete') {
+            await api.adminBatchDeleteCards(checkedRowKeys.value);
+        } else {
+            // action is 'active' or 'disabled'
+            await api.adminBatchUpdateCardStatus(checkedRowKeys.value, action);
+        }
+        message.success(t('operateSuccess'));
+        fetchData(); // 刷新列表
+    } catch (e) {
+        message.error(e.message);
+    } finally {
+        loading.value = false;
+    }
+}
+
+// 批量操作下拉菜单
+const batchOptions = [
+    { label: t('enable'), key: 'active' },
+    { label: t('disable'), key: 'disabled' },
+    { label: t('delete'), key: 'delete', props: { style: 'color: red' } }
+]
+
+const handleSelectBatch = (key) => {
+    if (key === 'delete') {
+        // 触发确认弹窗逻辑，这里通过外层按钮控制或简单直接调用
+        // 由于 NDropdown 不好直接嵌 Popconfirm，这里简化处理，直接调用带确认的逻辑
+        if(!confirm(t('confirmBatchDelete'))) return; 
+        handleBatchAction('delete');
+    } else {
+        handleBatchAction(key);
+    }
+}
+
+// 单个操作
 const handleDelete = async (id) => {
     try {
-        const res = await api.adminDeleteCard(id)
-        if (res.success) {
-            message.success(t('operateSuccess'))
-            fetchData()
-        }
+        await api.adminDeleteCard(id)
+        message.success(t('operateSuccess'))
+        fetchData()
     } catch (e) {
         message.error(e.message)
     }
 }
 
-// 切换状态 (停止/启动)
 const handleToggleStatus = async (row) => {
     const newStatus = row.status === 'active' ? 'disabled' : 'active'
     try {
-        const res = await api.adminUpdateCardStatus(row.id, newStatus)
-        if (res.success) {
-            message.success(t('operateSuccess'))
-            // 仅更新本地数据，避免全量刷新导致的闪烁
-            row.status = newStatus
-        }
+        await api.adminUpdateCardStatus(row.id, newStatus)
+        row.status = newStatus
+        message.success(t('operateSuccess'))
     } catch (e) {
         message.error(e.message)
     }
 }
 
 const columns = [
+    { type: 'selection' }, // 多选列
     { title: 'ID', key: 'id', width: 60 },
     { title: t('code'), key: 'code', width: 200, ellipsis: { tooltip: true } },
     { 
@@ -158,10 +193,9 @@ const columns = [
         render(row) {
             let type = 'default'
             let label = row.status
-            if (row.status === 'active') type = 'success'
-            else if (row.status === 'disabled') type = 'error'
-            else if (row.status === 'used') type = 'info'
-            
+            if (row.status === 'active') { type = 'success'; label = t('statusActive') }
+            else if (row.status === 'disabled') { type = 'warning'; label = t('statusDisabled') }
+            else if (row.status === 'used') { type = 'info'; label = t('statusUsed') }
             return h(NTag, { type, size: 'small' }, { default: () => label })
         }
     },
@@ -180,7 +214,6 @@ const columns = [
         render(row) {
             return h(NSpace, null, {
                 default: () => [
-                    // 只有 active 或 disabled 状态的卡密才允许切换状态，已使用的(used)通常不让改
                     (row.status === 'active' || row.status === 'disabled') ? h(NButton, {
                         size: 'small',
                         type: row.status === 'active' ? 'warning' : 'success',
@@ -205,12 +238,28 @@ onMounted(fetchData)
 
 <template>
     <div>
-        <div style="margin-bottom: 10px">
+        <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
             <n-button type="primary" @click="showModal = true">{{ t('generate') }}</n-button>
-            <n-button style="margin-left: 10px" @click="fetchData">刷新</n-button>
+            
+            <n-dropdown :options="batchOptions" @select="handleSelectBatch" :disabled="checkedRowKeys.length === 0">
+                <n-button :disabled="checkedRowKeys.length === 0">
+                    {{ t('batchActions') }} 
+                    <span v-if="checkedRowKeys.length > 0">({{ checkedRowKeys.length }})</span>
+                </n-button>
+            </n-dropdown>
+
+            <n-button @click="fetchData">刷新</n-button>
         </div>
         
-        <n-data-table :columns="columns" :data="data" :loading="loading" :bordered="false" :scroll-x="1000" />
+        <n-data-table 
+            :columns="columns" 
+            :data="data" 
+            :loading="loading" 
+            :bordered="false" 
+            :scroll-x="1000" 
+            :row-key="row => row.id"
+            v-model:checked-row-keys="checkedRowKeys"
+        />
         <n-pagination 
             v-model:page="page" 
             :item-count="total" 
