@@ -20,15 +20,19 @@ import Webhook from './index/Webhook.vue';
 import Attachment from './index/Attachment.vue';
 import About from './common/About.vue';
 import SimpleIndex from './index/SimpleIndex.vue';
-import UserLogin from './user/UserLogin.vue'
 import AddressManagement from './user/AddressManagement.vue'
 
-const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt } = useGlobalState()
+// 移除 UserLogin 引用
+// import UserLogin from './user/UserLogin.vue'
+
+const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt, jwt } = useGlobalState()
 const message = useMessage()
 const route = useRoute()
 const router = useRouter()
 const isMobile = useIsMobile()
-const showLoginModal = ref(false)
+// 移除 showLoginModal
+// const showLoginModal = ref(false)
+const initLoading = ref(false)
 
 const SendMail = defineAsyncComponent(() => {
   loading.value = true;
@@ -102,7 +106,6 @@ const saveToS3 = async (mail_id, filename, blob) => {
       method: 'POST',
       body: JSON.stringify({ key: `${mail_id}/${filename}` })
     });
-    // upload to s3 by formdata
     const formData = new FormData();
     formData.append(filename, blob);
     await fetch(url, {
@@ -124,12 +127,6 @@ const queryMail = () => {
   mailBoxKey.value = Date.now();
 }
 
-const checkLogin = () => {
-  if (userJwt.value) {
-    router.push('/user')
-  }
-}
-
 watch(route, () => {
   if (!route.query.mail_id) {
     showMailIdQuery.value = false;
@@ -139,6 +136,17 @@ watch(route, () => {
 })
 
 onMounted(async () => {
+  if (jwt.value && !settings.value.address) {
+    initLoading.value = true;
+    try {
+      await api.getSettings();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      initLoading.value = false;
+    }
+  }
+
   if (route.query.mail_id) {
     showMailIdQuery.value = true;
     mailIdQuery.value = route.query.mail_id;
@@ -207,7 +215,7 @@ onMounted(async () => {
         </n-tabs>
       </div>
 
-      <div v-else-if="userJwt" style="padding: 20px;">
+      <div v-else-if="userJwt && !jwt" style="padding: 20px;">
         <n-card :title="t('addressManagement')">
           <AddressManagement />
         </n-card>
@@ -218,7 +226,7 @@ onMounted(async () => {
           <n-space vertical align="center" size="large">
             <h2 style="margin-bottom: 0; color: #666;">{{ t('loginTip') }}</h2>
             <n-button type="primary" size="large" round style="width: 200px; height: 50px; font-size: 18px;"
-              @click="showLoginModal = true">
+              @click="router.push('/user')">
               <template #icon>
                 <n-icon size="24">
                   <User />
@@ -230,11 +238,8 @@ onMounted(async () => {
         </n-card>
       </div>
     </div>
-
-    <n-modal v-model:show="showLoginModal" preset="card" style="width: 400px;" :title="t('login')">
-      <UserLogin @login-success="checkLogin" />
-    </n-modal>
-  </div>
+    
+    </div>
 </template>
 
 <style scoped>
