@@ -10,7 +10,7 @@ const {
     loading, auth, jwt, settings, openSettings,
     userOpenSettings, userSettings, announcement,
     showAuth, adminAuth, showAdminAuth, userJwt,
-    userBalance // [新增] 引入全局余额
+    userBalance 
 } = useGlobalState();
 
 const instance = axios.create({
@@ -156,6 +156,7 @@ const getUserSettings = async (message) => {
                     userJwt: userSettings.value.new_user_token,
                 })
                 userJwt.value = userSettings.value.new_user_token;
+                console.log("User JWT updated successfully");
             }
             catch (error) {
                 console.error("Failed to update user JWT", error);
@@ -209,11 +210,9 @@ export const api = {
     bindUserAddress,
 
     // --- 计费系统 API ---
-    
     getUserBalance: async () => {
         try {
             const res = await apiFetch('/user_api/billing/balance');
-            // [关键] 自动更新全局 store
             userBalance.value = res.balance || 0;
             return res.balance || 0;
         } catch (error) {
@@ -262,6 +261,19 @@ export const api = {
             body: JSON.stringify({ domain, role_text, price })
         });
     },
+    // [新增] 删除定价
+    adminDeletePrice: async (id) => {
+        return await apiFetch(`/admin/billing/prices/${id}`, {
+            method: 'DELETE'
+        });
+    },
+    // [新增] 批量删除定价
+    adminBatchDeletePrices: async (ids) => {
+        return await apiFetch('/admin/billing/prices/batch_delete', {
+            method: 'POST',
+            body: JSON.stringify({ ids })
+        });
+    },
     adminDeleteCard: async (id) => {
         return await apiFetch(`/admin/billing/cards/${id}`, {
             method: 'DELETE'
@@ -288,7 +300,6 @@ export const api = {
     adminGetUserRoles: async () => {
         return await apiFetch('/admin/user_roles');
     },
-    // [修复] 这里之前少了个逗号
     adminTopUpUser: async (user_id, amount) => {
         return await apiFetch(`/admin/users/${user_id}/topup`, {
             method: 'POST',
