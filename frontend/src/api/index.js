@@ -21,7 +21,9 @@ const instance = axios.create({
 const apiFetch = async (path, options = {}) => {
     loading.value = true;
     try {
+        // Get browser fingerprint for request tracking
         const fingerprint = await getFingerprint();
+
         const response = await instance.request(path, {
             method: options.method || 'GET',
             data: options.body || null,
@@ -210,6 +212,7 @@ export const api = {
 
     // --- 计费系统 API ---
     
+    // 用户: 获取余额 (返回分)
     getUserBalance: async () => {
         try {
             const res = await apiFetch('/user_api/billing/balance');
@@ -219,15 +222,18 @@ export const api = {
             return 0;
         }
     },
+    // 用户: 查询特定域名价格
     getDomainPrice: async (domain) => {
         return await apiFetch(`/user_api/billing/price?domain=${domain}`);
     },
+    // 用户: 卡密充值
     redeemCard: async (code) => {
         return await apiFetch('/user_api/billing/redeem', {
             method: 'POST',
             body: JSON.stringify({ code })
         });
     },
+    // 用户: 购买邮箱
     buyAddress: async (name, domain) => {
         return await apiFetch('/user_api/billing/buy_address', {
             method: 'POST',
