@@ -21,6 +21,8 @@ import Attachment from './index/Attachment.vue';
 import About from './common/About.vue';
 import SimpleIndex from './index/SimpleIndex.vue';
 import UserLogin from './user/UserLogin.vue'
+// [新增] 引入地址管理组件
+import AddressManagement from './user/AddressManagement.vue'
 
 const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt } = useGlobalState()
 const message = useMessage()
@@ -51,7 +53,8 @@ const { t } = useI18n({
       query: 'Query',
       enterSimpleMode: 'Simple Mode',
       login: 'User Login',
-      loginTip: 'Please login to access your mailbox'
+      loginTip: 'Please login to access your mailbox',
+      addressManagement: 'Address Management'
     },
     zh: {
       mailbox: '收件箱',
@@ -67,7 +70,8 @@ const { t } = useI18n({
       query: '查询',
       enterSimpleMode: '极简模式',
       login: '用户登录',
-      loginTip: '请登录以使用邮箱服务'
+      loginTip: '请登录以使用邮箱服务',
+      addressManagement: '地址管理'
     }
   }
 });
@@ -99,7 +103,6 @@ const saveToS3 = async (mail_id, filename, blob) => {
       method: 'POST',
       body: JSON.stringify({ key: `${mail_id}/${filename}` })
     });
-    // upload to s3 by formdata
     const formData = new FormData();
     formData.append(filename, blob);
     await fetch(url, {
@@ -121,7 +124,6 @@ const queryMail = () => {
   mailBoxKey.value = Date.now();
 }
 
-// 登录成功后的回调：手动点击登录后才跳转
 const checkLogin = () => {
   if (userJwt.value) {
     router.push('/user')
@@ -137,9 +139,6 @@ watch(route, () => {
 })
 
 onMounted(async () => {
-  // [已删除] 自动跳转逻辑
-  // if (userJwt.value) { router.push('/user'); return; }
-
   if (route.query.mail_id) {
     showMailIdQuery.value = true;
     mailIdQuery.value = route.query.mail_id;
@@ -154,7 +153,13 @@ onMounted(async () => {
       <SimpleIndex />
     </div>
     <div v-else>
-      <div v-if="settings.address">
+      <div v-if="userJwt" style="padding: 20px;">
+        <n-card :title="t('addressManagement')">
+          <AddressManagement />
+        </n-card>
+      </div>
+
+      <div v-else-if="settings.address">
         <AddressBar />
         <n-tabs type="card" v-model:value="indexTab" :placement="globalTabplacement">
           <template #prefix v-if="!isMobile">
