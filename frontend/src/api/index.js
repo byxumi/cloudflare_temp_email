@@ -262,9 +262,8 @@ export const api = {
             body: JSON.stringify({ domain, role_text, price })
         });
     }
-}
 
-// 管理员: 删除卡密
+    // 管理员: 删除卡密
     adminDeleteCard: async (id) => {
         return await apiFetch(`/admin/billing/cards/${id}`, {
             method: 'DELETE'
@@ -278,3 +277,5 @@ export const api = {
             body: JSON.stringify({ status })
         });
     },
+}
+
