@@ -1,10 +1,13 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton } from 'naive-ui'
+import { useMessage, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect } from 'naive-ui'
 import { api } from '../../api'
+import { useGlobalState } from '../../store'
 
 const message = useMessage()
+const { openSettings } = useGlobalState() // 获取全局设置中的域名列表
+
 const { t } = useI18n({
     messages: {
         en: {
@@ -14,6 +17,7 @@ const { t } = useI18n({
             save: 'Save',
             setPrice: 'Set Price',
             updatedAt: 'Updated At',
+            selectDomain: 'Select Domain'
         },
         zh: {
             domain: '域名',
@@ -22,18 +26,34 @@ const { t } = useI18n({
             save: '保存',
             setPrice: '设置价格',
             updatedAt: '更新时间',
+            selectDomain: '选择域名'
         }
     }
 })
 
 const data = ref([])
 const showModal = ref(false)
-const form = ref({ domain: '', role_text: 'default', price: 0.00 })
+const form = ref({ domain: null, role_text: 'default', price: 0.00 })
 const loading = ref(false)
+
+// 计算属性：生成域名下拉选项
+const domainOptions = computed(() => {
+    if (openSettings.value && openSettings.value.domains) {
+        return openSettings.value.domains.map(d => ({
+            label: d.label || d.value,
+            value: d.value
+        }))
+    }
+    return []
+})
 
 const fetchData = async () => {
     loading.value = true
     try {
+        // 确保获取到最新的域名列表
+        if (!openSettings.value.fetched) {
+            await api.getOpenSettings(message)
+        }
         const res = await api.adminGetPrices()
         data.value = res.results || []
     } catch (e) {
@@ -44,12 +64,12 @@ const fetchData = async () => {
 }
 
 const handleSave = async () => {
-    if (!form.value.domain) return message.error("请输入域名")
+    if (!form.value.domain) return message.error("Please select a domain")
     loading.value = true
     try {
         const res = await api.adminSetPrice(form.value.domain, form.value.role_text, form.value.price)
         if (res.success) {
-            message.success('保存成功')
+            message.success('Saved')
             showModal.value = false
             fetchData()
         }
@@ -88,7 +108,12 @@ onMounted(fetchData)
         <n-modal v-model:show="showModal" preset="dialog" :title="t('setPrice')">
             <n-form>
                 <n-form-item :label="t('domain')" required>
-                    <n-input v-model:value="form.domain" placeholder="example.com" />
+                    <n-select 
+                        v-model:value="form.domain" 
+                        :options="domainOptions" 
+                        :placeholder="t('selectDomain')" 
+                        filterable
+                    />
                 </n-form-item>
                 <n-form-item :label="t('role')">
                     <n-input v-model:value="form.role_text" placeholder="default" />
