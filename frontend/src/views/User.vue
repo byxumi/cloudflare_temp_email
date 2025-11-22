@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMessage, NIcon } from 'naive-ui'
-import { History, Sync } from '@vicons/fa' // [新增] 引入 Sync 图标
+import { History, Sync } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -13,13 +13,14 @@ import UserBar from './user/UserBar.vue';
 import UserMailBox from './user/UserMailBox.vue';
 import UserTransactions from './user/UserTransactions.vue';
 
+// 现在 store 里有了 userBalance，解构不会报错了
 const { userTab, globalTabplacement, userSettings, userBalance } = useGlobalState()
 
 const message = useMessage()
 const redeemCode = ref('')
 const redeemLoading = ref(false)
 const showTransactions = ref(false)
-const balanceLoading = ref(false) // [新增] 余额刷新loading状态
+const balanceLoading = ref(false)
 
 const { t } = useI18n({
     messages: {
@@ -34,7 +35,7 @@ const { t } = useI18n({
             redeemSuccess: 'Redeem Success',
             viewBills: 'View Bills',
             myBills: 'My Transactions',
-            refreshBalance: 'Refresh Balance'
+            refreshBalance: 'Refresh'
         },
         zh: {
             address_management: '地址管理',
@@ -47,7 +48,7 @@ const { t } = useI18n({
             redeemSuccess: '充值成功',
             viewBills: '查看账单',
             myBills: '我的账单',
-            refreshBalance: '刷新余额'
+            refreshBalance: '刷新'
         }
     }
 });
