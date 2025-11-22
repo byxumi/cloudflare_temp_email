@@ -13,12 +13,10 @@ import UserBar from './user/UserBar.vue';
 import UserMailBox from './user/UserMailBox.vue';
 import UserTransactions from './user/UserTransactions.vue';
 
-const {
-    userTab, globalTabplacement, userSettings
-} = useGlobalState()
+// 引入 userBalance
+const { userTab, globalTabplacement, userSettings, userBalance } = useGlobalState()
 
 const message = useMessage()
-const userBalance = ref(0)
 const redeemCode = ref('')
 const redeemLoading = ref(false)
 const showTransactions = ref(false)
@@ -53,11 +51,8 @@ const { t } = useI18n({
 });
 
 const fetchBalance = async () => {
-    try {
-        userBalance.value = await api.getUserBalance();
-    } catch (e) {
-        console.error(e)
-    }
+    // 更新 store 中的 userBalance
+    await api.getUserBalance();
 }
 
 const handleRedeem = async () => {
@@ -68,7 +63,7 @@ const handleRedeem = async () => {
         if (res.success) {
             message.success(t('redeemSuccess'));
             redeemCode.value = '';
-            await fetchBalance();
+            await fetchBalance(); // 充值成功后立即刷新
         }
     } catch (e) {
         message.error(e.message || "Redeem failed");
@@ -82,7 +77,6 @@ onMounted(async () => {
         await fetchBalance();
     }
 })
-
 </script>
 
 <template>
@@ -92,9 +86,7 @@ onMounted(async () => {
             <n-card :title="t('wallet')" style="margin-bottom: 10px;" size="small">
                 <template #header-extra>
                     <n-button size="small" @click="showTransactions = true">
-                        <template #icon>
-                            <n-icon :component="History" />
-                        </template>
+                        <template #icon><n-icon :component="History" /></template>
                         {{ t('viewBills') }}
                     </n-button>
                 </template>
@@ -106,11 +98,8 @@ onMounted(async () => {
                     </n-gi>
                     <n-gi>
                         <n-input-group>
-                            <n-input v-model:value="redeemCode" :placeholder="t('redeemPlaceholder')"
-                                @keydown.enter="handleRedeem" />
-                            <n-button type="primary" @click="handleRedeem" :loading="redeemLoading">
-                                {{ t('redeem') }}
-                            </n-button>
+                            <n-input v-model:value="redeemCode" :placeholder="t('redeemPlaceholder')" @keydown.enter="handleRedeem" />
+                            <n-button type="primary" @click="handleRedeem" :loading="redeemLoading">{{ t('redeem') }}</n-button>
                         </n-input-group>
                     </n-gi>
                 </n-grid>

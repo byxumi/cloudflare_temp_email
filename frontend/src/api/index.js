@@ -9,7 +9,8 @@ const API_BASE = import.meta.env.VITE_API_BASE || "";
 const {
     loading, auth, jwt, settings, openSettings,
     userOpenSettings, userSettings, announcement,
-    showAuth, adminAuth, showAdminAuth, userJwt
+    showAuth, adminAuth, showAdminAuth, userJwt,
+    userBalance // 引用全局余额
 } = useGlobalState();
 
 const instance = axios.create({
@@ -21,9 +22,7 @@ const instance = axios.create({
 const apiFetch = async (path, options = {}) => {
     loading.value = true;
     try {
-        // Get browser fingerprint for request tracking
         const fingerprint = await getFingerprint();
-
         const response = await instance.request(path, {
             method: options.method || 'GET',
             data: options.body || null,
@@ -63,9 +62,6 @@ const getOpenSettings = async (message, notification) => {
     try {
         const res = await api.fetch("/open_api/settings");
         const domainLabels = res["domainLabels"] || [];
-        if (res["domains"]?.length < 1) {
-            message.error("No domains found, please check your worker settings");
-        }
         Object.assign(openSettings.value, {
             ...res,
             title: res["title"] || "",
@@ -133,7 +129,6 @@ const getSettings = async () => {
     }
 }
 
-
 const getUserOpenSettings = async (message) => {
     try {
         const res = await api.fetch(`/user_api/open_settings`);
@@ -150,55 +145,18 @@ const getUserSettings = async (message) => {
         if (!userJwt.value) return;
         const res = await api.fetch("/user_api/settings")
         Object.assign(userSettings.value, res)
-        // auto refresh user jwt
         if (userSettings.value.new_user_token) {
             try {
-                await api.fetch("/user_api/settings", {
-                    userJwt: userSettings.value.new_user_token,
-                })
+                await api.fetch("/user_api/settings", { userJwt: userSettings.value.new_user_token })
                 userJwt.value = userSettings.value.new_user_token;
-                console.log("User JWT updated successfully");
-            }
-            catch (error) {
-                console.error("Failed to update user JWT", error);
-            }
+            } catch (error) { console.error("Failed to update user JWT", error); }
         }
-    } catch (error) {
-        message?.error(error.message || "error");
-    } finally {
-        userSettings.value.fetched = true;
-    }
+    } catch (error) { message?.error(error.message || "error"); } finally { userSettings.value.fetched = true; }
 }
 
-const adminShowAddressCredential = async (id) => {
-    try {
-        const { jwt: addressCredential } = await apiFetch(`/admin/show_password/${id}`);
-        return addressCredential;
-    } catch (error) {
-        throw error;
-    }
-}
-
-const adminDeleteAddress = async (id) => {
-    try {
-        await apiFetch(`/admin/delete_address/${id}`, {
-            method: 'DELETE'
-        });
-    } catch (error) {
-        throw error;
-    }
-}
-
-const bindUserAddress = async () => {
-    if (!userJwt.value) return;
-    try {
-        await apiFetch(`/user_api/bind_address`, {
-            method: 'POST',
-        });
-    } catch (error) {
-        throw error;
-    }
-}
+const adminShowAddressCredential = async (id) => await apiFetch(`/admin/show_password/${id}`).then(r => r.jwt);
+const adminDeleteAddress = async (id) => await apiFetch(`/admin/delete_address/${id}`, { method: 'DELETE' });
+const bindUserAddress = async () => userJwt.value && await apiFetch(`/user_api/bind_address`, { method: 'POST' });
 
 export const api = {
     fetch: apiFetch,
@@ -211,91 +169,31 @@ export const api = {
     bindUserAddress,
 
     // --- 计费系统 API ---
-    
-    // 用户: 获取余额 (返回分)
     getUserBalance: async () => {
         try {
             const res = await apiFetch('/user_api/billing/balance');
+            // [关键] 自动更新全局 store
+            userBalance.value = res.balance || 0;
             return res.balance || 0;
         } catch (error) {
             console.error(error);
             return 0;
         }
     },
-    // 用户: 查询特定域名价格
-    getDomainPrice: async (domain) => {
-        return await apiFetch(`/user_api/billing/price?domain=${domain}`);
-    },
-    // 用户: 卡密充值
-    redeemCard: async (code) => {
-        return await apiFetch('/user_api/billing/redeem', {
-            method: 'POST',
-            body: JSON.stringify({ code })
-        });
-    },
-    // 用户: 购买邮箱
-    buyAddress: async (name, domain) => {
-        return await apiFetch('/user_api/billing/buy_address', {
-            method: 'POST',
-            body: JSON.stringify({ name, domain })
-        });
-    },
-    // [新增] 用户获取自己的账单
-    getUserTransactions: async (limit, offset) => {
-        return await apiFetch(`/user_api/billing/transactions?limit=${limit}&offset=${offset}`);
-    },
-    // [新增] 管理员获取总账单
-    adminGetTransactions: async (limit, offset) => {
-        return await apiFetch(`/admin/billing/transactions?limit=${limit}&offset=${offset}`);
-    },
-    adminGetCards: async (limit, offset) => {
-        return await apiFetch(`/admin/billing/cards?limit=${limit}&offset=${offset}`);
-    },
-    adminGenerateCards: async (amount, count, starts_at, expires_at, max_uses) => {
-        return await apiFetch('/admin/billing/cards/generate', {
-            method: 'POST',
-            body: JSON.stringify({ amount, count, starts_at, expires_at, max_uses })
-        });
-    },
-    adminGetPrices: async () => {
-        return await apiFetch(`/admin/billing/prices`);
-    },
-    adminSetPrice: async (domain, role_text, price) => {
-        return await apiFetch('/admin/billing/prices', {
-            method: 'POST',
-            body: JSON.stringify({ domain, role_text, price })
-        });
-    },
-    adminDeleteCard: async (id) => {
-        return await apiFetch(`/admin/billing/cards/${id}`, {
-            method: 'DELETE'
-        });
-    },
-    adminUpdateCardStatus: async (id, status) => {
-        return await apiFetch(`/admin/billing/cards/${id}/status`, {
-            method: 'POST',
-            body: JSON.stringify({ status })
-        });
-    },
-    adminBatchDeleteCards: async (ids) => {
-        return await apiFetch('/admin/billing/cards/batch_delete', {
-            method: 'POST',
-            body: JSON.stringify({ ids })
-        });
-    },
-    adminBatchUpdateCardStatus: async (ids, status) => {
-        return await apiFetch('/admin/billing/cards/batch_status', {
-            method: 'POST',
-            body: JSON.stringify({ ids, status })
-        });
-    },
-    adminGetUserRoles: async () => {
-        return await apiFetch('/admin/user_roles');
-    },
-    adminTopUpUser: async (user_id, amount) => {
-        return await apiFetch(`/admin/users/${user_id}/topup`, {
-            method: 'POST',
-            body: JSON.stringify({ amount })
-        });
-    }
+    getDomainPrice: async (domain) => await apiFetch(`/user_api/billing/price?domain=${domain}`),
+    redeemCard: async (code) => await apiFetch('/user_api/billing/redeem', { method: 'POST', body: JSON.stringify({ code }) }),
+    buyAddress: async (name, domain) => await apiFetch('/user_api/billing/buy_address', { method: 'POST', body: JSON.stringify({ name, domain }) }),
+    getUserTransactions: async (limit, offset) => await apiFetch(`/user_api/billing/transactions?limit=${limit}&offset=${offset}`),
+    
+    adminGetTransactions: async (limit, offset) => await apiFetch(`/admin/billing/transactions?limit=${limit}&offset=${offset}`),
+    adminGetCards: async (limit, offset) => await apiFetch(`/admin/billing/cards?limit=${limit}&offset=${offset}`),
+    adminGenerateCards: async (amount, count, starts_at, expires_at, max_uses) => await apiFetch('/admin/billing/cards/generate', { method: 'POST', body: JSON.stringify({ amount, count, starts_at, expires_at, max_uses }) }),
+    adminGetPrices: async () => await apiFetch(`/admin/billing/prices`),
+    adminSetPrice: async (domain, role_text, price) => await apiFetch('/admin/billing/prices', { method: 'POST', body: JSON.stringify({ domain, role_text, price }) }),
+    adminDeleteCard: async (id) => await apiFetch(`/admin/billing/cards/${id}`, { method: 'DELETE' }),
+    adminUpdateCardStatus: async (id, status) => await apiFetch(`/admin/billing/cards/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) }),
+    adminBatchDeleteCards: async (ids) => await apiFetch('/admin/billing/cards/batch_delete', { method: 'POST', body: JSON.stringify({ ids }) }),
+    adminBatchUpdateCardStatus: async (ids, status) => await apiFetch('/admin/billing/cards/batch_status', { method: 'POST', body: JSON.stringify({ ids, status }) }),
+    adminGetUserRoles: async () => await apiFetch('/admin/user_roles'),
+    adminTopUpUser: async (user_id, amount) => await apiFetch(`/admin/users/${user_id}/topup`, { method: 'POST', body: JSON.stringify({ amount }) })
 }

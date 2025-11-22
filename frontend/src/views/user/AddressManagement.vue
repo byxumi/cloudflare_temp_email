@@ -6,7 +6,8 @@ import useClipboard from 'vue-clipboard3'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
-const { openSettings, jwt } = useGlobalState()
+// 引入 userBalance
+const { openSettings, jwt, userBalance } = useGlobalState()
 const message = useMessage()
 const { toClipboard } = useClipboard()
 
@@ -88,7 +89,6 @@ const createLoading = ref(false)
 const priceLoading = ref(false)
 const createForm = ref({ name: '', domain: null })
 const currentPriceCents = ref(0)
-const userBalanceCents = ref(0)
 const showTransferModal = ref(false)
 const transferLoading = ref(false)
 const transferForm = ref({ addressId: null, targetEmail: '' })
@@ -115,9 +115,9 @@ const fetchData = async () => {
     }
 }
 
-const fetchBalance = async () => {
+const refreshBalance = async () => {
     try {
-        userBalanceCents.value = await api.getUserBalance()
+        await api.getUserBalance()
     } catch (e) { console.error(e) }
 }
 
@@ -145,36 +145,26 @@ const openCreateModal = async () => {
     createForm.value.name = '' 
     createForm.value.domain = domainOptions.value.length > 0 ? domainOptions.value[0].value : null
     showCreateModal.value = true
-    await fetchBalance()
+    await refreshBalance()
 }
 
 const handleCreate = async () => {
-    if (!createForm.value.name) {
-        generateRandom();
-    }
-    
-    // [恢复系统前缀逻辑] 如果系统设置了前缀，自动拼接
-    let finalName = createForm.value.name;
-    if (openSettings.value.prefix) {
-        // 如果用户输入尚未包含前缀，则添加
-        if (!finalName.startsWith(openSettings.value.prefix)) {
-            finalName = openSettings.value.prefix + finalName;
-        }
-    }
-    
+    if (!createForm.value.name) generateRandom();
     if (!createForm.value.domain) return
-    if (currentPriceCents.value > userBalanceCents.value) {
+    
+    if (currentPriceCents.value > userBalance.value) {
         message.error(t('insufficientBalance'))
         return
     }
     createLoading.value = true
     try {
-        const res = await api.buyAddress(finalName, createForm.value.domain)
+        // 传递给后端，后端会自动拼接角色前缀
+        const res = await api.buyAddress(createForm.value.name, createForm.value.domain)
         if (res.success) {
             message.success(t('createSuccess'))
             showCreateModal.value = false
             fetchData()
-            fetchBalance()
+            refreshBalance() // 成功后刷新全局余额
         }
     } catch (e) {
         if (e.message && e.message.includes('402')) {
@@ -187,6 +177,7 @@ const handleCreate = async () => {
     }
 }
 
+// ... (其他 handler 保持不变，直接复制之前版本的 handleSwitch, handleDelete 等)
 const handleSwitch = async (row) => { try { const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); if (res.jwt) { jwt.value = res.jwt; message.success(t('switched') + row.name); await api.getSettings() } } catch (e) { message.error(e.message) } }
 const handleCopyCredential = async (row) => { try { const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); if (res.jwt) { await toClipboard(res.jwt); message.success(t('copied')) } } catch (e) { message.error(e.message) } }
 const openTransferModal = (row) => { transferForm.value = { addressId: row.id, targetEmail: '' }; showTransferModal.value = true }
@@ -252,14 +243,14 @@ onMounted(() => { fetchData() })
                     <n-spin :show="priceLoading" size="small">
                         <div v-if="currentPriceCents > 0">
                             <p>{{ t('currentPrice') }} <span style="color: #d03050; font-weight: bold;">{{ (currentPriceCents / 100).toFixed(2) }} 元</span></p>
-                            <p style="font-size: 0.9em; color: #666;">{{ t('balance') }} {{ (userBalanceCents / 100).toFixed(2) }} 元</p>
+                            <p style="font-size: 0.9em; color: #666;">{{ t('balance') }} {{ (userBalance / 100).toFixed(2) }} 元</p>
                         </div>
                         <div v-else><n-tag type="success">{{ t('free') }}</n-tag></div>
                     </n-spin>
                 </div>
             </n-form>
             <template #action>
-                <n-button type="primary" :loading="createLoading" :disabled="priceLoading || (currentPriceCents > userBalanceCents)" @click="handleCreate">
+                <n-button type="primary" :loading="createLoading" :disabled="priceLoading || (currentPriceCents > userBalance)" @click="handleCreate">
                     {{ currentPriceCents > 0 ? t('confirmPurchase') : t('confirm') }}
                 </n-button>
             </template>

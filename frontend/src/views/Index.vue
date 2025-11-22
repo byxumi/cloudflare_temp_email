@@ -1,7 +1,8 @@
 <script setup>
-import { defineAsyncComponent, onMounted, watch } from 'vue'
+import { defineAsyncComponent, onMounted, watch, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useMessage } from 'naive-ui'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -19,9 +20,11 @@ import Attachment from './index/Attachment.vue';
 import About from './common/About.vue';
 import SimpleIndex from './index/SimpleIndex.vue';
 
-const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex } = useGlobalState()
+// [新增] 获取 userJwt
+const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt } = useGlobalState()
 const message = useMessage()
 const route = useRoute()
+const router = useRouter() // [新增]
 const isMobile = useIsMobile()
 
 const SendMail = defineAsyncComponent(() => {
@@ -121,6 +124,12 @@ watch(route, () => {
 })
 
 onMounted(() => {
+  // [新增] 如果检测到用户已登录，自动跳转到用户中心
+  if (userJwt.value) {
+    router.push('/user')
+    return
+  }
+
   if (route.query.mail_id) {
     showMailIdQuery.value = true;
     mailIdQuery.value = route.query.mail_id;
