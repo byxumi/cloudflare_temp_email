@@ -23,11 +23,14 @@ const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
+// [修复] 动态计算栅格间距：手机端设为0，避免负边距导致的错位和横向滚动
+const xGap = computed(() => isMobile.value ? 0 : 24);
+
 const showSplash = ref(true)
 
 // [UI 美化] 终极版：增加内发光和细节质感
 const themeOverrides = computed(() => {
-  const alpha = 0.72; // 稍微降低一点点不透明度，更通透
+  const alpha = 0.72; 
   
   const glassBg = isDark.value 
     ? `rgba(30, 30, 35, ${alpha})` 
@@ -39,7 +42,7 @@ const themeOverrides = computed(() => {
 
   const glassBorder = isDark.value
     ? 'rgba(255, 255, 255, 0.12)'
-    : 'rgba(255, 255, 255, 0.5)'; // 亮色模式边框稍微减淡
+    : 'rgba(255, 255, 255, 0.5)';
 
   const primaryColor = '#2080f0';
   const transparent = 'transparent';
@@ -49,9 +52,9 @@ const themeOverrides = computed(() => {
       primaryColor: primaryColor,
       primaryColorHover: '#4098fc',
       primaryColorPressed: '#1060c9',
-      borderRadius: '16px', // 全局圆角加大
+      borderRadius: '16px',
       borderRadiusSmall: '8px',
-      fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif', // 优化字体栈
+      fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
       
       bodyColor: transparent,
       cardColor: glassBg,
@@ -70,7 +73,6 @@ const themeOverrides = computed(() => {
       borderRadius: '20px',
       color: glassBg,
       borderColor: glassBorder,
-      // [美化] 增加内发光 (inset shadow) 模拟玻璃厚度
       boxShadow: isDark.value 
         ? '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05)' 
         : '0 8px 32px rgba(31, 38, 135, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.4)'
@@ -90,7 +92,6 @@ const themeOverrides = computed(() => {
       color: transparent,
       thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.02)',
       tdColor: transparent,
-      // 悬浮行颜色加深
       tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.3)',
       borderColor: glassBorder,
       borderRadius: '12px'
@@ -223,7 +224,7 @@ onMounted(async () => {
             <div class="app-container">
               <div class="bg-overlay"></div>
 
-              <n-grid x-gap="24" :cols="gridMaxCols" class="main-grid">
+              <n-grid :x-gap="xGap" :cols="gridMaxCols" class="main-grid">
                 <n-gi v-if="showSideMargin" span="1">
                   <div class="side-ad" v-if="showAd">
                     <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
@@ -269,7 +270,7 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === 全局基础设置 === */
+/* === 1. 全局基础设置 === */
 body {
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -278,12 +279,13 @@ body {
   background: url('https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN') no-repeat center center fixed;
   background-size: cover;
   background-attachment: fixed;
-  /* [美化] 增加字间距，提升呼吸感 */
   letter-spacing: 0.02em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  /* [修复] 防止横向滚动 */
+  overflow-x: hidden;
 }
 
-/* === 开屏动画 === */
+/* === 开屏动画样式 === */
 .splash-screen {
   position: fixed;
   top: 0;
@@ -397,6 +399,10 @@ body {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+.n-card:hover {
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2) !important;
+}
+
 [data-theme='dark'] .n-card,
 [data-theme='dark'] .n-modal {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -447,7 +453,6 @@ body {
   background-color: rgba(40, 40, 45, 0.8) !important;
 }
 
-/* [美化] 按钮点击回弹效果 */
 .n-button:active {
   transform: scale(0.96);
 }
@@ -455,7 +460,6 @@ body {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 强制透明 */
 .n-data-table, .n-data-table .n-data-table-th, .n-data-table .n-data-table-td,
 .n-list, .n-list .n-list-item,
 .n-layout, .n-layout-header, .n-layout-footer, .n-layout-sider {
@@ -478,8 +482,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  /* 降低一点背景亮度，突出内容 */
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   pointer-events: none;
   z-index: 0;
   transition: background 0.3s ease;
@@ -501,7 +504,10 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* [修复] 确保手机端内边距合适 */
   padding: 0 16px; 
+  /* [修复] 宽度撑满 */
+  width: 100%;
 }
 
 .sticky-header-wrapper {
@@ -512,8 +518,8 @@ body {
   padding: 12px 24px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
