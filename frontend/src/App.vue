@@ -23,10 +23,10 @@ const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
-// [新增] 开屏动画控制状态
-const showSplash = ref(false)
+// [修改] 默认为 true，确保每次刷新都先显示动画
+const showSplash = ref(true)
 
-// [UI 美化] 终极版：悬浮 Header + 进度条配色 + 玻璃拟态
+// [UI 美化] 终极版主题配置
 const themeOverrides = computed(() => {
   const alpha = 0.75;
   
@@ -148,16 +148,11 @@ const themeOverrides = computed(() => {
 })
 
 onMounted(async () => {
-  // [新增] 开屏动画逻辑
-  const hasShownSplash = sessionStorage.getItem('hasShownSplash')
-  if (!hasShownSplash) {
-    showSplash.value = true
-    // 2秒后关闭开屏动画
-    setTimeout(() => {
-      showSplash.value = false
-      sessionStorage.setItem('hasShownSplash', 'true')
-    }, 2000)
-  }
+  // [修改] 每次刷新都显示开屏动画
+  // 之前的 sessionStorage 判断已移除
+  setTimeout(() => {
+    showSplash.value = false
+  }, 2000)
 
   try {
     await api.getUserSettings();
@@ -250,7 +245,9 @@ onMounted(async () => {
                       </router-view>
                     </div>
 
-                    <Footer class="app-footer" />
+                    <div class="floating-footer-wrapper">
+                      <Footer class="app-footer" />
+                    </div>
                   </div>
                 </n-gi>
                 
@@ -272,17 +269,19 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === 1. 全局基础设置 === */
+/* === 全局基础设置 === */
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   margin: 0;
   background: url('https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN') no-repeat center center fixed;
   background-size: cover;
-  background-attachment: fixed; 
+  background-attachment: fixed;
+  /* [新增] 微妙的文字阴影，提升在壁纸上的可读性 */
+  text-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* 开屏动画样式 */
+/* === 开屏动画样式 === */
 .splash-screen {
   position: fixed;
   top: 0;
@@ -291,7 +290,7 @@ body {
   height: 100%;
   z-index: 9999;
   /* 强力毛玻璃背景 */
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(50px) saturate(150%);
   -webkit-backdrop-filter: blur(50px) saturate(150%);
   display: flex;
@@ -299,31 +298,30 @@ body {
   align-items: center;
 }
 
-/* 深色模式适配 */
 [data-theme='dark'] .splash-screen {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
 }
 
 .splash-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 30px;
 }
 
 .splash-logo {
   width: 120px;
   height: 120px;
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-  /* 入场动画：弹跳 */
-  animation: logo-enter 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 28px; /* 更圆润的角 */
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  /* 入场动画 */
+  animation: logo-float 3s ease-in-out infinite;
 }
 
 .splash-loader {
-  width: 40px;
+  width: 160px;
   height: 4px;
-  background: rgba(32, 128, 240, 0.2);
+  background: rgba(32, 128, 240, 0.15);
   border-radius: 2px;
   overflow: hidden;
   position: relative;
@@ -337,20 +335,15 @@ body {
   height: 100%;
   width: 100%;
   background: #2080f0;
-  animation: loader-slide 1.5s infinite ease-in-out;
+  animation: loader-slide 1.8s infinite ease-in-out;
   transform: translateX(-100%);
+  border-radius: 2px;
 }
 
-/* Logo 入场动画 */
-@keyframes logo-enter {
-  0% {
-    opacity: 0;
-    transform: scale(0.5) translateY(40px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+/* Logo 悬浮呼吸动画 */
+@keyframes logo-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
 @keyframes loader-slide {
@@ -359,19 +352,18 @@ body {
   100% { transform: translateX(100%); }
 }
 
-/* 离场动画：迷雾消散 */
+/* 离场动画：缩放淡出 */
 .splash-leave-active {
   transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .splash-leave-to {
   opacity: 0;
   backdrop-filter: blur(0px);
   -webkit-backdrop-filter: blur(0px);
-  transform: scale(1.05);
+  transform: scale(1.1);
 }
 
-/* ... (保留之前的滚动条等基础样式) ... */
+/* ... 滚动条美化 ... */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -515,6 +507,7 @@ body {
   padding: 0 16px; 
 }
 
+/* === [美化] 悬浮 Header === */
 .sticky-header-wrapper {
   position: sticky;
   top: 20px;
@@ -533,7 +526,6 @@ body {
 :deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
   background: rgba(30, 30, 35, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .app-header {
@@ -545,8 +537,34 @@ body {
   width: 100%;
   max-width: 1100px;
   margin: 0 auto;
-  padding-top: 20px;
+  padding-top: 10px;
   padding-bottom: 40px;
+}
+
+/* === [美化] 悬浮 Footer === */
+.floating-footer-wrapper {
+  margin-top: auto;
+  margin-bottom: 20px;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.4); /* 比 Header 稍微淡一点 */
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+  /* 居中 */
+  align-self: center;
+  width: fit-content;
+  min-width: 300px;
+}
+
+:deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
+  background: rgba(30, 30, 35, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.app-footer {
+  padding-bottom: 0;
 }
 
 .side-ad {
@@ -554,11 +572,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.app-footer {
-  margin-top: auto;
-  padding-bottom: 20px;
 }
 
 .fade-enter-active,
