@@ -29,6 +29,7 @@ import WorkerConfig from './admin/WorkerConfig.vue';
 import IpBlacklistSettings from './admin/IpBlacklistSettings.vue';
 import CardManager from './admin/CardManager.vue';
 import PricingManager from './admin/PricingManager.vue';
+import TransactionManager from './admin/TransactionManager.vue';
 
 const {
   adminAuth, showAdminAuth, adminTab, loading,
@@ -84,6 +85,7 @@ const { t } = useI18n({
       billing: 'Billing',
       cardManager: 'Card Management',
       pricingManager: 'Pricing Management',
+      transactionManager: 'Transactions',
     },
     zh: {
       accessHeader: 'Admin 密码',
@@ -116,6 +118,7 @@ const { t } = useI18n({
       billing: '计费管理',
       cardManager: '卡密管理',
       pricingManager: '定价管理',
+      transactionManager: '交易流水',
     }
   }
 });
@@ -196,6 +199,7 @@ onMounted(async () => {
           </n-tab-pane>
         </n-tabs>
       </n-tab-pane>
+      
       <n-tab-pane name="billing" :tab="t('billing')">
         <n-tabs type="bar" justify-content="center" animated>
           <n-tab-pane name="cardManager" :tab="t('cardManager')">
@@ -204,8 +208,12 @@ onMounted(async () => {
           <n-tab-pane name="pricingManager" :tab="t('pricingManager')">
             <PricingManager />
           </n-tab-pane>
+          <n-tab-pane name="transactionManager" :tab="t('transactionManager')">
+            <TransactionManager />
+          </n-tab-pane>
         </n-tabs>
       </n-tab-pane>
+
       <n-tab-pane name="mails" :tab="t('mails')">
         <n-tabs type="bar" justify-content="center" animated>
           <n-tab-pane name="mails" :tab="t('mails')">

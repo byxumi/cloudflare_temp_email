@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage } from 'naive-ui'
-import { Plus } from '@vicons/fa'
+import { useMessage, NIcon } from 'naive-ui'
+import { History } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -10,10 +10,8 @@ import { api } from '../api'
 import AddressMangement from './user/AddressManagement.vue';
 import UserSettingsPage from './user/UserSettings.vue';
 import UserBar from './user/UserBar.vue';
-// 移除 BindAddress 引用
-// import BindAddress from './user/BindAddress.vue';
 import UserMailBox from './user/UserMailBox.vue';
-import BuyAddress from './user/BuyAddress.vue';
+import UserTransactions from './user/UserTransactions.vue';
 
 const {
     userTab, globalTabplacement, userSettings
@@ -23,7 +21,7 @@ const message = useMessage()
 const userBalance = ref(0)
 const redeemCode = ref('')
 const redeemLoading = ref(false)
-const showBuyAddress = ref(false)
+const showTransactions = ref(false)
 
 const { t } = useI18n({
     messages: {
@@ -36,7 +34,8 @@ const { t } = useI18n({
             redeem: 'Redeem',
             redeemPlaceholder: 'Enter redemption code',
             redeemSuccess: 'Redeem Success',
-            buyAddress: 'Buy Address',
+            viewBills: 'View Bills',
+            myBills: 'My Transactions'
         },
         zh: {
             address_management: '地址管理',
@@ -47,7 +46,8 @@ const { t } = useI18n({
             redeem: '充值',
             redeemPlaceholder: '输入卡密',
             redeemSuccess: '充值成功',
-            buyAddress: '购买邮箱',
+            viewBills: '查看账单',
+            myBills: '我的账单'
         }
     }
 });
@@ -91,11 +91,11 @@ onMounted(async () => {
         <div v-if="userSettings.user_email">
             <n-card :title="t('wallet')" style="margin-bottom: 10px;" size="small">
                 <template #header-extra>
-                    <n-button type="primary" size="small" @click="showBuyAddress = true">
+                    <n-button size="small" @click="showTransactions = true">
                         <template #icon>
-                            <n-icon :component="Plus" />
+                            <n-icon :component="History" />
                         </template>
-                        {{ t('buyAddress') }}
+                        {{ t('viewBills') }}
                     </n-button>
                 </template>
                 <n-grid x-gap="12" :cols="2">
@@ -126,11 +126,11 @@ onMounted(async () => {
                 <n-tab-pane name="user_settings" :tab="t('user_settings')">
                     <UserSettingsPage />
                 </n-tab-pane>
-                </n-tabs>
+            </n-tabs>
         </div>
 
-        <n-modal v-model:show="showBuyAddress" preset="card" :title="t('buyAddress')" style="max-width: 500px">
-            <BuyAddress @success="fetchBalance" @close="showBuyAddress = false" />
+        <n-modal v-model:show="showTransactions" preset="card" :title="t('myBills')" style="max-width: 800px">
+            <UserTransactions />
         </n-modal>
     </div>
 </template>

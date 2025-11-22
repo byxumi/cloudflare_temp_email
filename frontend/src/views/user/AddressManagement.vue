@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin } from 'naive-ui'
+import { useMessage, NButton, NInputGroup, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NInputGroupLabel } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -42,7 +42,8 @@ const { t } = useI18n({
             bindSuccess: 'Bound Successfully',
             switched: 'Switched to ',
             copied: 'Copied',
-            more: 'More'
+            more: 'More',
+            random: 'Random', 
         },
         zh: {
             createAddress: '新建地址',
@@ -74,28 +75,23 @@ const { t } = useI18n({
             bindSuccess: '绑定成功',
             switched: '已切换到 ',
             copied: '已复制凭证',
-            more: '更多'
+            more: '更多',
+            random: '随机',
         }
     }
 })
 
 const data = ref([])
 const loading = ref(false)
-
-// Create Modal
 const showCreateModal = ref(false)
 const createLoading = ref(false)
 const priceLoading = ref(false)
 const createForm = ref({ name: '', domain: null })
 const currentPriceCents = ref(0)
 const userBalanceCents = ref(0)
-
-// Transfer Modal
 const showTransferModal = ref(false)
 const transferLoading = ref(false)
 const transferForm = ref({ addressId: null, targetEmail: '' })
-
-// Bind Modal
 const showBindModal = ref(false)
 const bindLoading = ref(false)
 const bindForm = ref({ jwt: '' })
@@ -107,7 +103,6 @@ const domainOptions = computed(() => {
     }))
 })
 
-// Fetch List
 const fetchData = async () => {
     loading.value = true
     try {
@@ -126,7 +121,6 @@ const fetchBalance = async () => {
     } catch (e) { console.error(e) }
 }
 
-// Watch Domain for Price
 watch(() => createForm.value.domain, async (newDomain) => {
     if (!newDomain) {
         currentPriceCents.value = 0
@@ -143,23 +137,39 @@ watch(() => createForm.value.domain, async (newDomain) => {
     }
 })
 
-// Handlers
+const generateRandom = () => {
+    createForm.value.name = Math.random().toString(36).substring(2, 10);
+}
+
 const openCreateModal = async () => {
-    createForm.value.name = ''
+    createForm.value.name = '' 
     createForm.value.domain = domainOptions.value.length > 0 ? domainOptions.value[0].value : null
     showCreateModal.value = true
     await fetchBalance()
 }
 
 const handleCreate = async () => {
-    if (!createForm.value.name || !createForm.value.domain) return
+    if (!createForm.value.name) {
+        generateRandom();
+    }
+    
+    // [恢复系统前缀逻辑] 如果系统设置了前缀，自动拼接
+    let finalName = createForm.value.name;
+    if (openSettings.value.prefix) {
+        // 如果用户输入尚未包含前缀，则添加
+        if (!finalName.startsWith(openSettings.value.prefix)) {
+            finalName = openSettings.value.prefix + finalName;
+        }
+    }
+    
+    if (!createForm.value.domain) return
     if (currentPriceCents.value > userBalanceCents.value) {
         message.error(t('insufficientBalance'))
         return
     }
     createLoading.value = true
     try {
-        const res = await api.buyAddress(createForm.value.name, createForm.value.domain)
+        const res = await api.buyAddress(finalName, createForm.value.domain)
         if (res.success) {
             message.success(t('createSuccess'))
             showCreateModal.value = false
@@ -177,117 +187,12 @@ const handleCreate = async () => {
     }
 }
 
-const handleSwitch = async (row) => {
-    try {
-        const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`)
-        if (res.jwt) {
-            jwt.value = res.jwt
-            message.success(t('switched') + row.name)
-            // 可选：跳转首页或刷新设置
-            await api.getSettings()
-        }
-    } catch (e) {
-        message.error(e.message)
-    }
-}
-
-const handleCopyCredential = async (row) => {
-    try {
-        const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`)
-        if (res.jwt) {
-            await toClipboard(res.jwt)
-            message.success(t('copied'))
-        }
-    } catch (e) {
-        message.error(e.message)
-    }
-}
-
-const openTransferModal = (row) => {
-    transferForm.value = { addressId: row.id, targetEmail: '' }
-    showTransferModal.value = true
-}
-
-const handleTransfer = async () => {
-    if (!transferForm.value.targetEmail) return
-    transferLoading.value = true
-    try {
-        await api.fetch('/user_api/transfer_address', {
-            method: 'POST',
-            body: JSON.stringify({
-                address_id: transferForm.value.addressId,
-                target_user_email: transferForm.value.targetEmail
-            })
-        })
-        message.success(t('transferSuccess'))
-        showTransferModal.value = false
-        fetchData()
-    } catch (e) {
-        message.error(e.message)
-    } finally {
-        transferLoading.value = false
-    }
-}
-
-const handleDelete = async (addressId) => {
-    try {
-        await api.fetch('/user_api/unbind_address', {
-            method: 'POST',
-            body: JSON.stringify({ address_id: addressId })
-        })
-        message.success(t('unbindSuccess'))
-        fetchData()
-    } catch (e) {
-        message.error(e.message)
-    }
-}
-
-const handleBind = async () => {
-    if (!bindForm.value.jwt) return
-    bindLoading.value = true
-    try {
-        // 调用后端 bind 接口，需要把 jwt 放在 header 里
-        // 这里我们临时用 apiFetch 的 userJwt 参数覆盖 trick，或者直接修改 apiFetch 支持
-        // 由于 /user_api/bind_address 后端逻辑是取 header x-user-token (用户) 和 Authorization (地址)
-        // 但这里我们是在已登录用户状态下，绑定另一个地址。
-        // 后端 user_api/bind_address.ts: bind() -> bindByID(c, user_id, address_id)
-        // 但前端怎么传 address_id? 通常地址凭证就是 JWT。
-        
-        // [修正]：我们直接使用 fetch 构造请求，因为标准 apiFetch 会带上当前的 address jwt
-        // 目标是将 bindForm.value.jwt 作为 Authorization 头，去请求 /user_api/bind_address
-        // 同时保持用户的 x-user-token
-        
-        // 这里有个简便方法：后端 bind 接口其实也支持 bindByID，但那是内部调用。
-        // 我们直接用 api.fetch，但在 options.headers 里覆盖 Authorization
-        
-        // 注意：这个操作比较特殊，因为我们想“把这个 JWT 代表的地址绑定给当前用户”
-        // 后端 bind_address.ts 的 bind 方法逻辑是：const { address_id } = c.get("jwtPayload");
-        // 所以我们需要伪造一个请求，用待绑定的 JWT 做 Auth。
-        
-        const rawRes = await fetch(api.fetch.defaults?.baseURL ? api.fetch.defaults.baseURL + '/user_api/bind_address' : '/user_api/bind_address', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${bindForm.value.jwt}`,
-                'x-user-token': useGlobalState().userJwt.value, // 保持用户登录态
-                'Content-Type': 'application/json'
-            }
-        })
-        
-        if (rawRes.ok) {
-            message.success(t('bindSuccess'))
-            showBindModal.value = false
-            bindForm.value.jwt = ''
-            fetchData()
-        } else {
-            const txt = await rawRes.text()
-            throw new Error(txt)
-        }
-    } catch (e) {
-        message.error(e.message || 'Bind failed')
-    } finally {
-        bindLoading.value = false
-    }
-}
+const handleSwitch = async (row) => { try { const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); if (res.jwt) { jwt.value = res.jwt; message.success(t('switched') + row.name); await api.getSettings() } } catch (e) { message.error(e.message) } }
+const handleCopyCredential = async (row) => { try { const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); if (res.jwt) { await toClipboard(res.jwt); message.success(t('copied')) } } catch (e) { message.error(e.message) } }
+const openTransferModal = (row) => { transferForm.value = { addressId: row.id, targetEmail: '' }; showTransferModal.value = true }
+const handleTransfer = async () => { if (!transferForm.value.targetEmail) return; transferLoading.value = true; try { await api.fetch('/user_api/transfer_address', { method: 'POST', body: JSON.stringify({ address_id: transferForm.value.addressId, target_user_email: transferForm.value.targetEmail }) }); message.success(t('transferSuccess')); showTransferModal.value = false; fetchData() } catch (e) { message.error(e.message) } finally { transferLoading.value = false } }
+const handleDelete = async (addressId) => { try { await api.fetch('/user_api/unbind_address', { method: 'POST', body: JSON.stringify({ address_id: addressId }) }); message.success(t('unbindSuccess')); fetchData() } catch (e) { message.error(e.message) } }
+const handleBind = async () => { if (!bindForm.value.jwt) return; bindLoading.value = true; try { const rawRes = await fetch(api.fetch.defaults?.baseURL ? api.fetch.defaults.baseURL + '/user_api/bind_address' : '/user_api/bind_address', { method: 'POST', headers: { 'Authorization': `Bearer ${bindForm.value.jwt}`, 'x-user-token': useGlobalState().userJwt.value, 'Content-Type': 'application/json' } }); if (rawRes.ok) { message.success(t('bindSuccess')); showBindModal.value = false; bindForm.value.jwt = ''; fetchData() } else { const txt = await rawRes.text(); throw new Error(txt) } } catch (e) { message.error(e.message || 'Bind failed') } finally { bindLoading.value = false } }
 
 const columns = [
     { title: 'ID', key: 'id', width: 50 },
@@ -299,8 +204,6 @@ const columns = [
             return h(NSpace, null, {
                 default: () => [
                     h(NButton, { size: 'tiny', type: 'primary', secondary: true, onClick: () => handleSwitch(row) }, { default: () => t('switch') }),
-                    
-                    // Dropdown for More Actions
                     h(NDropdown, {
                         trigger: 'click',
                         options: [
@@ -311,22 +214,16 @@ const columns = [
                         onSelect: (key) => {
                             if (key === 'copy') handleCopyCredential(row)
                             if (key === 'transfer') openTransferModal(row)
-                            if (key === 'delete') {
-                                if(confirm('Confirm Delete?')) handleDelete(row.id)
-                            }
+                            if (key === 'delete') { if(confirm('Confirm Delete?')) handleDelete(row.id) }
                         }
-                    }, {
-                        default: () => h(NButton, { size: 'tiny' }, { default: () => t('more') })
-                    })
+                    }, { default: () => h(NButton, { size: 'tiny' }, { default: () => t('more') }) })
                 ]
             })
         }
     }
 ]
 
-onMounted(() => {
-    fetchData()
-})
+onMounted(() => { fetchData() })
 </script>
 
 <template>
@@ -341,8 +238,12 @@ onMounted(() => {
 
         <n-modal v-model:show="showCreateModal" preset="card" :title="t('createAddress')" style="width: 500px">
             <n-form>
-                <n-form-item :label="t('prefix')" required>
-                    <n-input v-model:value="createForm.name" placeholder="e.g. boss" />
+                <n-form-item :label="t('prefix')">
+                    <n-input-group>
+                        <n-input-group-label v-if="openSettings.prefix">{{ openSettings.prefix }}</n-input-group-label>
+                        <n-input v-model:value="createForm.name" placeholder="e.g. boss" />
+                        <n-button @click="generateRandom">{{ t('random') }}</n-button>
+                    </n-input-group>
                 </n-form-item>
                 <n-form-item :label="t('domain')" required>
                     <n-select v-model:value="createForm.domain" :options="domainOptions" />
@@ -374,7 +275,6 @@ onMounted(() => {
                 <n-button type="warning" :loading="transferLoading" @click="handleTransfer">{{ t('confirm') }}</n-button>
             </template>
         </n-modal>
-
         <n-modal v-model:show="showBindModal" preset="card" :title="t('bindTitle')" style="width: 400px">
             <n-form>
                 <n-form-item label="JWT" required>
