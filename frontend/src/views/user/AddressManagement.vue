@@ -1,11 +1,13 @@
 <script setup>
 import { ref, onMounted, computed, watch, h } from 'vue'
+import { useRouter } from 'vue-router' // [新增] 引入 useRouter
 import { useI18n } from 'vue-i18n'
 import { useMessage, NButton, NInputGroup, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NInputGroupLabel } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
+const router = useRouter() // [新增] 初始化 router
 const { openSettings, jwt, userBalance, userSettings } = useGlobalState()
 const message = useMessage()
 const { toClipboard } = useClipboard()
@@ -102,13 +104,11 @@ const domainOptions = computed(() => {
     }))
 })
 
-// [关键] 计算当前角色的前缀
+// 获取当前应该应用的前缀
 const currentPrefix = computed(() => {
-    // 优先使用用户角色前缀
     if (userSettings.value.user_role && typeof userSettings.value.user_role.prefix === 'string') {
         return userSettings.value.user_role.prefix;
     }
-    // 否则使用全局配置
     return openSettings.value.prefix || '';
 })
 
@@ -185,7 +185,22 @@ const handleCreate = async () => {
     }
 }
 
-const handleSwitch = async (row) => { try { const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); if (res.jwt) { jwt.value = res.jwt; message.success(t('switched') + row.name); await api.getSettings() } } catch (e) { message.error(e.message) } }
+// [关键修改] 切换地址后跳转到首页
+const handleSwitch = async (row) => {
+    try {
+        const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`);
+        if (res.jwt) {
+            jwt.value = res.jwt;
+            message.success(t('switched') + row.name);
+            await api.getSettings();
+            // 跳转到首页，Index.vue 会根据 settings.address 自动显示收件箱
+            router.push('/');
+        }
+    } catch (e) {
+        message.error(e.message)
+    }
+}
+
 const handleCopyCredential = async (row) => { try { const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); if (res.jwt) { await toClipboard(res.jwt); message.success(t('copied')) } } catch (e) { message.error(e.message) } }
 const openTransferModal = (row) => { transferForm.value = { addressId: row.id, targetEmail: '' }; showTransferModal.value = true }
 const handleTransfer = async () => { if (!transferForm.value.targetEmail) return; transferLoading.value = true; try { await api.fetch('/user_api/transfer_address', { method: 'POST', body: JSON.stringify({ address_id: transferForm.value.addressId, target_user_email: transferForm.value.targetEmail }) }); message.success(t('transferSuccess')); showTransferModal.value = false; fetchData() } catch (e) { message.error(e.message) } finally { transferLoading.value = false } }
@@ -221,10 +236,9 @@ const columns = [
     }
 ]
 
-onMounted(async () => {
-    // 确保加载了用户信息以便显示正确前缀
+onMounted(() => {
     if (useGlobalState().userJwt.value) {
-        await api.getUserSettings(message);
+        api.getUserSettings(message);
     }
     fetchData();
 })
