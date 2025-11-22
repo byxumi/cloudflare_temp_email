@@ -276,7 +276,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
-  background: url('https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN') no-repeat center center fixed;
+  background: url('https://t.alcy.cc/ycy') no-repeat center center fixed;
   background-size: cover;
   background-attachment: fixed;
   letter-spacing: 0.02em;
