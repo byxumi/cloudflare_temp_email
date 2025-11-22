@@ -23,14 +23,12 @@ import SimpleIndex from './index/SimpleIndex.vue';
 import UserLogin from './user/UserLogin.vue'
 import AddressManagement from './user/AddressManagement.vue'
 
-// [关键] 引入 jwt，用于判断是否应该尝试恢复邮箱状态
-const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt, jwt } = useGlobalState()
+const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt } = useGlobalState()
 const message = useMessage()
 const route = useRoute()
 const router = useRouter()
 const isMobile = useIsMobile()
 const showLoginModal = ref(false)
-const initLoading = ref(false)
 
 const SendMail = defineAsyncComponent(() => {
   loading.value = true;
@@ -104,6 +102,7 @@ const saveToS3 = async (mail_id, filename, blob) => {
       method: 'POST',
       body: JSON.stringify({ key: `${mail_id}/${filename}` })
     });
+    // upload to s3 by formdata
     const formData = new FormData();
     formData.append(filename, blob);
     await fetch(url, {
@@ -140,17 +139,6 @@ watch(route, () => {
 })
 
 onMounted(async () => {
-  if (jwt.value && !settings.value.address) {
-    initLoading.value = true;
-    try {
-      await api.getSettings();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      initLoading.value = false;
-    }
-  }
-
   if (route.query.mail_id) {
     showMailIdQuery.value = true;
     mailIdQuery.value = route.query.mail_id;
@@ -219,7 +207,7 @@ onMounted(async () => {
         </n-tabs>
       </div>
 
-      <div v-else-if="userJwt && !jwt" style="padding: 20px;">
+      <div v-else-if="userJwt" style="padding: 20px;">
         <n-card :title="t('addressManagement')">
           <AddressManagement />
         </n-card>
@@ -244,7 +232,7 @@ onMounted(async () => {
     </div>
 
     <n-modal v-model:show="showLoginModal" preset="card" style="width: 400px;" :title="t('login')">
-      <UserLogin v-if="showLoginModal" @login-success="checkLogin" />
+      <UserLogin @login-success="checkLogin" />
     </n-modal>
   </div>
 </template>
