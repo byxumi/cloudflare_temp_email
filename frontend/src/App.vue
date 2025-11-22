@@ -23,12 +23,11 @@ const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
-// [修改] 默认为 true，确保每次刷新都先显示动画
 const showSplash = ref(true)
 
-// [UI 美化] 终极版主题配置
+// [UI 美化] 终极版：增加内发光和细节质感
 const themeOverrides = computed(() => {
-  const alpha = 0.75;
+  const alpha = 0.72; // 稍微降低一点点不透明度，更通透
   
   const glassBg = isDark.value 
     ? `rgba(30, 30, 35, ${alpha})` 
@@ -40,7 +39,7 @@ const themeOverrides = computed(() => {
 
   const glassBorder = isDark.value
     ? 'rgba(255, 255, 255, 0.12)'
-    : 'rgba(255, 255, 255, 0.6)';
+    : 'rgba(255, 255, 255, 0.5)'; // 亮色模式边框稍微减淡
 
   const primaryColor = '#2080f0';
   const transparent = 'transparent';
@@ -50,16 +49,16 @@ const themeOverrides = computed(() => {
       primaryColor: primaryColor,
       primaryColorHover: '#4098fc',
       primaryColorPressed: '#1060c9',
-      borderRadius: '12px',
+      borderRadius: '16px', // 全局圆角加大
       borderRadiusSmall: '8px',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif', // 优化字体栈
       
       bodyColor: transparent,
       cardColor: glassBg,
       modalColor: glassBg,
       popoverColor: glassBg,
       tableColor: transparent,
-      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', 
+      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)', 
       inputColor: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
     },
     LoadingBar: {
@@ -68,57 +67,60 @@ const themeOverrides = computed(() => {
       height: '3px'
     },
     Card: {
-      borderRadius: '16px',
+      borderRadius: '20px',
       color: glassBg,
       borderColor: glassBorder,
+      // [美化] 增加内发光 (inset shadow) 模拟玻璃厚度
       boxShadow: isDark.value 
-        ? '0 8px 32px rgba(0, 0, 0, 0.4)' 
-        : '0 8px 32px rgba(31, 38, 135, 0.1)'
+        ? '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05)' 
+        : '0 8px 32px rgba(31, 38, 135, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.4)'
     },
     Modal: {
       color: glassBg,
-      boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)',
-      borderColor: glassBorder
+      boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.1)',
+      borderColor: glassBorder,
+      borderRadius: '24px'
     },
     Dialog: {
       color: glassBg,
-      borderRadius: '16px',
+      borderRadius: '20px',
       borderColor: glassBorder
     },
     DataTable: {
       color: transparent,
-      thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
+      thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.02)',
       tdColor: transparent,
-      tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
+      // 悬浮行颜色加深
+      tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.3)',
       borderColor: glassBorder,
-      borderRadius: '10px'
+      borderRadius: '12px'
     },
     Input: {
-      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
-      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.8)',
+      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
+      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)',
       border: `1px solid ${glassBorder}`,
-      borderRadius: '10px',
+      borderRadius: '12px',
     },
     Select: {
       peers: {
         InternalSelection: {
-          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
+          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
           border: `1px solid ${glassBorder}`,
-          borderRadius: '10px',
+          borderRadius: '12px',
         },
         InternalSelectMenu: {
           color: glassBg,
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
           optionColorHover: glassBgHover,
-          padding: '6px',
-          borderRadius: '12px'
+          padding: '8px',
+          borderRadius: '16px'
         }
       }
     },
     Dropdown: {
       color: glassBg,
       optionColorHover: glassBgHover,
-      borderRadius: '10px'
+      borderRadius: '12px'
     },
     Layout: {
       color: transparent,
@@ -127,15 +129,15 @@ const themeOverrides = computed(() => {
       siderColor: transparent
     },
     Tabs: {
-      tabBorderRadius: '10px',
-      panePadding: '20px',
+      tabBorderRadius: '12px',
+      panePadding: '24px',
       tabColor: transparent,
       tabBorderColor: transparent
     },
     Button: {
       fontWeight: '600',
-      borderRadiusMedium: '10px',
-      borderRadiusLarge: '12px',
+      borderRadiusMedium: '12px',
+      borderRadiusLarge: '14px',
     },
     Pagination: {
       itemColor: transparent,
@@ -148,8 +150,6 @@ const themeOverrides = computed(() => {
 })
 
 onMounted(async () => {
-  // [修改] 每次刷新都显示开屏动画
-  // 之前的 sessionStorage 判断已移除
   setTimeout(() => {
     showSplash.value = false
   }, 2000)
@@ -271,17 +271,19 @@ onMounted(async () => {
 <style>
 /* === 全局基础设置 === */
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   margin: 0;
   background: url('https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN') no-repeat center center fixed;
   background-size: cover;
   background-attachment: fixed;
-  /* [新增] 微妙的文字阴影，提升在壁纸上的可读性 */
-  text-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  /* [美化] 增加字间距，提升呼吸感 */
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-/* === 开屏动画样式 === */
+/* === 开屏动画 === */
 .splash-screen {
   position: fixed;
   top: 0;
@@ -289,10 +291,9 @@ body {
   width: 100%;
   height: 100%;
   z-index: 9999;
-  /* 强力毛玻璃背景 */
   background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(50px) saturate(150%);
-  -webkit-backdrop-filter: blur(50px) saturate(150%);
+  backdrop-filter: blur(60px) saturate(160%);
+  -webkit-backdrop-filter: blur(60px) saturate(160%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -306,75 +307,72 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 30px;
+  gap: 32px;
 }
 
 .splash-logo {
-  width: 120px;
-  height: 120px;
-  border-radius: 28px; /* 更圆润的角 */
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-  /* 入场动画 */
-  animation: logo-float 3s ease-in-out infinite;
+  width: 100px;
+  height: 100px;
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+  animation: logo-pulse 2s ease-in-out infinite;
 }
 
 .splash-loader {
-  width: 160px;
+  width: 60px;
   height: 4px;
-  background: rgba(32, 128, 240, 0.15);
+  background: rgba(32, 128, 240, 0.2);
   border-radius: 2px;
-  overflow: hidden;
   position: relative;
+  overflow: hidden;
 }
 
 .splash-loader::after {
   content: '';
   position: absolute;
-  left: 0;
   top: 0;
+  left: 0;
   height: 100%;
   width: 100%;
   background: #2080f0;
-  animation: loader-slide 1.8s infinite ease-in-out;
   transform: translateX(-100%);
+  animation: loader-finish 1.5s ease-in-out infinite;
   border-radius: 2px;
 }
 
-/* Logo 悬浮呼吸动画 */
-@keyframes logo-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+@keyframes logo-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
-@keyframes loader-slide {
+@keyframes loader-finish {
   0% { transform: translateX(-100%); }
   50% { transform: translateX(0); }
   100% { transform: translateX(100%); }
 }
 
-/* 离场动画：缩放淡出 */
 .splash-leave-active {
-  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .splash-leave-to {
   opacity: 0;
   backdrop-filter: blur(0px);
-  -webkit-backdrop-filter: blur(0px);
   transform: scale(1.1);
 }
 
-/* ... 滚动条美化 ... */
+/* === 滚动条美化 === */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(150, 150, 150, 0.3);
-  border-radius: 4px;
+  background: rgba(150, 150, 150, 0.2);
+  border-radius: 3px;
   backdrop-filter: blur(4px);
+  transition: background 0.3s;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(150, 150, 150, 0.5);
@@ -385,7 +383,7 @@ body {
   margin-right: 10px;
 }
 
-/* === 玻璃拟态核心样式 === */
+/* === 全局玻璃拟态核心 === */
 .n-card, 
 .n-modal, 
 .n-drawer, 
@@ -396,11 +394,7 @@ body {
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.n-card:hover {
-  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 [data-theme='dark'] .n-card,
@@ -408,38 +402,42 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
+/* Tab 内容区 */
 .n-tabs .n-tab-pane {
   background-color: rgba(255, 255, 255, 0.65) !important;
   backdrop-filter: blur(16px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.25) !important;
   border-radius: 16px !important;
-  margin-top: 10px;
-  padding: 20px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  margin-top: 12px;
+  padding: 24px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
 }
 [data-theme='dark'] .n-tabs .n-tab-pane {
   background-color: rgba(30, 30, 35, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
+/* Tab 按钮优化 */
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
-  background-color: rgba(255, 255, 255, 0.4) !important;
-  backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   border-bottom: none !important;
-  margin-right: 6px !important;
-  border-radius: 10px 10px 0 0 !important;
-  transition: all 0.3s ease !important;
+  margin-right: 8px !important;
+  border-radius: 12px 12px 0 0 !important;
+  transition: all 0.2s ease !important;
+  font-weight: 500;
 }
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab:hover {
-  background-color: rgba(255, 255, 255, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.55) !important;
   transform: translateY(-2px);
 }
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
   background-color: rgba(255, 255, 255, 0.85) !important;
   box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
   transform: translateY(0);
+  font-weight: 600;
 }
 [data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
   background-color: rgba(0, 0, 0, 0.3) !important;
@@ -449,17 +447,15 @@ body {
   background-color: rgba(40, 40, 45, 0.8) !important;
 }
 
+/* [美化] 按钮点击回弹效果 */
+.n-button:active {
+  transform: scale(0.96);
+}
 .n-button {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-.n-button--primary-type:not(.n-button--ghost) {
-  box-shadow: 0 4px 14px 0 rgba(32, 128, 240, 0.3);
-}
-.n-button--primary-type:not(.n-button--ghost):hover {
-  box-shadow: 0 6px 20px 0 rgba(32, 128, 240, 0.4);
-  transform: translateY(-1px);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 强制透明 */
 .n-data-table, .n-data-table .n-data-table-th, .n-data-table .n-data-table-td,
 .n-list, .n-list .n-list-item,
 .n-layout, .n-layout-header, .n-layout-footer, .n-layout-sider {
@@ -482,7 +478,8 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(255, 255, 255, 0.15);
+  /* 降低一点背景亮度，突出内容 */
+  background: rgba(255, 255, 255, 0.1);
   pointer-events: none;
   z-index: 0;
   transition: background 0.3s ease;
@@ -507,7 +504,6 @@ body {
   padding: 0 16px; 
 }
 
-/* === [美化] 悬浮 Header === */
 .sticky-header-wrapper {
   position: sticky;
   top: 20px;
@@ -516,16 +512,17 @@ body {
   padding: 12px 24px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
 }
 
 :deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
   background: rgba(30, 30, 35, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .app-header {
@@ -541,25 +538,23 @@ body {
   padding-bottom: 40px;
 }
 
-/* === [美化] 悬浮 Footer === */
 .floating-footer-wrapper {
   margin-top: auto;
   margin-bottom: 20px;
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.4); /* 比 Header 稍微淡一点 */
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   text-align: center;
-  /* 居中 */
   align-self: center;
   width: fit-content;
-  min-width: 300px;
+  min-width: 280px;
 }
 
 :deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
-  background: rgba(30, 30, 35, 0.4);
+  background: rgba(30, 30, 35, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
