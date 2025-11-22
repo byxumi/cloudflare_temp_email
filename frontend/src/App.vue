@@ -1,13 +1,13 @@
 <script setup>
 import { darkTheme, NGlobalStyle, zhCN } from 'naive-ui'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useScript } from '@unhead/vue'
 import { useI18n } from 'vue-i18n'
 import { useGlobalState } from './store'
 import { useIsMobile } from './utils/composables'
 import Header from './views/Header.vue';
 import Footer from './views/Footer.vue';
-import RouterLoadingBar from './components/RouterLoadingBar.vue' // [新增]
+import RouterLoadingBar from './components/RouterLoadingBar.vue'
 import { api } from './api'
 
 const {
@@ -23,7 +23,10 @@ const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
-// [UI 美化] 终极版：悬浮 Header + 进度条配色
+// [新增] 开屏动画控制状态
+const showSplash = ref(false)
+
+// [UI 美化] 终极版：悬浮 Header + 进度条配色 + 玻璃拟态
 const themeOverrides = computed(() => {
   const alpha = 0.75;
   
@@ -59,7 +62,6 @@ const themeOverrides = computed(() => {
       tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', 
       inputColor: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
     },
-    // [新增] 进度条样式
     LoadingBar: {
       colorLoading: primaryColor,
       colorError: '#d03050',
@@ -146,6 +148,17 @@ const themeOverrides = computed(() => {
 })
 
 onMounted(async () => {
+  // [新增] 开屏动画逻辑
+  const hasShownSplash = sessionStorage.getItem('hasShownSplash')
+  if (!hasShownSplash) {
+    showSplash.value = true
+    // 2秒后关闭开屏动画
+    setTimeout(() => {
+      showSplash.value = false
+      sessionStorage.setItem('hasShownSplash', 'true')
+    }, 2000)
+  }
+
   try {
     await api.getUserSettings();
   } catch (error) {
@@ -195,6 +208,16 @@ onMounted(async () => {
 <template>
   <n-config-provider :locale="localeConfig" :theme="theme" :theme-overrides="themeOverrides">
     <n-global-style />
+    
+    <Transition name="splash">
+      <div v-if="showSplash" class="splash-screen">
+        <div class="splash-content">
+          <img src="/logo.png" alt="Logo" class="splash-logo" />
+          <div class="splash-loader"></div>
+        </div>
+      </div>
+    </Transition>
+
     <n-loading-bar-provider>
       <RouterLoadingBar />
       
@@ -249,7 +272,7 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === 全局基础 === */
+/* === 1. 全局基础设置 === */
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -259,6 +282,96 @@ body {
   background-attachment: fixed; 
 }
 
+/* 开屏动画样式 */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  /* 强力毛玻璃背景 */
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(50px) saturate(150%);
+  -webkit-backdrop-filter: blur(50px) saturate(150%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 深色模式适配 */
+[data-theme='dark'] .splash-screen {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.splash-logo {
+  width: 120px;
+  height: 120px;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  /* 入场动画：弹跳 */
+  animation: logo-enter 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.splash-loader {
+  width: 40px;
+  height: 4px;
+  background: rgba(32, 128, 240, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.splash-loader::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 100%;
+  background: #2080f0;
+  animation: loader-slide 1.5s infinite ease-in-out;
+  transform: translateX(-100%);
+}
+
+/* Logo 入场动画 */
+@keyframes logo-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) translateY(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes loader-slide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0); }
+  100% { transform: translateX(100%); }
+}
+
+/* 离场动画：迷雾消散 */
+.splash-leave-active {
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.splash-leave-to {
+  opacity: 0;
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  transform: scale(1.05);
+}
+
+/* ... (保留之前的滚动条等基础样式) ... */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -280,7 +393,7 @@ body {
   margin-right: 10px;
 }
 
-/* === 玻璃拟态通用样式 === */
+/* === 玻璃拟态核心样式 === */
 .n-card, 
 .n-modal, 
 .n-drawer, 
@@ -402,28 +515,21 @@ body {
   padding: 0 16px; 
 }
 
-/* === [修改] 悬浮圆形 Header 样式 === */
 .sticky-header-wrapper {
   position: sticky;
-  top: 20px; /* 距离顶部 20px，形成悬浮感 */
+  top: 20px;
   z-index: 100;
-  
-  /* 胶囊形状 */
   margin: 0 0 24px 0;
   padding: 12px 24px;
   border-radius: 24px;
-  
-  /* 独立的玻璃效果 */
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  
   transition: all 0.3s ease;
 }
 
-/* 深色模式下的 Header */
 :deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
   background: rgba(30, 30, 35, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -431,7 +537,6 @@ body {
 }
 
 .app-header {
-  /* 内部 Header 此时不需要边距了 */
   margin-bottom: 0; 
 }
 
