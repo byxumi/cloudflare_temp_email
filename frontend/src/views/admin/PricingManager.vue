@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, computed, h } from 'vue'
+import { ref, onMounted, computed, h, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NPopconfirm, NSpace } from 'naive-ui'
+import { useMessage, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NPopconfirm, NPagination } from 'naive-ui'
 import { api } from '../../api'
 import { useGlobalState } from '../../store'
 
@@ -53,8 +53,11 @@ const form = ref({ domain: null, role_text: 'default', price: 0.00 })
 const loading = ref(false)
 const roleOptions = ref([{ label: t('default'), value: 'default' }])
 const checkedRowKeys = ref([])
+// [修复] 增加分页状态
+const page = ref(1)
+const pageSize = ref(20)
+const total = ref(0)
 
-// 域名下拉选项
 const domainOptions = computed(() => {
     if (openSettings.value && openSettings.value.domains) {
         return openSettings.value.domains.map(d => ({
@@ -67,17 +70,22 @@ const domainOptions = computed(() => {
 
 const fetchData = async () => {
     loading.value = true
-    checkedRowKeys.value = [] // 清空选中
+    checkedRowKeys.value = []
     try {
         if (!openSettings.value.fetched) {
             await api.getOpenSettings(message)
         }
         
-        // 获取定价列表
+        // 获取定价列表 (这里虽然 api 可能没传 limit/offset，但后端支持的话最好加上)
+        // 如果 adminGetPrices 不支持分页，这里就只展示数据
         const res = await api.adminGetPrices()
         data.value = res.results || []
+        
+        // [修复] 分页逻辑兼容
+        if (res.count > 0) {
+            total.value = res.count
+        }
 
-        // 获取角色列表并构建选项
         const roles = await api.adminGetUserRoles()
         if (roles && Array.isArray(roles)) {
             const apiRoles = roles.map(r => ({ label: r.role, value: r.role }))
@@ -156,6 +164,13 @@ const columns = [
     }
 ]
 
+// [修复] 监听分页
+watch([page, pageSize], () => {
+    // 如果后端 adminGetPrices 支持分页，这里可以传参
+    // 目前代码里 adminGetPrices 是直接返回所有，所以这个 watch 主要为了未来扩展
+    fetchData() 
+})
+
 onMounted(fetchData)
 </script>
 
@@ -181,6 +196,14 @@ onMounted(fetchData)
             :bordered="false" 
             :row-key="row => row.id"
             v-model:checked-row-keys="checkedRowKeys"
+        />
+        
+        <n-pagination 
+            v-if="total > 0"
+            v-model:page="page" 
+            v-model:page-size="pageSize"
+            :item-count="total"
+            style="margin-top: 10px"
         />
 
         <n-modal v-model:show="showModal" preset="dialog" :title="t('setPrice')">
