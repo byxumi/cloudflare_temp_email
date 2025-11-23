@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, h } from 'vue'
+import { ref, onMounted, h, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMessage, NDataTable, NPagination, NTag } from 'naive-ui'
 import { api } from '../../api'
@@ -39,7 +39,10 @@ const fetchData = async () => {
     try {
         const res = await api.getUserTransactions(pageSize.value, (page.value - 1) * pageSize.value)
         data.value = res.results
-        total.value = res.count
+        // [修复] 防止翻页时 total 意外归零
+        if (res.count > 0) {
+            total.value = res.count
+        }
     } catch (e) {
         message.error(e.message)
     } finally {
@@ -78,6 +81,11 @@ const columns = [
     { title: t('desc'), key: 'description' }
 ]
 
+// [修复] 使用 watch 监听分页，逻辑更稳健
+watch([page, pageSize], () => {
+    fetchData()
+})
+
 onMounted(fetchData)
 </script>
 
@@ -86,9 +94,10 @@ onMounted(fetchData)
         <n-data-table :columns="columns" :data="data" :loading="loading" :bordered="false" />
         <n-pagination 
             v-model:page="page" 
+            v-model:page-size="pageSize"
             :item-count="total" 
-            :page-size="pageSize" 
-            @update:page="fetchData" 
+            :page-sizes="[10, 20, 50]"
+            show-size-picker
             style="margin-top: 10px; justify-content: flex-end;"
         />
     </div>
