@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, h } from 'vue'
+import { ref, onMounted, watch, h } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMessage, NButton, NDataTable, NPagination, NModal, NForm, NFormItem, NInputNumber, NDatePicker, NPopconfirm, NSpace, NTag, NDropdown } from 'naive-ui'
 import { api } from '../../api'
@@ -71,15 +71,18 @@ const loading = ref(false)
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
-const checkedRowKeys = ref([]) // 选中的ID
+const checkedRowKeys = ref([])
 
 const fetchData = async () => {
     loading.value = true
-    checkedRowKeys.value = [] // 刷新时清空选择
+    checkedRowKeys.value = []
     try {
         const res = await api.adminGetCards(pageSize.value, (page.value - 1) * pageSize.value)
         data.value = res.results
-        total.value = res.count
+        // [修复] 只有当返回的 count > 0 时才更新 total，防止翻页时后端返回 0 导致分页器失效
+        if (res.count > 0) {
+            total.value = res.count
+        }
     } catch (e) {
         message.error(e.message)
     } finally {
@@ -117,7 +120,6 @@ const handleGenerate = async () => {
     }
 }
 
-// 批量操作处理
 const handleBatchAction = async (action) => {
     if (checkedRowKeys.value.length === 0) return;
     
@@ -126,11 +128,10 @@ const handleBatchAction = async (action) => {
         if (action === 'delete') {
             await api.adminBatchDeleteCards(checkedRowKeys.value);
         } else {
-            // action is 'active' or 'disabled'
             await api.adminBatchUpdateCardStatus(checkedRowKeys.value, action);
         }
         message.success(t('operateSuccess'));
-        fetchData(); // 刷新列表
+        fetchData();
     } catch (e) {
         message.error(e.message);
     } finally {
@@ -138,7 +139,6 @@ const handleBatchAction = async (action) => {
     }
 }
 
-// 批量操作下拉菜单
 const batchOptions = [
     { label: t('enable'), key: 'active' },
     { label: t('disable'), key: 'disabled' },
@@ -147,8 +147,6 @@ const batchOptions = [
 
 const handleSelectBatch = (key) => {
     if (key === 'delete') {
-        // 触发确认弹窗逻辑，这里通过外层按钮控制或简单直接调用
-        // 由于 NDropdown 不好直接嵌 Popconfirm，这里简化处理，直接调用带确认的逻辑
         if(!confirm(t('confirmBatchDelete'))) return; 
         handleBatchAction('delete');
     } else {
@@ -156,7 +154,6 @@ const handleSelectBatch = (key) => {
     }
 }
 
-// 单个操作
 const handleDelete = async (id) => {
     try {
         await api.adminDeleteCard(id)
@@ -179,7 +176,7 @@ const handleToggleStatus = async (row) => {
 }
 
 const columns = [
-    { type: 'selection' }, // 多选列
+    { type: 'selection' },
     { title: 'ID', key: 'id', width: 60 },
     { title: t('code'), key: 'code', width: 200, ellipsis: { tooltip: true } },
     { 
@@ -233,6 +230,11 @@ const columns = [
     }
 ]
 
+// [修复] 使用 watch 监听页码变化，与 UserManagement 保持一致
+watch([page, pageSize], () => {
+    fetchData()
+})
+
 onMounted(fetchData)
 </script>
 
@@ -240,14 +242,12 @@ onMounted(fetchData)
     <div>
         <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
             <n-button type="primary" @click="showModal = true">{{ t('generate') }}</n-button>
-            
             <n-dropdown :options="batchOptions" @select="handleSelectBatch" :disabled="checkedRowKeys.length === 0">
                 <n-button :disabled="checkedRowKeys.length === 0">
                     {{ t('batchActions') }} 
                     <span v-if="checkedRowKeys.length > 0">({{ checkedRowKeys.length }})</span>
                 </n-button>
             </n-dropdown>
-
             <n-button @click="fetchData">刷新</n-button>
         </div>
         
@@ -262,9 +262,10 @@ onMounted(fetchData)
         />
         <n-pagination 
             v-model:page="page" 
+            v-model:page-size="pageSize"
             :item-count="total" 
-            :page-size="pageSize" 
-            @update:page="fetchData" 
+            :page-sizes="[20, 50, 100]"
+            show-size-picker
             style="margin-top: 10px"
         />
 
