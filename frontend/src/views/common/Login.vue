@@ -47,11 +47,10 @@ const credential = ref('')
 const emailName = ref("")
 const emailDomain = ref("")
 const cfToken = ref("")
-const loginMethod = ref('credential') // 'credential' or 'password'
+const loginMethod = ref('credential')
 const loginAddress = ref('')
 const loginPassword = ref('')
 
-// 根据 openSettings 初始化登录方式
 const initLoginMethod = () => {
     if (openSettings.value?.enableAddressPassword) {
         loginMethod.value = 'password';
@@ -61,8 +60,8 @@ const initLoginMethod = () => {
 }
 
 const login = async () => {
+    // 密码登录逻辑
     if (loginMethod.value === 'password') {
-        // Password login
         if (!loginAddress.value || !loginPassword.value) {
             message.error(t('emailPasswordRequired'));
             return;
@@ -77,32 +76,45 @@ const login = async () => {
             });
             jwt.value = res.jwt;
             await api.getSettings();
+            // 尝试绑定，失败不阻断登录
             try {
                 await props.bindUserAddress();
             } catch (error) {
-                message.error(`${t('bindUserAddressError')}: ${error.message}`);
+                console.warn("Bind user address failed:", error);
             }
             await router.push(getRouterPathWithLang("/", locale.value));
         } catch (error) {
-            message.error(error.message || "error");
+            message.error(error.message || "Login Error");
         }
         return;
     }
+
+    // [关键修复] 凭证登录逻辑 (恢复旧版稳健逻辑)
     if (!credential.value) {
         message.error(t('credentialInput'));
         return;
     }
     try {
-        jwt.value = credential.value;
+        // 1. 去除首尾空格，防止复制错误
+        const cleanCredential = credential.value.trim();
+        jwt.value = cleanCredential;
+
+        // 2. 尝试获取设置来验证凭证有效性
         await api.getSettings();
+
+        // 3. 尝试绑定用户，即使失败也允许登录 (旧版逻辑)
         try {
             await props.bindUserAddress();
         } catch (error) {
-            message.error(`${t('bindUserAddressError')}: ${error.message}`);
+            console.warn("Bind user address failed:", error);
         }
+
+        // 4. 跳转
         await router.push(getRouterPathWithLang("/", locale.value));
     } catch (error) {
-        message.error(error.message || "error");
+        message.error(error.message || "Invalid Credential");
+        // 如果失败，清空错误的 jwt 防止影响后续状态
+        jwt.value = '';
     }
 }
 
@@ -185,7 +197,6 @@ const generateName = async () => {
             .replace(/\.{2,}/g, '.')
             .replace(addressRegex.value, '')
             .toLowerCase();
-        // support maxAddressLen
         if (emailName.value.length > openSettings.value.maxAddressLen) {
             emailName.value = emailName.value.slice(0, openSettings.value.maxAddressLen);
         }
@@ -198,22 +209,27 @@ const generateName = async () => {
 
 const newEmail = async () => {
     try {
-        // If custom names are disabled, send empty name to trigger backend auto-generation
         const nameToSend = openSettings.value.disableCustomAddressName ? "" : emailName.value;
         const res = await props.newAddressPath(
             nameToSend,
             emailDomain.value,
             cfToken.value
         );
+        // [关键] 获取到新 JWT 后立即设置
         jwt.value = res["jwt"];
         addressPassword.value = res["password"] || '';
+        
+        // 验证并获取设置
         await api.getSettings();
+        
         await router.push(getRouterPathWithLang("/", locale.value));
         showAddressCredential.value = true;
+        
+        // 尝试绑定
         try {
             await props.bindUserAddress();
         } catch (error) {
-            message.error(`${t('bindUserAddressError')}: ${error.message}`);
+            console.warn("Bind new address failed:", error);
         }
     } catch (error) {
         message.error(error.message || "error");
@@ -221,16 +237,13 @@ const newEmail = async () => {
 };
 
 const addressPrefix = computed(() => {
-    // if user has role, return role prefix
     if (userSettings.value?.user_role) {
         return userSettings.value.user_role.prefix || "";
     }
-    // if user has no role, return default prefix
     return openSettings.value.prefix;
 });
 
 const domainsOptions = computed(() => {
-    // if user has role, return role domains
     if (userSettings.value.user_role) {
         const allDomains = userSettings.value.user_role.domains;
         if (!allDomains) return openSettings.value.domains;
@@ -238,11 +251,9 @@ const domainsOptions = computed(() => {
             return allDomains.includes(domain.value);
         });
     }
-    // if user has no role, return default domains
     if (!openSettings.value.defaultDomains) {
         return openSettings.value.domains;
     }
-    // if user has no role and no default domains, return all domains
     return openSettings.value.domains.filter((domain) => {
         return openSettings.value.defaultDomains.includes(domain.value);
     });
@@ -285,7 +296,7 @@ onMounted(async () => {
 
                     <div v-else>
                         <n-form-item-row :label="t('credential')" required>
-                            <n-input v-model:value="credential" type="textarea" :autosize="{ minRows: 3 }" />
+                            <n-input v-model:value="credential" type="textarea" :autosize="{ minRows: 3 }" placeholder="eyJ..." />
                         </n-form-item-row>
                     </div>
 
@@ -354,7 +365,6 @@ onMounted(async () => {
         </n-tabs>
     </div>
 </template>
-
 
 <style scoped>
 .n-alert {
