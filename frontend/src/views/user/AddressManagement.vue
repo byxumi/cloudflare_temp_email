@@ -175,6 +175,8 @@ const handleCreate = async () => {
             showCreateModal.value = false
             fetchData()
             refreshBalance()
+            // [关键修改] 创建成功后直接跳转到首页
+            router.push('/')
         }
     } catch (e) {
         if (e.message && e.message.includes('402')) {
