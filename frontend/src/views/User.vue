@@ -19,7 +19,7 @@ const message = useMessage()
 const redeemCode = ref('')
 const redeemLoading = ref(false)
 const showTransactions = ref(false)
-const showRedeemModal = ref(false) // [新增] 控制充值弹窗
+const showRedeemModal = ref(false)
 const balanceLoading = ref(false)
 
 const { t } = useI18n({
@@ -78,7 +78,7 @@ const handleRedeem = async () => {
         if (res.success) {
             message.success(t('redeemSuccess'));
             redeemCode.value = '';
-            showRedeemModal.value = false; // 关闭弹窗
+            showRedeemModal.value = false;
             await fetchBalance();
         }
     } catch (e) {
@@ -88,12 +88,17 @@ const handleRedeem = async () => {
     }
 }
 
+// [修改] 跳转到您的网站
 const handleBuyCard = () => {
-    // 这里可以跳转到发卡网，如果有配置的话
+    // 请将下方的链接替换为您自己的发卡网或网站地址
+    const myWebsiteUrl = "https://buy.xumicloud.top"; 
+    
     if (openSettings.value.buyCardUrl) {
+        // 如果后端配置了链接则优先使用后端配置
         window.open(openSettings.value.buyCardUrl, '_blank');
     } else {
-        message.info("请联系管理员获取卡密");
+        // 否则使用您填写的地址
+        window.open(myWebsiteUrl, '_blank');
     }
 }
 
@@ -192,7 +197,7 @@ onMounted(async () => {
     vertical-align: middle;
 }
 
-/* 移动端适配：操作栏换行 */
+/* 移动端适配 */
 @media (max-width: 600px) {
     .wallet-container {
         flex-direction: column;
@@ -204,9 +209,11 @@ onMounted(async () => {
     .action-wrapper .n-space {
         width: 100%;
         justify-content: space-between;
+        flex-wrap: wrap;
     }
     .action-wrapper .n-button {
         flex: 1;
+        min-width: 30%; /* 按钮均分宽度 */
     }
 }
 </style>
