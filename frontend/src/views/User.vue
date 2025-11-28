@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NIcon } from 'naive-ui'
-import { History, Sync } from '@vicons/fa'
+import { useMessage, NIcon, NModal, NInput, NButton, NSpace } from 'naive-ui'
+import { History, Sync, CreditCard, ShoppingCart } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -13,13 +13,13 @@ import UserBar from './user/UserBar.vue';
 import UserMailBox from './user/UserMailBox.vue';
 import UserTransactions from './user/UserTransactions.vue';
 
-// 现在 store 里有了 userBalance，解构不会报错了
-const { userTab, globalTabplacement, userSettings, userBalance } = useGlobalState()
+const { userTab, globalTabplacement, userSettings, userBalance, openSettings } = useGlobalState()
 
 const message = useMessage()
 const redeemCode = ref('')
 const redeemLoading = ref(false)
 const showTransactions = ref(false)
+const showRedeemModal = ref(false) // [新增] 控制充值弹窗
 const balanceLoading = ref(false)
 
 const { t } = useI18n({
@@ -31,11 +31,14 @@ const { t } = useI18n({
             wallet: 'Wallet',
             balance: 'Balance',
             redeem: 'Redeem',
-            redeemPlaceholder: 'Enter redemption code',
+            redeemPlaceholder: 'Enter card code',
             redeemSuccess: 'Redeem Success',
-            viewBills: 'View Bills',
+            viewBills: 'Bills',
             myBills: 'My Transactions',
-            refreshBalance: 'Refresh'
+            refreshBalance: 'Refresh',
+            buyCard: 'Buy Card',
+            inputCard: 'Input Code',
+            recharge: 'Recharge'
         },
         zh: {
             address_management: '地址管理',
@@ -43,12 +46,15 @@ const { t } = useI18n({
             user_settings: '用户设置',
             wallet: '钱包',
             balance: '当前余额',
-            redeem: '充值',
-            redeemPlaceholder: '输入卡密',
+            redeem: '立即充值',
+            redeemPlaceholder: '请输入卡密',
             redeemSuccess: '充值成功',
-            viewBills: '查看账单',
+            viewBills: '账单明细',
             myBills: '我的账单',
-            refreshBalance: '刷新'
+            refreshBalance: '刷新',
+            buyCard: '购买卡密',
+            inputCard: '输入卡密',
+            recharge: '充值'
         }
     }
 });
@@ -56,7 +62,7 @@ const { t } = useI18n({
 const fetchBalance = async () => {
     balanceLoading.value = true;
     try {
-        await api.getUserBalance(); // 更新全局 store
+        await api.getUserBalance();
     } catch (e) {
         console.error(e);
     } finally {
@@ -72,12 +78,22 @@ const handleRedeem = async () => {
         if (res.success) {
             message.success(t('redeemSuccess'));
             redeemCode.value = '';
+            showRedeemModal.value = false; // 关闭弹窗
             await fetchBalance();
         }
     } catch (e) {
         message.error(e.message || "Redeem failed");
     } finally {
         redeemLoading.value = false;
+    }
+}
+
+const handleBuyCard = () => {
+    // 这里可以跳转到发卡网，如果有配置的话
+    if (openSettings.value.buyCardUrl) {
+        window.open(openSettings.value.buyCardUrl, '_blank');
+    } else {
+        message.info("请联系管理员获取卡密");
     }
 }
 
@@ -93,33 +109,40 @@ onMounted(async () => {
         <UserBar />
         <div v-if="userSettings.user_email">
             <n-card :title="t('wallet')" style="margin-bottom: 10px;" size="small">
-                <template #header-extra>
-                    <n-button size="small" @click="showTransactions = true">
-                        <template #icon><n-icon :component="History" /></template>
-                        {{ t('viewBills') }}
-                    </n-button>
-                </template>
-                <n-grid x-gap="12" :cols="2">
-                    <n-gi>
+                <div class="wallet-container">
+                    <div class="balance-wrapper">
                         <n-statistic :label="t('balance')">
                             <template #prefix>¥</template>
                             {{ (userBalance / 100).toFixed(2) }}
                             <template #suffix>
-                                <n-button text style="margin-left: 8px; vertical-align: middle;" @click="fetchBalance" :loading="balanceLoading">
+                                <n-button text class="refresh-btn" @click="fetchBalance" :loading="balanceLoading">
                                     <template #icon>
                                         <n-icon :component="Sync" />
                                     </template>
                                 </n-button>
                             </template>
                         </n-statistic>
-                    </n-gi>
-                    <n-gi>
-                        <n-input-group>
-                            <n-input v-model:value="redeemCode" :placeholder="t('redeemPlaceholder')" @keydown.enter="handleRedeem" />
-                            <n-button type="primary" @click="handleRedeem" :loading="redeemLoading">{{ t('redeem') }}</n-button>
-                        </n-input-group>
-                    </n-gi>
-                </n-grid>
+                    </div>
+
+                    <div class="action-wrapper">
+                        <n-space>
+                            <n-button type="primary" @click="showRedeemModal = true">
+                                <template #icon><n-icon :component="CreditCard" /></template>
+                                {{ t('recharge') }}
+                            </n-button>
+
+                            <n-button @click="handleBuyCard">
+                                <template #icon><n-icon :component="ShoppingCart" /></template>
+                                {{ t('buyCard') }}
+                            </n-button>
+
+                            <n-button @click="showTransactions = true">
+                                <template #icon><n-icon :component="History" /></template>
+                                {{ t('viewBills') }}
+                            </n-button>
+                        </n-space>
+                    </div>
+                </div>
             </n-card>
 
             <n-tabs type="card" v-model:value="userTab" :placement="globalTabplacement">
@@ -135,8 +158,55 @@ onMounted(async () => {
             </n-tabs>
         </div>
 
+        <n-modal v-model:show="showRedeemModal" preset="card" :title="t('recharge')" style="max-width: 400px">
+            <n-space vertical>
+                <n-input v-model:value="redeemCode" :placeholder="t('redeemPlaceholder')" @keydown.enter="handleRedeem" />
+                <n-button type="primary" block @click="handleRedeem" :loading="redeemLoading">
+                    {{ t('redeem') }}
+                </n-button>
+            </n-space>
+        </n-modal>
+
         <n-modal v-model:show="showTransactions" preset="card" :title="t('myBills')" style="max-width: 800px">
             <UserTransactions />
         </n-modal>
     </div>
 </template>
+
+<style scoped>
+.wallet-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.balance-wrapper {
+    flex: 1;
+    min-width: 120px;
+}
+
+.refresh-btn {
+    margin-left: 8px; 
+    vertical-align: middle;
+}
+
+/* 移动端适配：操作栏换行 */
+@media (max-width: 600px) {
+    .wallet-container {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .action-wrapper {
+        width: 100%;
+    }
+    .action-wrapper .n-space {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .action-wrapper .n-button {
+        flex: 1;
+    }
+}
+</style>
