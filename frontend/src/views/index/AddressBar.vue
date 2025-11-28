@@ -3,7 +3,7 @@ import useClipboard from 'vue-clipboard3'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { Copy, User, ExchangeAlt } from '@vicons/fa'
+import { Copy, User, ExchangeAlt, List } from '@vicons/fa'
 
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -34,6 +34,7 @@ const { locale, t } = useI18n({
             addressCredentialTip: 'Please copy the Mail Address Credential and you can use it to login to your email account.',
             addressPassword: 'Address Password',
             userLogin: 'User Login',
+            addressManagement: 'Address Mgmt'
         },
         zh: {
             ok: '确定',
@@ -45,6 +46,7 @@ const { locale, t } = useI18n({
             addressCredentialTip: '请复制邮箱地址凭证，你可以使用它登录你的邮箱。',
             addressPassword: '地址密码',
             userLogin: '用户登录',
+            addressManagement: '地址管理'
         }
     }
 });
@@ -95,6 +97,9 @@ onMounted(async () => {
             <n-alert type="info" :show-icon="false" :bordered="false">
                 <span>
                     <b>{{ addressLabel }}</b>
+                    <n-button style="margin-left: 10px" @click="router.push('/user')" size="small" tertiary type="info">
+                        <n-icon :component="List" /> {{ t('addressManagement') }}
+                    </n-button>
                     <n-button style="margin-left: 10px" @click="copy" size="small" tertiary type="primary">
                         <n-icon :component="Copy" /> {{ t('copy') }}
                     </n-button>
