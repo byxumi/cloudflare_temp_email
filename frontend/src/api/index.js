@@ -40,7 +40,7 @@ const apiFetch = async (path, options = {}) => {
         if (response.status === 401 && path.startsWith("/admin")) {
             showAdminAuth.value = true;
         }
-        if (response.status === 401 && openSettings.value.needAuth) {
+        if (response.status === 401 && openSettings.value.auth) {
             showAuth.value = true;
         }
         if (response.status >= 300) {
@@ -149,14 +149,12 @@ const getUserSettings = async (message) => {
         if (!userJwt.value) return;
         const res = await api.fetch("/user_api/settings")
         Object.assign(userSettings.value, res)
-        // auto refresh user jwt
         if (userSettings.value.new_user_token) {
             try {
                 await api.fetch("/user_api/settings", {
                     userJwt: userSettings.value.new_user_token,
                 })
                 userJwt.value = userSettings.value.new_user_token;
-                console.log("User JWT updated successfully");
             }
             catch (error) {
                 console.error("Failed to update user JWT", error);
@@ -209,7 +207,6 @@ export const api = {
     adminDeleteAddress,
     bindUserAddress,
 
-    // --- 计费系统 API ---
     getUserBalance: async () => {
         try {
             const res = await apiFetch('/user_api/billing/balance');
@@ -222,6 +219,10 @@ export const api = {
     },
     getDomainPrice: async (domain) => {
         return await apiFetch(`/user_api/billing/price?domain=${domain}`);
+    },
+    // [新增] 用户获取价格列表
+    getUserDomainPrices: async () => {
+        return await apiFetch(`/user_api/billing/prices-list`);
     },
     redeemCard: async (code) => {
         return await apiFetch('/user_api/billing/redeem', {
@@ -239,7 +240,6 @@ export const api = {
         return await apiFetch(`/user_api/billing/transactions?limit=${limit}&offset=${offset}`);
     },
     
-    // --- 管理员 API ---
     adminGetTransactions: async (limit, offset) => {
         return await apiFetch(`/admin/billing/transactions?limit=${limit}&offset=${offset}`);
     },
@@ -252,8 +252,9 @@ export const api = {
             body: JSON.stringify({ amount, count, starts_at, expires_at, max_uses })
         });
     },
-    adminGetPrices: async () => {
-        return await apiFetch(`/admin/billing/prices`);
+    // [修改] 支持查询参数
+    adminGetPrices: async (query = '') => {
+        return await apiFetch(`/admin/billing/prices?query=${query}`);
     },
     adminSetPrice: async (domain, role_text, price) => {
         return await apiFetch('/admin/billing/prices', {
@@ -261,13 +262,11 @@ export const api = {
             body: JSON.stringify({ domain, role_text, price })
         });
     },
-    // [新增] 删除定价
     adminDeletePrice: async (id) => {
         return await apiFetch(`/admin/billing/prices/${id}`, {
             method: 'DELETE'
         });
     },
-    // [新增] 批量删除定价
     adminBatchDeletePrices: async (ids) => {
         return await apiFetch('/admin/billing/prices/batch_delete', {
             method: 'POST',
