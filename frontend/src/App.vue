@@ -25,12 +25,9 @@ const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
 const showSplash = ref(true)
 
-// [核心] 动态栅格间距：手机端强制为 0，防止负边距溢出
-const xGap = computed(() => isMobile.value ? 0 : 24);
-
-// [UI 美化]
+// [UI 美化] 主题配置
 const themeOverrides = computed(() => {
-  const alpha = 0.72;
+  const alpha = 0.75;
   
   const glassBg = isDark.value 
     ? `rgba(30, 30, 35, ${alpha})` 
@@ -54,14 +51,14 @@ const themeOverrides = computed(() => {
       primaryColorPressed: '#1060c9',
       borderRadius: '16px',
       borderRadiusSmall: '8px',
-      fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       
       bodyColor: transparent,
       cardColor: glassBg,
       modalColor: glassBg,
       popoverColor: glassBg,
       tableColor: transparent,
-      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)', 
+      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', 
       inputColor: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
     },
     LoadingBar: {
@@ -97,15 +94,15 @@ const themeOverrides = computed(() => {
       borderRadius: '12px'
     },
     Input: {
-      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
-      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)',
+      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
+      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.8)',
       border: `1px solid ${glassBorder}`,
       borderRadius: '12px',
     },
     Select: {
       peers: {
         InternalSelection: {
-          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
+          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
           border: `1px solid ${glassBorder}`,
           borderRadius: '12px',
         },
@@ -224,7 +221,7 @@ onMounted(async () => {
             <div class="app-container">
               <div class="bg-overlay"></div>
 
-              <n-grid :x-gap="xGap" :cols="gridMaxCols" class="main-grid">
+              <n-grid :cols="gridMaxCols" class="main-grid" :x-gap="isMobile ? 0 : 24">
                 <n-gi v-if="showSideMargin" span="1">
                   <div class="side-ad" v-if="showAd">
                     <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
@@ -270,12 +267,11 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === [关键] 1. 全局盒模型重置，防止 padding 撑大容器 === */
+/* === 1. 全局基础设置 === */
 *, *::before, *::after {
   box-sizing: border-box;
 }
 
-/* === [关键] 2. Body 宽度修正 === */
 body {
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -286,12 +282,12 @@ body {
   background-attachment: fixed;
   letter-spacing: 0.02em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  /* 禁用 body 的横向滚动，但允许纵向 */
+  /* [核心修复] 只在 body 上做横向溢出隐藏 */
   overflow-x: hidden;
   width: 100%;
 }
 
-/* ... (开屏动画部分保持不变) ... */
+/* === 开屏动画样式 === */
 .splash-screen {
   position: fixed;
   top: 0;
@@ -307,7 +303,7 @@ body {
   align-items: center;
 }
 [data-theme='dark'] .splash-screen {
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.6);
 }
 .splash-content {
   display: flex;
@@ -360,7 +356,7 @@ body {
   transform: scale(1.1);
 }
 
-/* ... (滚动条部分保持不变) ... */
+/* === 滚动条美化 === */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -383,7 +379,7 @@ body {
   margin-right: 10px;
 }
 
-/* === 玻璃拟态核心样式 === */
+/* === 玻璃拟态核心组件样式 === */
 .n-card, 
 .n-modal, 
 .n-drawer, 
@@ -391,12 +387,12 @@ body {
 .n-popover,
 .n-dropdown-menu,
 .n-select-menu {
-  backdrop-filter: blur(24px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  /* [关键] 确保所有卡片最大宽度不超过容器 */
   max-width: 100% !important;
+  box-sizing: border-box;
 }
 
 .n-card:hover {
@@ -408,24 +404,25 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
+/* Tab 内容区 */
 .n-tabs .n-tab-pane {
   background-color: rgba(255, 255, 255, 0.65) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.25) !important;
   border-radius: 16px !important;
   margin-top: 12px;
   padding: 24px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-  /* [关键] 限制 Tab 内容宽度 */
   max-width: 100%;
-  overflow-x: hidden; 
+  /* [修复] 移除 overflow-x: hidden，否则可能截断内部阴影 */
 }
 [data-theme='dark'] .n-tabs .n-tab-pane {
   background-color: rgba(30, 30, 35, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
+/* Tab 按钮 */
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
   background-color: rgba(255, 255, 255, 0.35) !important;
   backdrop-filter: blur(12px);
@@ -476,8 +473,7 @@ body {
   min-height: 100vh;
   width: 100%;
   position: relative;
-  /* [关键] 再次确保容器不溢出 */
-  overflow-x: hidden;
+  /* [修复] 移除局部 overflow，只在 body 控制 */
 }
 
 .bg-overlay {
@@ -486,7 +482,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.15); 
   pointer-events: none;
   z-index: 0;
   transition: background 0.3s ease;
@@ -509,9 +505,17 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  /* [关键] 移动端 padding，且限制宽度 */
-  padding: 0 16px;
+  /* [核心修复] 增加内边距，避免内容贴边导致视觉上的直角错觉 */
+  padding: 0 24px; 
   width: 100%;
+  box-sizing: border-box;
+}
+
+/* 移动端适配：减少 padding */
+@media (max-width: 600px) {
+  .main-content {
+    padding: 0 12px;
+  }
 }
 
 .sticky-header-wrapper {
@@ -527,8 +531,8 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
-  /* [关键] Header 最大宽度 */
   max-width: 100%;
+  box-sizing: border-box;
 }
 
 :deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
@@ -548,8 +552,8 @@ body {
   margin: 0 auto;
   padding-top: 10px;
   padding-bottom: 40px;
-  /* [关键] 允许内容自适应，禁止撑开父容器 */
-  overflow-x: hidden;
+  /* [核心修复] 移除 hidden，改为 visible 或 auto，防止裁剪阴影 */
+  overflow-x: visible; 
 }
 
 .floating-footer-wrapper {
@@ -564,9 +568,9 @@ body {
   text-align: center;
   align-self: center;
   width: fit-content;
-  /* [关键] 防止 Footer 在小屏溢出 */
   min-width: auto;
   max-width: 100%;
+  box-sizing: border-box;
 }
 
 :deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
