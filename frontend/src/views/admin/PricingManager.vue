@@ -80,7 +80,8 @@ const fetchData = async () => {
             await api.getOpenSettings(message)
         }
         
-        const res = await api.adminGetPrices(searchQuery.value)
+        // [关键修复] 传递 limit 和 offset
+        const res = await api.adminGetPrices(pageSize.value, (page.value - 1) * pageSize.value, searchQuery.value)
         data.value = res.results || []
         
         if (res.count > 0) {
@@ -223,10 +224,11 @@ onMounted(fetchData)
         />
         
         <n-pagination 
-            v-if="total > 0"
             v-model:page="page" 
             v-model:page-size="pageSize"
             :item-count="total"
+            :page-sizes="[20, 50, 100]"
+            show-size-picker
             style="margin-top: 10px"
         />
 
