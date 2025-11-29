@@ -106,7 +106,6 @@ const domainOptions = computed(() => {
     }))
 })
 
-// 获取当前应该应用的前缀
 const currentPrefix = computed(() => {
     if (userSettings.value.user_role && typeof userSettings.value.user_role.prefix === 'string') {
         return userSettings.value.user_role.prefix;
@@ -175,7 +174,6 @@ const handleCreate = async () => {
             showCreateModal.value = false
             fetchData()
             refreshBalance()
-            // [关键修改] 创建成功后直接跳转到首页
             router.push('/')
         }
     } catch (e) {
@@ -298,7 +296,7 @@ onMounted(() => {
 
         <n-data-table :columns="columns" :data="data" :loading="loading" :bordered="false" />
 
-        <n-modal v-model:show="showCreateModal" preset="card" :title="t('createAddress')" style="width: 500px">
+        <n-modal v-model:show="showCreateModal" preset="card" :title="t('createAddress')" style="width: 90%; max-width: 500px">
             <n-form>
                 <n-form-item :label="t('prefix')">
                     <n-input-group>
@@ -327,7 +325,7 @@ onMounted(() => {
             </template>
         </n-modal>
 
-        <n-modal v-model:show="showTransferModal" preset="card" :title="t('transferTitle')" style="width: 400px">
+        <n-modal v-model:show="showTransferModal" preset="card" :title="t('transferTitle')" style="width: 90%; max-width: 400px">
             <n-form>
                 <n-form-item :label="t('targetEmail')" required>
                     <n-input v-model:value="transferForm.targetEmail" placeholder="user@example.com" />
@@ -338,7 +336,7 @@ onMounted(() => {
             </template>
         </n-modal>
 
-        <n-modal v-model:show="showBindModal" preset="card" :title="t('bindTitle')" style="width: 400px">
+        <n-modal v-model:show="showBindModal" preset="card" :title="t('bindTitle')" style="width: 90%; max-width: 400px">
             <n-form>
                 <n-form-item label="JWT" required>
                     <n-input v-model:value="bindForm.jwt" type="textarea" :placeholder="t('jwtPlaceholder')" />
