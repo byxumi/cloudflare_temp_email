@@ -2,10 +2,11 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NInputGroup, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NInputGroupLabel } from 'naive-ui'
+import { useMessage, NButton, NInputGroup, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NInputGroupLabel, NDataTable } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
+import { Search } from '@vicons/fa' // 假设用个图标
 
 const router = useRouter()
 const { openSettings, jwt, userBalance, userSettings, auth, userJwt } = useGlobalState()
@@ -47,6 +48,9 @@ const { t } = useI18n({
             more: 'More',
             random: 'Random', 
             bindFailed: 'Bind failed',
+            viewPrices: 'View Prices',
+            priceList: 'Domain Price List',
+            currency: 'CNY'
         },
         zh: {
             createAddress: '新建地址',
@@ -81,6 +85,9 @@ const { t } = useI18n({
             more: '更多',
             random: '随机',
             bindFailed: '绑定失败',
+            viewPrices: '查看价格',
+            priceList: '域名价格表',
+            currency: '元'
         }
     }
 })
@@ -98,6 +105,11 @@ const transferForm = ref({ addressId: null, targetEmail: '' })
 const showBindModal = ref(false)
 const bindLoading = ref(false)
 const bindForm = ref({ jwt: '' })
+
+// 价格表弹窗
+const showPriceModal = ref(false)
+const priceList = ref([])
+const priceLoadingState = ref(false)
 
 const domainOptions = computed(() => {
     return (openSettings.value.domains || []).map(d => ({
@@ -129,6 +141,20 @@ const refreshBalance = async () => {
     try {
         await api.getUserBalance()
     } catch (e) { console.error(e) }
+}
+
+// 打开价格表
+const openPriceModal = async () => {
+    showPriceModal.value = true;
+    priceLoadingState.value = true;
+    try {
+        const res = await api.getUserDomainPrices();
+        priceList.value = res.results || [];
+    } catch (e) {
+        message.error('Failed to load prices');
+    } finally {
+        priceLoadingState.value = false;
+    }
 }
 
 watch(() => createForm.value.domain, async (newDomain) => {
@@ -278,6 +304,17 @@ const columns = [
     }
 ]
 
+const priceColumns = [
+    { title: t('domain'), key: 'domain' },
+    { 
+        title: t('price'), 
+        key: 'price_yuan',
+        render(row) {
+            return `${row.price_yuan} ${t('currency')}`
+        }
+    }
+]
+
 onMounted(() => {
     if (useGlobalState().userJwt.value) {
         api.getUserSettings(message);
@@ -288,8 +325,10 @@ onMounted(() => {
 
 <template>
     <div>
-        <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+        <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
             <n-button type="primary" @click="openCreateModal">{{ t('createAddress') }}</n-button>
+            <n-button type="info" secondary @click="openPriceModal">{{ t('viewPrices') }}</n-button>
+            
             <n-button @click="showBindModal = true">{{ t('bindExisting') }}</n-button>
             <n-button @click="fetchData">刷新</n-button>
         </div>
@@ -323,6 +362,10 @@ onMounted(() => {
                     {{ currentPriceCents > 0 ? t('confirmPurchase') : t('confirm') }}
                 </n-button>
             </template>
+        </n-modal>
+
+        <n-modal v-model:show="showPriceModal" preset="card" :title="t('priceList')" style="width: 90%; max-width: 600px">
+            <n-data-table :columns="priceColumns" :data="priceList" :loading="priceLoadingState" :max-height="400" />
         </n-modal>
 
         <n-modal v-model:show="showTransferModal" preset="card" :title="t('transferTitle')" style="width: 90%; max-width: 400px">
