@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, h, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NPopconfirm, NPagination } from 'naive-ui'
+import { useMessage, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NPopconfirm, NPagination, NInputGroup } from 'naive-ui'
 import { api } from '../../api'
 import { useGlobalState } from '../../store'
 
@@ -25,7 +25,9 @@ const { t } = useI18n({
             batchDelete: 'Batch Delete',
             confirmDelete: 'Confirm delete?',
             confirmBatchDelete: 'Confirm delete selected items?',
-            deleteSuccess: 'Deleted successfully'
+            deleteSuccess: 'Deleted successfully',
+            search: 'Search Domain',
+            edit: 'Edit'
         },
         zh: {
             domain: '域名',
@@ -42,7 +44,9 @@ const { t } = useI18n({
             batchDelete: '批量删除',
             confirmDelete: '确认删除？',
             confirmBatchDelete: '确认删除选中项？',
-            deleteSuccess: '删除成功'
+            deleteSuccess: '删除成功',
+            search: '搜索域名',
+            edit: '编辑'
         }
     }
 })
@@ -53,10 +57,10 @@ const form = ref({ domain: null, role_text: 'default', price: 0.00 })
 const loading = ref(false)
 const roleOptions = ref([{ label: t('default'), value: 'default' }])
 const checkedRowKeys = ref([])
-// [修复] 增加分页状态
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+const searchQuery = ref('') // [新增] 搜索词
 
 const domainOptions = computed(() => {
     if (openSettings.value && openSettings.value.domains) {
@@ -76,12 +80,10 @@ const fetchData = async () => {
             await api.getOpenSettings(message)
         }
         
-        // 获取定价列表 (这里虽然 api 可能没传 limit/offset，但后端支持的话最好加上)
-        // 如果 adminGetPrices 不支持分页，这里就只展示数据
-        const res = await api.adminGetPrices()
+        // [修改] 传递 searchQuery
+        const res = await api.adminGetPrices(searchQuery.value)
         data.value = res.results || []
         
-        // [修复] 分页逻辑兼容
         if (res.count > 0) {
             total.value = res.count
         }
@@ -138,6 +140,16 @@ const handleBatchDelete = async () => {
     }
 }
 
+// [新增] 编辑功能
+const handleEdit = (row) => {
+    form.value = {
+        domain: row.domain,
+        role_text: row.role_text,
+        price: row.price / 100 // 转回元
+    }
+    showModal.value = true
+}
+
 const columns = [
     { type: 'selection' },
     { title: t('domain'), key: 'domain' },
@@ -154,20 +166,29 @@ const columns = [
         title: t('actions'),
         key: 'actions',
         render(row) {
-            return h(NPopconfirm, {
-                onPositiveClick: () => handleDelete(row.id)
-            }, {
-                trigger: () => h(NButton, { size: 'tiny', type: 'error', secondary: true }, { default: () => t('delete') }),
-                default: () => t('confirmDelete')
+            return h(NSpace, null, {
+                default: () => [
+                    // [新增] 编辑按钮
+                    h(NButton, { 
+                        size: 'tiny', 
+                        type: 'primary', 
+                        secondary: true,
+                        onClick: () => handleEdit(row)
+                    }, { default: () => t('edit') }),
+                    
+                    h(NPopconfirm, {
+                        onPositiveClick: () => handleDelete(row.id)
+                    }, {
+                        trigger: () => h(NButton, { size: 'tiny', type: 'error', secondary: true }, { default: () => t('delete') }),
+                        default: () => t('confirmDelete')
+                    })
+                ]
             })
         }
     }
 ]
 
-// [修复] 监听分页
 watch([page, pageSize], () => {
-    // 如果后端 adminGetPrices 支持分页，这里可以传参
-    // 目前代码里 adminGetPrices 是直接返回所有，所以这个 watch 主要为了未来扩展
     fetchData() 
 })
 
@@ -176,7 +197,7 @@ onMounted(fetchData)
 
 <template>
     <div>
-        <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+        <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <n-button type="primary" @click="showModal = true">{{ t('setPrice') }}</n-button>
             <n-popconfirm v-if="checkedRowKeys.length > 0" @positive-click="handleBatchDelete">
                 <template #trigger>
@@ -186,6 +207,12 @@ onMounted(fetchData)
                 </template>
                 {{ t('confirmBatchDelete') }}
             </n-popconfirm>
+            
+            <n-input-group style="width: 300px;">
+                <n-input v-model:value="searchQuery" :placeholder="t('search')" @keydown.enter="fetchData" />
+                <n-button type="primary" ghost @click="fetchData">{{ t('search') }}</n-button>
+            </n-input-group>
+            
             <n-button style="margin-left: auto;" @click="fetchData">刷新</n-button>
         </div>
         
@@ -214,6 +241,7 @@ onMounted(fetchData)
                         :options="domainOptions" 
                         :placeholder="t('selectDomain')" 
                         filterable
+                        tag // 允许输入不存在于选项中的域名
                     />
                 </n-form-item>
                 <n-form-item :label="t('role')">
