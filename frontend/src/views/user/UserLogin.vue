@@ -28,7 +28,7 @@ const { t } = useI18n({
             verifyCodeSent: 'Sent',
             waitforVerifyCode: '{timeout}s',
             sendVerificationCode: 'Get Code',
-            forgotPassword: 'Forgot Password',
+            forgotPassword: 'Forgot Password?',
             cannotForgotPassword: 'Reset password is disabled, please contact admin.',
             resetPassword: 'Reset Password',
             pleaseInput: 'Please input email and password',
@@ -48,7 +48,7 @@ const { t } = useI18n({
             sendVerificationCode: '获取验证码',
             verifyCodeSent: '已发送',
             waitforVerifyCode: '{timeout}秒后重试',
-            forgotPassword: '忘记密码',
+            forgotPassword: '忘记密码?',
             cannotForgotPassword: '未开启邮箱验证或注册功能，无法重置密码。',
             resetPassword: '重置密码',
             pleaseInput: '请输入邮箱和密码',
@@ -283,7 +283,7 @@ onMounted(async () => {
         </n-tabs>
 
         <n-modal v-model:show="showModal" preset="card" :title="t('forgotPassword')" style="width: 90%; max-width: 450px;">
-            <div class="form-wrapper">
+            <div class="form-wrapper" style="padding: 0;">
                 <div v-if="userOpenSettings.enable && userOpenSettings.enableMailVerify">
                     <n-form size="large" label-placement="top">
                         <n-form-item-row :label="t('email')">
@@ -323,30 +323,42 @@ onMounted(async () => {
     text-align: left; 
 }
 
-/* [修改] 增加左右内边距，缩短输入框 */
+/* [核心修复] 
+   1. 清除 Tab Pane 默认可能的内边距影响
+   2. 手动控制左右 padding
+*/
+:deep(.n-tab-pane) {
+    padding: 0 !important;
+    margin-top: 0 !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
 .form-wrapper {
-    padding: 0 24px; 
+    /* [关键] 电脑端增加 padding 缩短输入框 */
+    padding: 10px 30px; 
     width: 100%;
-    /* 允许小屏幕滚动 */
-    max-height: 75vh;
+    box-sizing: border-box;
+    
+    max-height: 70vh;
     overflow-y: auto;
     overflow-x: hidden;
-    box-sizing: border-box;
+}
+
+/* [关键] 移动端适配：减少 padding，防止挤压 */
+@media (max-width: 600px) {
+    .form-wrapper {
+        padding: 10px 5px;
+    }
 }
 
 .spacer {
-    height: 16px;
+    height: 12px;
 }
 
 .spacer-large {
-    height: 24px;
-}
-
-.forgot-password-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 16px;
-    margin-top: 4px;
+    height: 20px;
 }
 
 .submit-btn {
