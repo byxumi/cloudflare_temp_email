@@ -207,11 +207,14 @@ onMounted(async () => {
         <n-tabs v-model:value="tabValue" size="large" v-if="userOpenSettings.fetched" justify-content="space-evenly" animated>
             <n-tab-pane name="signin" :tab="t('login')">
                 <div class="form-wrapper">
-                    <n-form size="large" label-placement="left" :show-feedback="false">
+                    <n-form size="large" label-placement="top" :show-feedback="false">
                         <n-form-item-row :label="t('email')" path="email">
                             <n-input v-model:value="user.email" placeholder="name@example.com" />
                         </n-form-item-row>
-                        <div style="height: 16px;"></div> <n-form-item-row :label="t('password')" path="password">
+                        
+                        <div class="spacer"></div>
+                        
+                        <n-form-item-row :label="t('password')" path="password">
                             <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="" @keydown.enter="emailLogin" />
                         </n-form-item-row>
                     </n-form>
@@ -245,16 +248,21 @@ onMounted(async () => {
             
             <n-tab-pane v-if="userOpenSettings.enable" name="signup" :tab="t('register')">
                 <div class="form-wrapper">
-                    <n-form size="large" label-placement="left" :show-feedback="false">
+                    <n-form size="large" label-placement="top" :show-feedback="false">
                         <n-form-item-row :label="t('email')">
                             <n-input v-model:value="user.email" placeholder="name@example.com" />
                         </n-form-item-row>
-                        <div style="height: 16px;"></div>
+                        
+                        <div class="spacer"></div>
+                        
                         <n-form-item-row :label="t('password')">
                             <n-input v-model:value="user.password" type="password" show-password-on="click" />
                         </n-form-item-row>
-                        <div style="height: 16px;"></div>
+                        
+                        <div class="spacer"></div>
+                        
                         <Turnstile v-if="userOpenSettings.enableMailVerify" v-model:value="cfToken" />
+                        
                         <n-form-item-row v-if="userOpenSettings.enableMailVerify" :label="t('verifyCode')">
                             <n-input-group>
                                 <n-input v-model:value="user.code" placeholder="123456" />
@@ -266,6 +274,7 @@ onMounted(async () => {
                     </n-form>
                     
                     <div style="height: 24px;"></div>
+                    
                     <n-button @click="emailSignup" type="primary" block size="large" class="submit-btn">
                         {{ t('register') }}
                     </n-button>
@@ -273,10 +282,10 @@ onMounted(async () => {
             </n-tab-pane>
         </n-tabs>
 
-        <n-modal v-model:show="showModal" preset="card" :title="t('forgotPassword')" style="width: 90%; max-width: 450px;">
+        <n-modal v-model:show="showModal" preset="card" :title="t('forgotPassword')" style="width: 90%; max-width: 400px;">
             <div class="form-wrapper">
                 <div v-if="userOpenSettings.enable && userOpenSettings.enableMailVerify">
-                    <n-form size="large" label-placement="left">
+                    <n-form size="large" label-placement="top">
                         <n-form-item-row :label="t('email')">
                             <n-input v-model:value="user.email" />
                         </n-form-item-row>
@@ -293,7 +302,7 @@ onMounted(async () => {
                             </n-input-group>
                         </n-form-item-row>
                     </n-form>
-                    <div style="height: 20px;"></div>
+                    <div class="spacer"></div>
                     <n-button @click="emailSignup" type="primary" block size="large" class="submit-btn">
                         {{ t('resetPassword') }}
                     </n-button>
@@ -309,24 +318,28 @@ onMounted(async () => {
 <style scoped>
 .login-container {
     width: 100%;
-    /* 确保内容左对齐，不被 flex 居中影响 */
-    text-align: left; 
+    /* 确保宽度撑满 */
+    box-sizing: border-box;
 }
 
-/* [核心修复] 内容容器允许滚动，防止溢出屏幕 */
 .form-wrapper {
-    padding: 4px 0;
-    max-height: 70vh; /* 限制高度，超过则滚动 */
-    overflow-y: auto;
-    overflow-x: hidden; /* 防止横向滚动 */
+    /* 增加上下内边距，并在小屏幕时允许滚动 */
+    padding: 0 4px;
     width: 100%;
+    max-height: 75vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.spacer {
+    height: 16px;
 }
 
 .forgot-password-row {
     display: flex;
     justify-content: flex-end;
     margin-bottom: 16px;
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 .submit-btn {
@@ -357,13 +370,7 @@ onMounted(async () => {
     margin-left: 10px;
 }
 
-/* 修复表单 Label 对齐 */
-:deep(.n-form-item-label) {
-    justify-content: flex-start !important;
-    font-weight: bold;
-}
-
-/* 修复输入框在窄屏下的显示 */
+/* [优化] 确保输入框在所有尺寸下宽度正常 */
 :deep(.n-input) {
     width: 100%;
 }
