@@ -88,16 +88,12 @@ const handleRedeem = async () => {
     }
 }
 
-// [修改] 跳转到您的网站
 const handleBuyCard = () => {
-    // 请将下方的链接替换为您自己的发卡网或网站地址
-    const myWebsiteUrl = "https://buy.xumicloud.top"; 
+    const myWebsiteUrl = "https://您的发卡网地址.com"; 
     
     if (openSettings.value.buyCardUrl) {
-        // 如果后端配置了链接则优先使用后端配置
         window.open(openSettings.value.buyCardUrl, '_blank');
     } else {
-        // 否则使用您填写的地址
         window.open(myWebsiteUrl, '_blank');
     }
 }
@@ -163,7 +159,7 @@ onMounted(async () => {
             </n-tabs>
         </div>
 
-        <n-modal v-model:show="showRedeemModal" preset="card" :title="t('recharge')" style="max-width: 400px">
+        <n-modal v-model:show="showRedeemModal" preset="card" :title="t('recharge')" style="width: 90%; max-width: 400px">
             <n-space vertical>
                 <n-input v-model:value="redeemCode" :placeholder="t('redeemPlaceholder')" @keydown.enter="handleRedeem" />
                 <n-button type="primary" block @click="handleRedeem" :loading="redeemLoading">
@@ -172,7 +168,7 @@ onMounted(async () => {
             </n-space>
         </n-modal>
 
-        <n-modal v-model:show="showTransactions" preset="card" :title="t('myBills')" style="max-width: 800px">
+        <n-modal v-model:show="showTransactions" preset="card" :title="t('myBills')" style="width: 95%; max-width: 800px">
             <UserTransactions />
         </n-modal>
     </div>
@@ -197,7 +193,6 @@ onMounted(async () => {
     vertical-align: middle;
 }
 
-/* 移动端适配 */
 @media (max-width: 600px) {
     .wallet-container {
         flex-direction: column;
@@ -213,7 +208,7 @@ onMounted(async () => {
     }
     .action-wrapper .n-button {
         flex: 1;
-        min-width: 30%; /* 按钮均分宽度 */
+        min-width: 30%;
     }
 }
 </style>
