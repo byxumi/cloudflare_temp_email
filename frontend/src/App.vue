@@ -25,12 +25,12 @@ const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
 const showSplash = ref(true)
 
-// [布局修复] 手机端栅格间距设为0，防止撑开宽度
+// 动态栅格间距
 const xGap = computed(() => isMobile.value ? 0 : 24);
 
-// [UI 美化]
+// [UI 美化] 终极版主题配置
 const themeOverrides = computed(() => {
-  const alpha = 0.72;
+  const alpha = 0.75;
   
   const glassBg = isDark.value 
     ? `rgba(30, 30, 35, ${alpha})` 
@@ -42,7 +42,7 @@ const themeOverrides = computed(() => {
 
   const glassBorder = isDark.value
     ? 'rgba(255, 255, 255, 0.12)'
-    : 'rgba(255, 255, 255, 0.5)';
+    : 'rgba(255, 255, 255, 0.6)';
 
   const primaryColor = '#2080f0';
   const transparent = 'transparent';
@@ -52,15 +52,16 @@ const themeOverrides = computed(() => {
       primaryColor: primaryColor,
       primaryColorHover: '#4098fc',
       primaryColorPressed: '#1060c9',
-      borderRadius: '16px',
+      borderRadius: '12px',
       borderRadiusSmall: '8px',
-      fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      
       bodyColor: transparent,
       cardColor: glassBg,
       modalColor: glassBg,
       popoverColor: glassBg,
       tableColor: transparent,
-      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)', 
+      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', 
       inputColor: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
     },
     LoadingBar: {
@@ -69,58 +70,57 @@ const themeOverrides = computed(() => {
       height: '3px'
     },
     Card: {
-      borderRadius: '20px',
+      borderRadius: '16px',
       color: glassBg,
       borderColor: glassBorder,
       boxShadow: isDark.value 
-        ? '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05)' 
-        : '0 8px 32px rgba(31, 38, 135, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.4)'
+        ? '0 8px 32px rgba(0, 0, 0, 0.4)' 
+        : '0 8px 32px rgba(31, 38, 135, 0.1)'
     },
     Modal: {
       color: glassBg,
-      boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.1)',
-      borderColor: glassBorder,
-      borderRadius: '24px'
+      boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)',
+      borderColor: glassBorder
     },
     Dialog: {
       color: glassBg,
-      borderRadius: '20px',
+      borderRadius: '16px',
       borderColor: glassBorder
     },
     DataTable: {
       color: transparent,
-      thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.02)',
+      thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
       tdColor: transparent,
-      tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.3)',
+      tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
       borderColor: glassBorder,
-      borderRadius: '12px'
+      borderRadius: '10px'
     },
     Input: {
-      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
-      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)',
+      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
+      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.8)',
       border: `1px solid ${glassBorder}`,
-      borderRadius: '12px',
+      borderRadius: '10px',
     },
     Select: {
       peers: {
         InternalSelection: {
-          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
+          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
           border: `1px solid ${glassBorder}`,
-          borderRadius: '12px',
+          borderRadius: '10px',
         },
         InternalSelectMenu: {
           color: glassBg,
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
           optionColorHover: glassBgHover,
           padding: '6px',
-          borderRadius: '16px'
+          borderRadius: '12px'
         }
       }
     },
     Dropdown: {
       color: glassBg,
       optionColorHover: glassBgHover,
-      borderRadius: '12px'
+      borderRadius: '10px'
     },
     Layout: {
       color: transparent,
@@ -129,15 +129,15 @@ const themeOverrides = computed(() => {
       siderColor: transparent
     },
     Tabs: {
-      tabBorderRadius: '12px',
-      panePadding: '24px',
+      tabBorderRadius: '10px',
+      panePadding: '20px',
       tabColor: transparent,
       tabBorderColor: transparent
     },
     Button: {
       fontWeight: '600',
-      borderRadiusMedium: '12px',
-      borderRadiusLarge: '14px',
+      borderRadiusMedium: '10px',
+      borderRadiusLarge: '12px',
     },
     Pagination: {
       itemColor: transparent,
@@ -269,7 +269,12 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === 1. 全局基础设置 & 布局控制 === */
+/* === [关键修复] 1. 全局盒模型重置 === */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* === 2. Body 宽度修正 === */
 body {
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -280,12 +285,12 @@ body {
   background-attachment: fixed;
   letter-spacing: 0.02em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  /* [核心修复] 强制隐藏 Body 的横向滚动条 */
+  /* [关键修复] 使用 100% 而不是 100vw，防止包含滚动条宽度导致溢出 */
+  width: 100%; 
   overflow-x: hidden;
-  width: 100vw;
 }
 
-/* === 开屏动画 === */
+/* ... (开屏动画样式保持不变) ... */
 .splash-screen {
   position: fixed;
   top: 0;
@@ -354,7 +359,7 @@ body {
   transform: scale(1.1);
 }
 
-/* === 滚动条 === */
+/* ... (滚动条样式保持不变) ... */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -377,7 +382,8 @@ body {
   margin-right: 10px;
 }
 
-/* === 玻璃拟态组件样式 === */
+/* === 玻璃拟态核心样式 === */
+/* [关键修复] 强制所有容器不超出父级宽度 */
 .n-card, 
 .n-modal, 
 .n-drawer, 
@@ -389,9 +395,7 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  /* [核心修复] 防止卡片撑破手机屏幕 */
-  max-width: 100%; 
-  box-sizing: border-box;
+  max-width: 100% !important; /* 防止溢出 */
 }
 
 .n-card:hover {
@@ -412,7 +416,6 @@ body {
   margin-top: 12px;
   padding: 24px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-  /* [核心修复] 防止 Tab 内容溢出 */
   max-width: 100%;
   overflow-x: hidden; 
 }
@@ -467,12 +470,11 @@ body {
 </style>
 
 <style scoped>
-/* [核心修复] 布局容器防溢出设置 */
 .app-container {
   min-height: 100vh;
   width: 100%;
   position: relative;
-  overflow-x: hidden; /* 兜底：防止 horizontal scrolling */
+  overflow-x: hidden; /* 双重保险 */
 }
 
 .bg-overlay {
@@ -495,9 +497,8 @@ body {
   position: relative;
   z-index: 1;
   min-height: 100vh;
-  /* 限制最大宽度，大屏居中 */
   max-width: 1440px; 
-  width: 100%; /* 手机端占满 */
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -505,7 +506,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  /* [核心修复] 左右边距与盒模型 */
+  /* [关键修复] 左右内边距，且启用 border-box */
   padding: 0 16px;
   width: 100%;
   box-sizing: border-box; 
@@ -524,7 +525,6 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
-  /* [核心修复] 确保 Header 不超出容器 */
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -546,8 +546,7 @@ body {
   margin: 0 auto;
   padding-top: 10px;
   padding-bottom: 40px;
-  /* [核心修复] 内部模块如果太宽（如表格），允许内部滚动，不撑开页面 */
-  overflow-x: auto; 
+  overflow-x: hidden; /* 防止内部元素撑开 */
 }
 
 .floating-footer-wrapper {
@@ -562,7 +561,6 @@ body {
   text-align: center;
   align-self: center;
   width: fit-content;
-  /* [核心修复] 移动端 Footer 宽度控制 */
   min-width: auto;
   max-width: 100%;
   box-sizing: border-box;
