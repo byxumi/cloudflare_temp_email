@@ -1,6 +1,6 @@
 <script setup>
-import { useMessage, NTabs, NTabPane, NForm, NFormItemRow, NInput, NButton, NDivider, NIcon, NInputGroup, NAlert, NModal } from 'naive-ui'
-import { onMounted, ref, computed } from "vue";
+import { useMessage } from 'naive-ui'
+import { onMounted, ref } from "vue";
 import { useI18n } from 'vue-i18n'
 import { KeyFilled } from '@vicons/material'
 
@@ -8,7 +8,6 @@ import { api } from '../../api';
 import { useGlobalState } from '../../store'
 import { hashPassword } from '../../utils';
 import { startAuthentication } from '@simplewebauthn/browser';
-import { useIsMobile } from '../../utils/composables' // [新增]
 
 import Turnstile from '../../components/Turnstile.vue';
 
@@ -17,7 +16,6 @@ const {
     userOauth2SessionState, userOauth2SessionClientID
 } = useGlobalState()
 const message = useMessage();
-const isMobile = useIsMobile() // [新增]
 
 const { t } = useI18n({
     messages: {
@@ -26,12 +24,12 @@ const { t } = useI18n({
             register: 'Register',
             email: 'Email',
             password: 'Password',
-            verifyCode: 'Verify Code',
-            verifyCodeSent: 'Sent, expire in {timeout}s',
+            verifyCode: 'Verification Code',
+            verifyCodeSent: 'Code Sent',
             waitforVerifyCode: 'Wait {timeout}s',
-            sendVerificationCode: 'Send Code',
-            forgotPassword: 'Forgot Pwd',
-            cannotForgotPassword: 'Mail verification is disabled or register is disabled, cannot reset password, please contact administrator',
+            sendVerificationCode: 'Get Code',
+            forgotPassword: 'Forgot Password?',
+            cannotForgotPassword: 'Reset password is disabled, please contact admin.',
             resetPassword: 'Reset Password',
             pleaseInput: 'Please input email and password',
             pleaseInputEmail: 'Please input email',
@@ -47,19 +45,19 @@ const { t } = useI18n({
             email: '邮箱',
             password: '密码',
             verifyCode: '验证码',
-            sendVerificationCode: '发送验证码',
-            verifyCodeSent: '验证码已发送, {timeout}秒失效',
-            waitforVerifyCode: '等待{timeout}秒',
-            forgotPassword: '忘记密码',
-            cannotForgotPassword: '未开启邮箱验证或未开启注册功能，无法重置密码，请联系管理员',
+            sendVerificationCode: '获取验证码',
+            verifyCodeSent: '已发送',
+            waitforVerifyCode: '{timeout}秒后重试',
+            forgotPassword: '忘记密码?',
+            cannotForgotPassword: '未开启邮箱验证或注册功能，无法重置密码。',
             resetPassword: '重置密码',
             pleaseInput: '请输入邮箱和密码',
             pleaseInputEmail: '请输入邮箱',
             pleaseInputCode: '请输入验证码',
             pleaseCompleteTurnstile: '请完成人机验证',
             pleaseLogin: '请登录',
-            loginWithPasskey: 'Passkey',
-            loginWith: '{provider}',
+            loginWithPasskey: 'Passkey 登录',
+            loginWith: '{provider} 登录',
         }
     }
 });
@@ -83,7 +81,6 @@ const emailLogin = async () => {
             method: "POST",
             body: JSON.stringify({
                 email: user.value.email,
-                // hash password
                 password: await hashPassword(user.value.password)
             })
         });
@@ -149,7 +146,6 @@ const emailSignup = async () => {
             method: "POST",
             body: JSON.stringify({
                 email: user.value.email,
-                // hash password
                 password: await hashPassword(user.value.password),
                 code: user.value.code
             }),
@@ -203,126 +199,152 @@ const oauth2Login = async (clientID) => {
 };
 
 onMounted(async () => {
-
 });
 </script>
 
 <template>
-    <div class="login-wrapper">
-        <n-tabs v-model:value="tabValue" :size="isMobile ? 'small' : 'large'" v-if="userOpenSettings.fetched" justify-content="space-evenly" animated>
+    <div class="login-container">
+        <n-tabs v-model:value="tabValue" size="large" v-if="userOpenSettings.fetched" justify-content="space-evenly" animated>
             <n-tab-pane name="signin" :tab="t('login')">
-                <n-form class="login-form" label-placement="left" :label-width="60">
-                    <n-form-item-row :label="t('email')" required>
-                        <n-input v-model:value="user.email" placeholder="Email" />
-                    </n-form-item-row>
-                    <n-form-item-row :label="t('password')" required>
-                        <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="Password" />
-                    </n-form-item-row>
-                    
-                    <n-button @click="emailLogin" type="primary" block secondary strong class="action-btn">
-                        {{ t('login') }}
-                    </n-button>
-                    
-                    <div style="text-align: right; margin-top: 8px;">
-                        <n-button @click="showModal = true" type="info" text size="small">
+                <div class="form-wrapper">
+                    <n-form size="large">
+                        <n-form-item-row :label="t('email')" path="email">
+                            <n-input v-model:value="user.email" placeholder="name@example.com" />
+                        </n-form-item-row>
+                        <n-form-item-row :label="t('password')" path="password">
+                            <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="" @keydown.enter="emailLogin" />
+                        </n-form-item-row>
+                    </n-form>
+
+                    <div class="forgot-password-row">
+                        <n-button text type="primary" @click="showModal = true" size="small">
                             {{ t('forgotPassword') }}
                         </n-button>
                     </div>
-                    
-                    <div v-if="openSettings.enablePasskey || (userOpenSettings.oauth2ClientIDs && userOpenSettings.oauth2ClientIDs.length > 0)">
-                        <n-divider />
-                        <n-button v-if="openSettings.enablePasskey" @click="passkeyLogin" type="primary" block secondary strong class="action-btn">
-                            <template #icon>
-                                <n-icon :component="KeyFilled" />
-                            </template>
+
+                    <n-button @click="emailLogin" type="primary" block size="large" class="submit-btn">
+                        {{ t('login') }}
+                    </n-button>
+
+                    <div v-if="userOpenSettings.oauth2ClientIDs && userOpenSettings.oauth2ClientIDs.length > 0 || true" class="divider">
+                        <span>OR</span>
+                    </div>
+
+                    <n-space vertical :size="12">
+                        <n-button @click="passkeyLogin" block secondary>
+                            <template #icon><n-icon :component="KeyFilled" /></template>
                             {{ t('loginWithPasskey') }}
                         </n-button>
-                        <n-button @click="oauth2Login(item.clientID)" v-for="item in userOpenSettings.oauth2ClientIDs"
-                            :key="item.clientID" block secondary strong class="action-btn">
+                        <n-button v-for="item in userOpenSettings.oauth2ClientIDs" :key="item.clientID" 
+                            @click="oauth2Login(item.clientID)" block secondary>
                             {{ t('loginWith', { provider: item.name }) }}
                         </n-button>
-                    </div>
-                </n-form>
+                    </n-space>
+                </div>
             </n-tab-pane>
             
             <n-tab-pane v-if="userOpenSettings.enable" name="signup" :tab="t('register')">
-                <n-form class="login-form" label-placement="left" :label-width="60">
-                    <n-form-item-row :label="t('email')" required>
-                        <n-input v-model:value="user.email" placeholder="Email" />
-                    </n-form-item-row>
-                    <n-form-item-row :label="t('password')" required>
-                        <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="Password" />
-                    </n-form-item-row>
-                    <Turnstile v-if="userOpenSettings.enableMailVerify" v-model:value="cfToken" />
-                    <n-form-item-row v-if="userOpenSettings.enableMailVerify" :label="t('verifyCode')" required>
-                        <n-input-group>
-                            <n-input v-model:value="user.code" placeholder="Code" />
-                            <n-button @click="sendVerificationCode" type="primary" ghost
-                                :disabled="verifyCodeTimeout > 0">
-                                {{ verifyCodeTimeout > 0 ? verifyCodeTimeout + 's' : t('sendVerificationCode') }}
-                            </n-button>
-                        </n-input-group>
-                    </n-form-item-row>
-                    
-                    <n-button @click="emailSignup" type="primary" block secondary strong class="action-btn">
+                <div class="form-wrapper">
+                    <n-form size="large">
+                        <n-form-item-row :label="t('email')">
+                            <n-input v-model:value="user.email" placeholder="name@example.com" />
+                        </n-form-item-row>
+                        <n-form-item-row :label="t('password')">
+                            <n-input v-model:value="user.password" type="password" show-password-on="click" />
+                        </n-form-item-row>
+                        <Turnstile v-if="userOpenSettings.enableMailVerify" v-model:value="cfToken" />
+                        <n-form-item-row v-if="userOpenSettings.enableMailVerify" :label="t('verifyCode')">
+                            <n-input-group>
+                                <n-input v-model:value="user.code" placeholder="123456" />
+                                <n-button @click="sendVerificationCode" :disabled="verifyCodeTimeout > 0" ghost>
+                                    {{ verifyCodeTimeout > 0 ? t('waitforVerifyCode', { timeout: verifyCodeTimeout }) : t('sendVerificationCode') }}
+                                </n-button>
+                            </n-input-group>
+                        </n-form-item-row>
+                    </n-form>
+
+                    <n-button @click="emailSignup" type="primary" block size="large" class="submit-btn">
                         {{ t('register') }}
                     </n-button>
-                </n-form>
+                </div>
             </n-tab-pane>
         </n-tabs>
 
-        <n-modal v-model:show="showModal" style="width: 90%; max-width: 450px;" preset="card" :title="t('forgotPassword')">
-            <n-form v-if="userOpenSettings.enable && userOpenSettings.enableMailVerify" class="login-form" label-placement="left" :label-width="70">
-                <n-form-item-row :label="t('email')" required>
-                    <n-input v-model:value="user.email" />
-                </n-form-item-row>
-                <n-form-item-row :label="t('password')" required>
-                    <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="New Pwd" />
-                </n-form-item-row>
-                <Turnstile v-model:value="cfToken" />
-                <n-form-item-row :label="t('verifyCode')" required>
-                    <n-input-group>
-                        <n-input v-model:value="user.code" />
-                        <n-button @click="sendVerificationCode" type="primary" ghost
-                            :disabled="verifyCodeTimeout > 0">
-                             {{ verifyCodeTimeout > 0 ? verifyCodeTimeout + 's' : t('sendVerificationCode') }}
-                        </n-button>
-                    </n-input-group>
-                </n-form-item-row>
-                <n-button @click="emailSignup" type="primary" block secondary strong class="action-btn">
-                    {{ t('resetPassword') }}
-                </n-button>
-            </n-form>
-            <n-alert v-else :show-icon="false" :bordered="false" type="warning">
-                {{ t('cannotForgotPassword') }}
-            </n-alert>
+        <n-modal v-model:show="showModal" preset="card" :title="t('forgotPassword')" style="width: 90%; max-width: 450px;">
+            <div class="form-wrapper">
+                <div v-if="userOpenSettings.enable && userOpenSettings.enableMailVerify">
+                    <n-form size="large">
+                        <n-form-item-row :label="t('email')">
+                            <n-input v-model:value="user.email" />
+                        </n-form-item-row>
+                        <n-form-item-row :label="t('password')">
+                            <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="New Password" />
+                        </n-form-item-row>
+                        <Turnstile v-model:value="cfToken" />
+                        <n-form-item-row :label="t('verifyCode')">
+                            <n-input-group>
+                                <n-input v-model:value="user.code" />
+                                <n-button @click="sendVerificationCode" :disabled="verifyCodeTimeout > 0" ghost>
+                                    {{ verifyCodeTimeout > 0 ? t('waitforVerifyCode', { timeout: verifyCodeTimeout }) : t('sendVerificationCode') }}
+                                </n-button>
+                            </n-input-group>
+                        </n-form-item-row>
+                    </n-form>
+                    <n-button @click="emailSignup" type="primary" block size="large" class="submit-btn">
+                        {{ t('resetPassword') }}
+                    </n-button>
+                </div>
+                <n-alert v-else type="warning" :show-icon="false">
+                    {{ t('cannotForgotPassword') }}
+                </n-alert>
+            </div>
         </n-modal>
     </div>
 </template>
 
 <style scoped>
-.login-wrapper {
+.login-container {
     width: 100%;
-    /* [修复] 确保内容撑满容器，不使用 flex center */
-    display: block;
+    /* 移除强制 Flex 居中，防止在 Modal 中宽度塌缩 */
 }
 
-.login-form {
-    margin-top: 10px;
-    width: 100%;
+.form-wrapper {
+    /* 增加一些内边距 */
+    padding: 0 4px; 
 }
 
-.action-btn {
-    margin-top: 15px;
-    width: 100%;
+.forgot-password-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+    margin-top: -10px;
 }
 
-/* 移动端特定优化 */
-@media (max-width: 600px) {
-    /* 强制标签靠左对齐，防止换行 */
-    :deep(.n-form-item-label) {
-        justify-content: flex-start;
-        min-width: 60px; 
-    }
+.submit-btn {
+    margin-bottom: 20px;
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #999;
+    font-size: 12px;
+    margin: 16px 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #eee;
+}
+
+.divider::before {
+    margin-right: 10px;
+}
+
+.divider::after {
+    margin-left: 10px;
 }
 </style>
