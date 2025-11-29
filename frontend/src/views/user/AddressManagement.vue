@@ -142,22 +142,18 @@ const refreshBalance = async () => {
     } catch (e) { console.error(e) }
 }
 
-// [核心修改] 打开价格表并合并免费域名
 const openPriceModal = async () => {
     showPriceModal.value = true;
     priceLoadingState.value = true;
     try {
         const res = await api.getUserDomainPrices();
-        // 将后端返回的价格转换为 Map，方便查找
         const pricesMap = new Map((res.results || []).map(p => [p.domain, p]));
         
-        // 遍历所有可用域名 (domainOptions)，如果没有在价格表中，则视为免费
         priceList.value = domainOptions.value.map(opt => {
             const domain = opt.value;
             const priceData = pricesMap.get(domain);
             return {
                 domain: domain,
-                // 如果有价格数据且价格大于0，显示价格；否则显示 0
                 price_yuan: priceData ? priceData.price_yuan : '0.00',
                 price: priceData ? priceData.price : 0
             }
@@ -208,11 +204,17 @@ const handleCreate = async () => {
     try {
         const res = await api.buyAddress(createForm.value.name, createForm.value.domain)
         if (res.success) {
+            // [核心修复] 创建成功后，立即切换 JWT 并刷新设置
+            if (res.jwt) {
+                jwt.value = res.jwt;
+                await api.getSettings(); // 获取新邮箱信息，确保 Index.vue 能识别
+            }
+
             message.success(t('createSuccess'))
             showCreateModal.value = false
             fetchData()
             refreshBalance()
-            router.push('/')
+            router.push('/') // 跳转到首页
         }
     } catch (e) {
         if (e.message && e.message.includes('402')) {
@@ -316,7 +318,6 @@ const columns = [
     }
 ]
 
-// [核心修改] 价格表列定义：0元显示为“免费”
 const priceColumns = [
     { title: t('domain'), key: 'domain' },
     { 
@@ -344,7 +345,6 @@ onMounted(() => {
         <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
             <n-button type="primary" @click="openCreateModal">{{ t('createAddress') }}</n-button>
             <n-button type="info" secondary @click="openPriceModal">{{ t('viewPrices') }}</n-button>
-            
             <n-button @click="showBindModal = true">{{ t('bindExisting') }}</n-button>
             <n-button @click="fetchData">刷新</n-button>
         </div>
