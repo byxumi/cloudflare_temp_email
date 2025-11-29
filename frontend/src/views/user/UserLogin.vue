@@ -24,11 +24,11 @@ const { t } = useI18n({
             register: 'Register',
             email: 'Email',
             password: 'Password',
-            verifyCode: 'Verification Code',
-            verifyCodeSent: 'Code Sent',
-            waitforVerifyCode: 'Wait {timeout}s',
+            verifyCode: 'Verify Code',
+            verifyCodeSent: 'Sent',
+            waitforVerifyCode: '{timeout}s',
             sendVerificationCode: 'Get Code',
-            forgotPassword: 'Forgot Password?',
+            forgotPassword: 'Forgot Password',
             cannotForgotPassword: 'Reset password is disabled, please contact admin.',
             resetPassword: 'Reset Password',
             pleaseInput: 'Please input email and password',
@@ -48,7 +48,7 @@ const { t } = useI18n({
             sendVerificationCode: '获取验证码',
             verifyCodeSent: '已发送',
             waitforVerifyCode: '{timeout}秒后重试',
-            forgotPassword: '忘记密码?',
+            forgotPassword: '忘记密码',
             cannotForgotPassword: '未开启邮箱验证或注册功能，无法重置密码。',
             resetPassword: '重置密码',
             pleaseInput: '请输入邮箱和密码',
@@ -219,14 +219,14 @@ onMounted(async () => {
                         </n-form-item-row>
                     </n-form>
 
-                    <div class="forgot-password-row">
-                        <n-button text type="primary" @click="showModal = true" size="small">
-                            {{ t('forgotPassword') }}
-                        </n-button>
-                    </div>
+                    <div class="spacer-large"></div>
 
                     <n-button @click="emailLogin" type="primary" block size="large" class="submit-btn">
                         {{ t('login') }}
+                    </n-button>
+
+                    <n-button @click="showModal = true" secondary type="warning" block size="large" class="action-btn">
+                        {{ t('forgotPassword') }}
                     </n-button>
 
                     <div v-if="userOpenSettings.oauth2ClientIDs && userOpenSettings.oauth2ClientIDs.length > 0 || true" class="divider">
@@ -264,16 +264,16 @@ onMounted(async () => {
                         <Turnstile v-if="userOpenSettings.enableMailVerify" v-model:value="cfToken" />
                         
                         <n-form-item-row v-if="userOpenSettings.enableMailVerify" :label="t('verifyCode')">
-                            <n-input-group>
-                                <n-input v-model:value="user.code" placeholder="123456" />
-                                <n-button @click="sendVerificationCode" :disabled="verifyCodeTimeout > 0" ghost>
+                            <n-input-group class="verify-group">
+                                <n-input v-model:value="user.code" placeholder="123456" class="verify-input" />
+                                <n-button @click="sendVerificationCode" :disabled="verifyCodeTimeout > 0" ghost class="verify-btn">
                                     {{ verifyCodeTimeout > 0 ? t('waitforVerifyCode', { timeout: verifyCodeTimeout }) : t('sendVerificationCode') }}
                                 </n-button>
                             </n-input-group>
                         </n-form-item-row>
                     </n-form>
                     
-                    <div style="height: 24px;"></div>
+                    <div class="spacer-large"></div>
                     
                     <n-button @click="emailSignup" type="primary" block size="large" class="submit-btn">
                         {{ t('register') }}
@@ -282,7 +282,7 @@ onMounted(async () => {
             </n-tab-pane>
         </n-tabs>
 
-        <n-modal v-model:show="showModal" preset="card" :title="t('forgotPassword')" style="width: 90%; max-width: 400px;">
+        <n-modal v-model:show="showModal" preset="card" :title="t('forgotPassword')" style="width: 90%; max-width: 450px;">
             <div class="form-wrapper">
                 <div v-if="userOpenSettings.enable && userOpenSettings.enableMailVerify">
                     <n-form size="large" label-placement="top">
@@ -293,16 +293,17 @@ onMounted(async () => {
                             <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="New Password" />
                         </n-form-item-row>
                         <Turnstile v-model:value="cfToken" />
+                        
                         <n-form-item-row :label="t('verifyCode')">
-                            <n-input-group>
-                                <n-input v-model:value="user.code" />
-                                <n-button @click="sendVerificationCode" :disabled="verifyCodeTimeout > 0" ghost>
+                            <n-input-group class="verify-group">
+                                <n-input v-model:value="user.code" class="verify-input" />
+                                <n-button @click="sendVerificationCode" :disabled="verifyCodeTimeout > 0" ghost class="verify-btn">
                                     {{ verifyCodeTimeout > 0 ? t('waitforVerifyCode', { timeout: verifyCodeTimeout }) : t('sendVerificationCode') }}
                                 </n-button>
                             </n-input-group>
                         </n-form-item-row>
                     </n-form>
-                    <div class="spacer"></div>
+                    <div class="spacer-large"></div>
                     <n-button @click="emailSignup" type="primary" block size="large" class="submit-btn">
                         {{ t('resetPassword') }}
                     </n-button>
@@ -318,14 +319,14 @@ onMounted(async () => {
 <style scoped>
 .login-container {
     width: 100%;
-    /* 确保宽度撑满 */
     box-sizing: border-box;
+    text-align: left; 
 }
 
 .form-wrapper {
-    /* 增加上下内边距，并在小屏幕时允许滚动 */
-    padding: 0 4px;
+    padding: 0 4px; 
     width: 100%;
+    /* 允许小屏幕滚动 */
     max-height: 75vh;
     overflow-y: auto;
     overflow-x: hidden;
@@ -335,15 +336,17 @@ onMounted(async () => {
     height: 16px;
 }
 
-.forgot-password-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 16px;
-    margin-top: 4px;
+.spacer-large {
+    height: 24px;
+}
+
+/* 按钮间距 */
+.action-btn {
+    margin-top: 12px;
 }
 
 .submit-btn {
-    margin-bottom: 20px;
+    margin-bottom: 0;
 }
 
 .divider {
@@ -352,7 +355,7 @@ onMounted(async () => {
     text-align: center;
     color: #999;
     font-size: 12px;
-    margin: 16px 0;
+    margin: 20px 0;
 }
 
 .divider::before,
@@ -370,8 +373,23 @@ onMounted(async () => {
     margin-left: 10px;
 }
 
-/* [优化] 确保输入框在所有尺寸下宽度正常 */
+/* [关键] 修复输入框宽度 */
 :deep(.n-input) {
     width: 100%;
+}
+
+/* [关键] 验证码组合样式优化 */
+.verify-group {
+    display: flex;
+    width: 100%;
+}
+
+.verify-input {
+    flex: 1;        /* 输入框自动占据剩余空间 */
+    min-width: 0;   /* 允许缩小，防止撑开容器 */
+}
+
+.verify-btn {
+    flex-shrink: 0; /* 按钮保持内容宽度，不许缩小 */
 }
 </style>
