@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, h, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NPopconfirm, NPagination, NInputGroup } from 'naive-ui'
+import { useMessage, NButton, NDataTable, NModal, NForm, NFormItem, NInput, NInputNumber, NSelect, NPopconfirm, NPagination, NInputGroup, NSpace } from 'naive-ui'
 import { api } from '../../api'
 import { useGlobalState } from '../../store'
 
@@ -60,7 +60,7 @@ const checkedRowKeys = ref([])
 const page = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
-const searchQuery = ref('') // [新增] 搜索词
+const searchQuery = ref('')
 
 const domainOptions = computed(() => {
     if (openSettings.value && openSettings.value.domains) {
@@ -80,7 +80,6 @@ const fetchData = async () => {
             await api.getOpenSettings(message)
         }
         
-        // [修改] 传递 searchQuery
         const res = await api.adminGetPrices(searchQuery.value)
         data.value = res.results || []
         
@@ -140,12 +139,11 @@ const handleBatchDelete = async () => {
     }
 }
 
-// [新增] 编辑功能
 const handleEdit = (row) => {
     form.value = {
         domain: row.domain,
         role_text: row.role_text,
-        price: row.price / 100 // 转回元
+        price: row.price / 100 
     }
     showModal.value = true
 }
@@ -168,7 +166,6 @@ const columns = [
         render(row) {
             return h(NSpace, null, {
                 default: () => [
-                    // [新增] 编辑按钮
                     h(NButton, { 
                         size: 'tiny', 
                         type: 'primary', 
@@ -241,7 +238,7 @@ onMounted(fetchData)
                         :options="domainOptions" 
                         :placeholder="t('selectDomain')" 
                         filterable
-                        tag // 允许输入不存在于选项中的域名
+                        tag
                     />
                 </n-form-item>
                 <n-form-item :label="t('role')">
