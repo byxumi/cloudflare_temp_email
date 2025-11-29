@@ -22,16 +22,12 @@ import About from './common/About.vue';
 import SimpleIndex from './index/SimpleIndex.vue';
 import AddressManagement from './user/AddressManagement.vue'
 
-// 移除 UserLogin 引用
-// import UserLogin from './user/UserLogin.vue'
-
 const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt, jwt } = useGlobalState()
 const message = useMessage()
 const route = useRoute()
 const router = useRouter()
 const isMobile = useIsMobile()
-// 移除 showLoginModal
-// const showLoginModal = ref(false)
+const showLoginModal = ref(false)
 const initLoading = ref(false)
 
 const SendMail = defineAsyncComponent(() => {
@@ -125,6 +121,12 @@ const showMailIdQuery = ref(false)
 
 const queryMail = () => {
   mailBoxKey.value = Date.now();
+}
+
+const checkLogin = () => {
+  if (userJwt.value) {
+    router.push('/user')
+  }
 }
 
 watch(route, () => {
@@ -239,7 +241,10 @@ onMounted(async () => {
       </div>
     </div>
     
-    </div>
+    <n-modal v-model:show="showLoginModal" preset="card" style="width: 90%; max-width: 400px;" :title="t('login')">
+      <UserLogin v-if="showLoginModal" @login-success="checkLogin" />
+    </n-modal>
+  </div>
 </template>
 
 <style scoped>
