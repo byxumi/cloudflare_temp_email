@@ -23,14 +23,14 @@ const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
-// [核心修复] 动态计算间距：手机端设为0以防错位，电脑端保持间距
-const xGap = computed(() => isMobile.value ? 0 : 24);
-
 const showSplash = ref(true)
 
-// [UI 美化] 主题配置
+// [布局修复] 手机端栅格间距设为0，防止撑开宽度
+const xGap = computed(() => isMobile.value ? 0 : 24);
+
+// [UI 美化]
 const themeOverrides = computed(() => {
-  const alpha = 0.75;
+  const alpha = 0.72;
   
   const glassBg = isDark.value 
     ? `rgba(30, 30, 35, ${alpha})` 
@@ -42,7 +42,7 @@ const themeOverrides = computed(() => {
 
   const glassBorder = isDark.value
     ? 'rgba(255, 255, 255, 0.12)'
-    : 'rgba(255, 255, 255, 0.6)';
+    : 'rgba(255, 255, 255, 0.5)';
 
   const primaryColor = '#2080f0';
   const transparent = 'transparent';
@@ -52,15 +52,15 @@ const themeOverrides = computed(() => {
       primaryColor: primaryColor,
       primaryColorHover: '#4098fc',
       primaryColorPressed: '#1060c9',
-      borderRadius: '12px',
+      borderRadius: '16px',
       borderRadiusSmall: '8px',
-      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
       bodyColor: transparent,
       cardColor: glassBg,
       modalColor: glassBg,
       popoverColor: glassBg,
       tableColor: transparent,
-      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', 
+      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)', 
       inputColor: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
     },
     LoadingBar: {
@@ -69,7 +69,7 @@ const themeOverrides = computed(() => {
       height: '3px'
     },
     Card: {
-      borderRadius: '16px',
+      borderRadius: '20px',
       color: glassBg,
       borderColor: glassBorder,
       boxShadow: isDark.value 
@@ -89,22 +89,22 @@ const themeOverrides = computed(() => {
     },
     DataTable: {
       color: transparent,
-      thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
+      thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.02)',
       tdColor: transparent,
       tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.3)',
       borderColor: glassBorder,
       borderRadius: '12px'
     },
     Input: {
-      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
-      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.8)',
+      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
+      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)',
       border: `1px solid ${glassBorder}`,
       borderRadius: '12px',
     },
     Select: {
       peers: {
         InternalSelection: {
-          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
+          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
           border: `1px solid ${glassBorder}`,
           borderRadius: '12px',
         },
@@ -269,7 +269,7 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === 1. 全局基础设置 === */
+/* === 1. 全局基础设置 & 布局控制 === */
 body {
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -280,10 +280,12 @@ body {
   background-attachment: fixed;
   letter-spacing: 0.02em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  overflow-x: hidden; /* [修复] 防止横向滚动 */
+  /* [核心修复] 强制隐藏 Body 的横向滚动条 */
+  overflow-x: hidden;
+  width: 100vw;
 }
 
-/* === 开屏动画样式 === */
+/* === 开屏动画 === */
 .splash-screen {
   position: fixed;
   top: 0;
@@ -298,18 +300,15 @@ body {
   justify-content: center;
   align-items: center;
 }
-
 [data-theme='dark'] .splash-screen {
   background: rgba(0, 0, 0, 0.4);
 }
-
 .splash-content {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 32px;
 }
-
 .splash-logo {
   width: 100px;
   height: 100px;
@@ -317,7 +316,6 @@ body {
   box-shadow: 0 20px 50px rgba(0,0,0,0.15);
   animation: logo-pulse 2s ease-in-out infinite;
 }
-
 .splash-loader {
   width: 60px;
   height: 4px;
@@ -326,7 +324,6 @@ body {
   position: relative;
   overflow: hidden;
 }
-
 .splash-loader::after {
   content: '';
   position: absolute;
@@ -339,18 +336,15 @@ body {
   animation: loader-finish 1.5s ease-in-out infinite;
   border-radius: 2px;
 }
-
 @keyframes logo-pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
 }
-
 @keyframes loader-finish {
   0% { transform: translateX(-100%); }
   50% { transform: translateX(0); }
   100% { transform: translateX(100%); }
 }
-
 .splash-leave-active {
   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -360,7 +354,7 @@ body {
   transform: scale(1.1);
 }
 
-/* === 滚动条美化 === */
+/* === 滚动条 === */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -383,7 +377,7 @@ body {
   margin-right: 10px;
 }
 
-/* === 全局玻璃拟态核心 === */
+/* === 玻璃拟态组件样式 === */
 .n-card, 
 .n-modal, 
 .n-drawer, 
@@ -395,6 +389,9 @@ body {
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  /* [核心修复] 防止卡片撑破手机屏幕 */
+  max-width: 100%; 
+  box-sizing: border-box;
 }
 
 .n-card:hover {
@@ -406,7 +403,6 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Tab 内容区 */
 .n-tabs .n-tab-pane {
   background-color: rgba(255, 255, 255, 0.65) !important;
   backdrop-filter: blur(16px) saturate(180%) !important;
@@ -416,13 +412,15 @@ body {
   margin-top: 12px;
   padding: 24px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  /* [核心修复] 防止 Tab 内容溢出 */
+  max-width: 100%;
+  overflow-x: hidden; 
 }
 [data-theme='dark'] .n-tabs .n-tab-pane {
   background-color: rgba(30, 30, 35, 0.6) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Tab 按钮优化 */
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
   background-color: rgba(255, 255, 255, 0.35) !important;
   backdrop-filter: blur(12px);
@@ -466,17 +464,15 @@ body {
 .n-input .n-input-wrapper {
   backdrop-filter: blur(8px);
 }
-
-/* [新增] 确保卡片内容自适应不溢出 */
-.n-card {
-    max-width: 100%;
-}
 </style>
 
 <style scoped>
+/* [核心修复] 布局容器防溢出设置 */
 .app-container {
   min-height: 100vh;
+  width: 100%;
   position: relative;
+  overflow-x: hidden; /* 兜底：防止 horizontal scrolling */
 }
 
 .bg-overlay {
@@ -499,7 +495,9 @@ body {
   position: relative;
   z-index: 1;
   min-height: 100vh;
+  /* 限制最大宽度，大屏居中 */
   max-width: 1440px; 
+  width: 100%; /* 手机端占满 */
   margin: 0 auto;
 }
 
@@ -507,10 +505,10 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  /* [修复] 移动端增加左右边距，避免贴边 */
+  /* [核心修复] 左右边距与盒模型 */
   padding: 0 16px;
   width: 100%;
-  box-sizing: border-box;
+  box-sizing: border-box; 
 }
 
 .sticky-header-wrapper {
@@ -526,6 +524,9 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
+  /* [核心修复] 确保 Header 不超出容器 */
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 :deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
@@ -541,11 +542,12 @@ body {
 .router-container {
   flex: 1;
   width: 100%;
-  /* [修复] 允许容器宽度自适应 */
   max-width: 1100px;
   margin: 0 auto;
   padding-top: 10px;
   padding-bottom: 40px;
+  /* [核心修复] 内部模块如果太宽（如表格），允许内部滚动，不撑开页面 */
+  overflow-x: auto; 
 }
 
 .floating-footer-wrapper {
@@ -560,9 +562,10 @@ body {
   text-align: center;
   align-self: center;
   width: fit-content;
-  /* [修复] 移动端允许 Footer 缩小，避免溢出 */
+  /* [核心修复] 移动端 Footer 宽度控制 */
   min-width: auto;
   max-width: 100%;
+  box-sizing: border-box;
 }
 
 :deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
