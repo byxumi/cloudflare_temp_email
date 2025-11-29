@@ -23,28 +23,26 @@ const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
-// 动态栅格间距
-const xGap = computed(() => isMobile.value ? 0 : 24);
-
 const showSplash = ref(true)
 
-// [UI 美化] 终极版主题配置
+// [核心] 动态栅格间距：手机端强制为 0，防止负边距溢出
+const xGap = computed(() => isMobile.value ? 0 : 24);
+
+// [UI 美化]
 const themeOverrides = computed(() => {
-  // === 亮色模式配置 ===
-  const lightAlpha = 0.72;
-  const lightBg = `rgba(255, 255, 255, ${lightAlpha})`;
-  const lightBorder = 'rgba(255, 255, 255, 0.6)';
+  const alpha = 0.72;
   
-  // === [美化] 暗色模式深度调优 ===
-  // 使用略带冷色调的深灰，而不是纯黑，提升质感
-  const darkBg = 'rgba(20, 21, 26, 0.65)'; 
-  const darkBgHover = 'rgba(30, 32, 38, 0.75)';
-  // 增强暗色模式下的边框亮度，形成“玻璃边缘”的光泽感
-  const darkBorder = 'rgba(255, 255, 255, 0.12)';
+  const glassBg = isDark.value 
+    ? `rgba(30, 30, 35, ${alpha})` 
+    : `rgba(255, 255, 255, ${alpha})`;
   
-  const glassBg = isDark.value ? darkBg : lightBg;
-  const glassBgHover = isDark.value ? darkBgHover : `rgba(255, 255, 255, ${lightAlpha + 0.15})`;
-  const glassBorder = isDark.value ? darkBorder : lightBorder;
+  const glassBgHover = isDark.value 
+    ? `rgba(45, 45, 50, ${alpha + 0.1})` 
+    : `rgba(255, 255, 255, ${alpha + 0.15})`;
+
+  const glassBorder = isDark.value
+    ? 'rgba(255, 255, 255, 0.12)'
+    : 'rgba(255, 255, 255, 0.6)';
 
   const primaryColor = '#2080f0';
   const transparent = 'transparent';
@@ -63,11 +61,8 @@ const themeOverrides = computed(() => {
       modalColor: glassBg,
       popoverColor: glassBg,
       tableColor: transparent,
-      // 表头颜色：暗色模式下稍微亮一点点，区分内容
-      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', 
-      // 文字颜色：暗色模式使用灰白色，不刺眼
-      textColorBase: isDark.value ? '#E0E0E0' : '#333639',
-      inputColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.5)',
+      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)', 
+      inputColor: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
     },
     LoadingBar: {
       colorLoading: primaryColor,
@@ -78,16 +73,13 @@ const themeOverrides = computed(() => {
       borderRadius: '20px',
       color: glassBg,
       borderColor: glassBorder,
-      // 暗色模式阴影加深，亮色模式阴影柔和
       boxShadow: isDark.value 
-        ? '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.05)' 
+        ? '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05)' 
         : '0 8px 32px rgba(31, 38, 135, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.4)'
     },
     Modal: {
       color: glassBg,
-      boxShadow: isDark.value 
-        ? '0 20px 60px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.08)'
-        : '0 20px 50px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.4)',
+      boxShadow: '0 20px 50px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.1)',
       borderColor: glassBorder,
       borderRadius: '24px'
     },
@@ -98,40 +90,36 @@ const themeOverrides = computed(() => {
     },
     DataTable: {
       color: transparent,
-      thColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.02)',
+      thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.02)',
       tdColor: transparent,
-      tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.3)',
+      tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.3)',
       borderColor: glassBorder,
       borderRadius: '12px'
     },
     Input: {
-      // 输入框背景：暗色模式下深色半透明
-      color: isDark.value ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.5)',
-      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.8)',
+      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
+      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)',
       border: `1px solid ${glassBorder}`,
       borderRadius: '12px',
-      // 聚焦时光晕
-      boxShadowFocus: isDark.value ? `0 0 0 2px rgba(32, 128, 240, 0.3)` : `0 0 0 2px rgba(32, 128, 240, 0.2)`
     },
     Select: {
       peers: {
         InternalSelection: {
-          color: isDark.value ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.5)',
+          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
           border: `1px solid ${glassBorder}`,
           borderRadius: '12px',
         },
         InternalSelectMenu: {
-          color: isDark.value ? 'rgba(30, 32, 38, 0.85)' : 'rgba(255, 255, 255, 0.85)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          color: glassBg,
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
           optionColorHover: glassBgHover,
           padding: '6px',
-          borderRadius: '16px',
-          backdropFilter: 'blur(16px)'
+          borderRadius: '16px'
         }
       }
     },
     Dropdown: {
-      color: isDark.value ? 'rgba(30, 32, 38, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+      color: glassBg,
       optionColorHover: glassBgHover,
       borderRadius: '12px'
     },
@@ -282,275 +270,28 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === 1. 全局基础设置 === */
+/* === [关键] 1. 全局盒模型重置，防止 padding 撑大容器 === */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* === [关键] 2. Body 宽度修正 === */
 body {
   font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
-  /* [修改] 您的新背景图链接 */
   background: url('https://t.alcy.cc/ycy') no-repeat center center fixed;
   background-size: cover;
   background-attachment: fixed;
   letter-spacing: 0.02em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  width: 100%; 
+  /* 禁用 body 的横向滚动，但允许纵向 */
   overflow-x: hidden;
-}
-
-/* ... (滚动条样式保持不变) ... */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(150, 150, 150, 0.2);
-  border-radius: 3px;
-  backdrop-filter: blur(4px);
-  transition: background 0.3s;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(150, 150, 150, 0.5);
-}
-
-.n-switch {
-  margin-left: 10px;
-  margin-right: 10px;
-}
-
-/* === 2. 玻璃拟态核心样式 === */
-.n-card, 
-.n-modal, 
-.n-drawer, 
-.n-dialog,
-.n-popover,
-.n-dropdown-menu,
-.n-select-menu {
-  backdrop-filter: blur(24px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  max-width: 100% !important;
-  box-sizing: border-box;
-}
-
-.n-card:hover {
-  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2) !important;
-}
-
-/* [美化] 暗色模式组件样式 */
-[data-theme='dark'] .n-card,
-[data-theme='dark'] .n-modal,
-[data-theme='dark'] .n-dialog,
-[data-theme='dark'] .n-popover {
-  /* 边框更亮一点，模拟玻璃反光 */
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  /* 阴影更重，增加立体感 */
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
-}
-
-/* Tab Pane */
-.n-tabs .n-tab-pane {
-  background-color: rgba(255, 255, 255, 0.65) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  border-radius: 16px !important;
-  margin-top: 12px;
-  padding: 24px !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-  max-width: 100%;
-  overflow-x: hidden; 
-}
-/* [美化] 暗色模式 Tab Pane */
-[data-theme='dark'] .n-tabs .n-tab-pane {
-  background-color: rgba(20, 21, 26, 0.65) !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-}
-
-/* Tab Buttons */
-.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
-  background-color: rgba(255, 255, 255, 0.35) !important;
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  border-bottom: none !important;
-  margin-right: 8px !important;
-  border-radius: 12px 12px 0 0 !important;
-  transition: all 0.2s ease !important;
-  font-weight: 500;
-}
-.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab:hover {
-  background-color: rgba(255, 255, 255, 0.55) !important;
-  transform: translateY(-2px);
-}
-.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
-  background-color: rgba(255, 255, 255, 0.85) !important;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
-  transform: translateY(0);
-  font-weight: 600;
-}
-
-/* [美化] 暗色模式 Tab 按钮 */
-[data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
-  background-color: rgba(30, 32, 38, 0.5) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
-}
-[data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab:hover {
-  background-color: rgba(45, 48, 55, 0.7) !important;
-}
-[data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
-  background-color: rgba(40, 42, 48, 0.9) !important;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
-}
-
-.n-button:active {
-  transform: scale(0.96);
-}
-.n-button {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.n-data-table, .n-data-table .n-data-table-th, .n-data-table .n-data-table-td,
-.n-list, .n-list .n-list-item,
-.n-layout, .n-layout-header, .n-layout-footer, .n-layout-sider {
-  background-color: transparent !important;
-}
-.n-input .n-input-wrapper {
-  backdrop-filter: blur(8px);
-}
-</style>
-
-<style scoped>
-.app-container {
-  min-height: 100vh;
   width: 100%;
-  position: relative;
-  overflow-x: hidden;
 }
 
-.bg-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.15);
-  pointer-events: none;
-  z-index: 0;
-  transition: background 0.3s ease;
-}
-
-/* [美化] 暗色模式下的背景遮罩 */
-:deep(.n-config-provider--theme-dark) .bg-overlay {
-  background: rgba(0, 0, 0, 0.65); /* 稍微加深遮罩，保证内容清晰 */
-}
-
-.main-grid {
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
-  max-width: 1440px; 
-  width: 100%;
-  margin: 0 auto;
-}
-
-.main-content {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  padding: 0 16px;
-  width: 100%;
-  box-sizing: border-box; 
-}
-
-.sticky-header-wrapper {
-  position: sticky;
-  top: 20px;
-  z-index: 100;
-  margin: 0 0 24px 0;
-  padding: 12px 24px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-/* [美化] 暗色模式 Header */
-:deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
-  background: rgba(30, 32, 38, 0.75);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-}
-
-.app-header {
-  margin-bottom: 0; 
-}
-
-.router-container {
-  flex: 1;
-  width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding-top: 10px;
-  padding-bottom: 40px;
-  overflow-x: hidden;
-}
-
-.floating-footer-wrapper {
-  margin-top: auto;
-  margin-bottom: 20px;
-  padding: 10px 24px;
-  background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(12px) saturate(120%);
-  -webkit-backdrop-filter: blur(12px) saturate(120%);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  text-align: center;
-  align-self: center;
-  width: fit-content;
-  min-width: auto;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-/* [美化] 暗色模式 Footer */
-:deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
-  background: rgba(30, 32, 38, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.app-footer {
-  padding-bottom: 0;
-}
-
-.side-ad {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ... (保留动画部分) ... */
-.fade-enter-active,
-.fade-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(15px);
-}
-
-/* 开屏动画部分保持不变 */
+/* ... (开屏动画部分保持不变) ... */
 .splash-screen {
   position: fixed;
   top: 0;
@@ -566,7 +307,7 @@ body {
   align-items: center;
 }
 [data-theme='dark'] .splash-screen {
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.4);
 }
 .splash-content {
   display: flex;
@@ -617,5 +358,241 @@ body {
   opacity: 0;
   backdrop-filter: blur(0px);
   transform: scale(1.1);
+}
+
+/* ... (滚动条部分保持不变) ... */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.2);
+  border-radius: 3px;
+  backdrop-filter: blur(4px);
+  transition: background 0.3s;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.5);
+}
+
+.n-switch {
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+/* === 玻璃拟态核心样式 === */
+.n-card, 
+.n-modal, 
+.n-drawer, 
+.n-dialog,
+.n-popover,
+.n-dropdown-menu,
+.n-select-menu {
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  /* [关键] 确保所有卡片最大宽度不超过容器 */
+  max-width: 100% !important;
+}
+
+.n-card:hover {
+  box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2) !important;
+}
+
+[data-theme='dark'] .n-card,
+[data-theme='dark'] .n-modal {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.n-tabs .n-tab-pane {
+  background-color: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 16px !important;
+  margin-top: 12px;
+  padding: 24px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  /* [关键] 限制 Tab 内容宽度 */
+  max-width: 100%;
+  overflow-x: hidden; 
+}
+[data-theme='dark'] .n-tabs .n-tab-pane {
+  background-color: rgba(30, 30, 35, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
+  background-color: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-bottom: none !important;
+  margin-right: 8px !important;
+  border-radius: 12px 12px 0 0 !important;
+  transition: all 0.2s ease !important;
+  font-weight: 500;
+}
+.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab:hover {
+  background-color: rgba(255, 255, 255, 0.55) !important;
+  transform: translateY(-2px);
+}
+.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+  transform: translateY(0);
+  font-weight: 600;
+}
+[data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
+  background-color: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+[data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
+  background-color: rgba(40, 40, 45, 0.8) !important;
+}
+
+.n-button:active {
+  transform: scale(0.96);
+}
+.n-button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.n-data-table, .n-data-table .n-data-table-th, .n-data-table .n-data-table-td,
+.n-list, .n-list .n-list-item,
+.n-layout, .n-layout-header, .n-layout-footer, .n-layout-sider {
+  background-color: transparent !important;
+}
+.n-input .n-input-wrapper {
+  backdrop-filter: blur(8px);
+}
+</style>
+
+<style scoped>
+.app-container {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  /* [关键] 再次确保容器不溢出 */
+  overflow-x: hidden;
+}
+
+.bg-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+  z-index: 0;
+  transition: background 0.3s ease;
+}
+
+:deep(.n-config-provider--theme-dark) .bg-overlay {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.main-grid {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  max-width: 1440px; 
+  width: 100%;
+  margin: 0 auto;
+}
+
+.main-content {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* [关键] 移动端 padding，且限制宽度 */
+  padding: 0 16px;
+  width: 100%;
+}
+
+.sticky-header-wrapper {
+  position: sticky;
+  top: 20px;
+  z-index: 100;
+  margin: 0 0 24px 0;
+  padding: 12px 24px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  /* [关键] Header 最大宽度 */
+  max-width: 100%;
+}
+
+:deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
+  background: rgba(30, 30, 35, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.app-header {
+  margin-bottom: 0; 
+}
+
+.router-container {
+  flex: 1;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-top: 10px;
+  padding-bottom: 40px;
+  /* [关键] 允许内容自适应，禁止撑开父容器 */
+  overflow-x: hidden;
+}
+
+.floating-footer-wrapper {
+  margin-top: auto;
+  margin-bottom: 20px;
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(12px) saturate(120%);
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+  align-self: center;
+  width: fit-content;
+  /* [关键] 防止 Footer 在小屏溢出 */
+  min-width: auto;
+  max-width: 100%;
+}
+
+:deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
+  background: rgba(30, 30, 35, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.app-footer {
+  padding-bottom: 0;
+}
+
+.side-ad {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(15px);
 }
 </style>
