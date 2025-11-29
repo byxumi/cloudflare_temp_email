@@ -23,14 +23,14 @@ const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
-// [修复] 动态计算栅格间距：手机端设为0，避免负边距导致的错位和横向滚动
+// [核心修复] 动态计算间距：手机端设为0以防错位，电脑端保持间距
 const xGap = computed(() => isMobile.value ? 0 : 24);
 
 const showSplash = ref(true)
 
-// [UI 美化] 终极版：增加内发光和细节质感
+// [UI 美化] 主题配置
 const themeOverrides = computed(() => {
-  const alpha = 0.72; 
+  const alpha = 0.75;
   
   const glassBg = isDark.value 
     ? `rgba(30, 30, 35, ${alpha})` 
@@ -42,7 +42,7 @@ const themeOverrides = computed(() => {
 
   const glassBorder = isDark.value
     ? 'rgba(255, 255, 255, 0.12)'
-    : 'rgba(255, 255, 255, 0.5)';
+    : 'rgba(255, 255, 255, 0.6)';
 
   const primaryColor = '#2080f0';
   const transparent = 'transparent';
@@ -52,16 +52,15 @@ const themeOverrides = computed(() => {
       primaryColor: primaryColor,
       primaryColorHover: '#4098fc',
       primaryColorPressed: '#1060c9',
-      borderRadius: '16px',
+      borderRadius: '12px',
       borderRadiusSmall: '8px',
-      fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
-      
+      fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       bodyColor: transparent,
       cardColor: glassBg,
       modalColor: glassBg,
       popoverColor: glassBg,
       tableColor: transparent,
-      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.03)', 
+      tableHeaderColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', 
       inputColor: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
     },
     LoadingBar: {
@@ -70,7 +69,7 @@ const themeOverrides = computed(() => {
       height: '3px'
     },
     Card: {
-      borderRadius: '20px',
+      borderRadius: '16px',
       color: glassBg,
       borderColor: glassBorder,
       boxShadow: isDark.value 
@@ -90,30 +89,30 @@ const themeOverrides = computed(() => {
     },
     DataTable: {
       color: transparent,
-      thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.02)',
+      thColor: isDark.value ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
       tdColor: transparent,
       tdColorHover: isDark.value ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.3)',
       borderColor: glassBorder,
       borderRadius: '12px'
     },
     Input: {
-      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
-      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)',
+      color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
+      colorFocus: isDark.value ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.8)',
       border: `1px solid ${glassBorder}`,
       borderRadius: '12px',
     },
     Select: {
       peers: {
         InternalSelection: {
-          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
+          color: isDark.value ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.5)',
           border: `1px solid ${glassBorder}`,
           borderRadius: '12px',
         },
         InternalSelectMenu: {
           color: glassBg,
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.25)',
           optionColorHover: glassBgHover,
-          padding: '8px',
+          padding: '6px',
           borderRadius: '16px'
         }
       }
@@ -276,13 +275,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
-  background: url('https://t.alcy.cc/ycy') no-repeat center center fixed;
+  background: url('https://bing.biturl.top/?resolution=1920&format=image&index=0&mkt=zh-CN') no-repeat center center fixed;
   background-size: cover;
   background-attachment: fixed;
   letter-spacing: 0.02em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  /* [修复] 防止横向滚动 */
-  overflow-x: hidden;
+  overflow-x: hidden; /* [修复] 防止横向滚动 */
 }
 
 /* === 开屏动画样式 === */
@@ -468,6 +466,11 @@ body {
 .n-input .n-input-wrapper {
   backdrop-filter: blur(8px);
 }
+
+/* [新增] 确保卡片内容自适应不溢出 */
+.n-card {
+    max-width: 100%;
+}
 </style>
 
 <style scoped>
@@ -504,10 +507,10 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  /* [修复] 确保手机端内边距合适 */
-  padding: 0 16px; 
-  /* [修复] 宽度撑满 */
+  /* [修复] 移动端增加左右边距，避免贴边 */
+  padding: 0 16px;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .sticky-header-wrapper {
@@ -538,6 +541,7 @@ body {
 .router-container {
   flex: 1;
   width: 100%;
+  /* [修复] 允许容器宽度自适应 */
   max-width: 1100px;
   margin: 0 auto;
   padding-top: 10px;
@@ -556,7 +560,9 @@ body {
   text-align: center;
   align-self: center;
   width: fit-content;
-  min-width: 280px;
+  /* [修复] 移动端允许 Footer 缩小，避免溢出 */
+  min-width: auto;
+  max-width: 100%;
 }
 
 :deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
