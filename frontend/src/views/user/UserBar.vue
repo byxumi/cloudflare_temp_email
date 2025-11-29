@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
+import { useMessage, NCard, NAlert, NSkeleton } from 'naive-ui' // 补全引入
 
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -49,8 +50,8 @@ onMounted(async () => {
             </n-alert>
         </div>
         <div v-else class="center">
-            <n-card :bordered="false" embedded style="max-width: 600px;">
-                <n-alert v-if="userJwt" type="warning" :show-icon="false" :bordered="false" closable>
+            <n-card :bordered="false" embedded class="login-card">
+                <n-alert v-if="userJwt" type="warning" :show-icon="false" :bordered="false" closable style="margin-bottom: 15px;">
                     <span>{{ t('fetchUserSettingsError') }}</span>
                 </n-alert>
                 <UserLogin />
@@ -68,9 +69,29 @@ onMounted(async () => {
 
 .center {
     display: flex;
-    text-align: center;
-    place-items: center;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    margin: 20px;
+    padding: 20px 10px; /* 减小左右内边距，适应小屏幕 */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 500px; /* 限制最大宽度，大屏美观 */
+    box-sizing: border-box;
+}
+
+/* 移动端适配 */
+@media (max-width: 600px) {
+    .center {
+        padding: 10px; /* 移动端进一步减小边距 */
+    }
+    .login-card {
+        /* 移动端卡片样式调整，防止内边距过大导致内容被挤压 */
+        --n-padding-left: 12px !important;
+        --n-padding-right: 12px !important;
+    }
 }
 </style>
