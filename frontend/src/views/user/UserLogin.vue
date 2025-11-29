@@ -323,13 +323,15 @@ onMounted(async () => {
     text-align: left; 
 }
 
+/* [修改] 增加左右内边距，缩短输入框 */
 .form-wrapper {
-    padding: 0 4px; 
+    padding: 0 24px; 
     width: 100%;
     /* 允许小屏幕滚动 */
     max-height: 75vh;
     overflow-y: auto;
     overflow-x: hidden;
+    box-sizing: border-box;
 }
 
 .spacer {
@@ -340,13 +342,19 @@ onMounted(async () => {
     height: 24px;
 }
 
-/* 按钮间距 */
-.action-btn {
-    margin-top: 12px;
+.forgot-password-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 16px;
+    margin-top: 4px;
 }
 
 .submit-btn {
     margin-bottom: 0;
+}
+
+.action-btn {
+    margin-top: 12px;
 }
 
 .divider {
@@ -373,23 +381,21 @@ onMounted(async () => {
     margin-left: 10px;
 }
 
-/* [关键] 修复输入框宽度 */
 :deep(.n-input) {
     width: 100%;
 }
 
-/* [关键] 验证码组合样式优化 */
 .verify-group {
     display: flex;
     width: 100%;
 }
 
 .verify-input {
-    flex: 1;        /* 输入框自动占据剩余空间 */
-    min-width: 0;   /* 允许缩小，防止撑开容器 */
+    flex: 1;        
+    min-width: 0;  
 }
 
 .verify-btn {
-    flex-shrink: 0; /* 按钮保持内容宽度，不许缩小 */
+    flex-shrink: 0; 
 }
 </style>
