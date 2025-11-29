@@ -6,7 +6,6 @@ import { useMessage, NButton, NInputGroup, NTag, NDropdown, NSpace, NModal, NFor
 import useClipboard from 'vue-clipboard3'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
-import { Search } from '@vicons/fa' // 假设用个图标
 
 const router = useRouter()
 const { openSettings, jwt, userBalance, userSettings, auth, userJwt } = useGlobalState()
@@ -143,13 +142,26 @@ const refreshBalance = async () => {
     } catch (e) { console.error(e) }
 }
 
-// 打开价格表
+// [核心修改] 打开价格表并合并免费域名
 const openPriceModal = async () => {
     showPriceModal.value = true;
     priceLoadingState.value = true;
     try {
         const res = await api.getUserDomainPrices();
-        priceList.value = res.results || [];
+        // 将后端返回的价格转换为 Map，方便查找
+        const pricesMap = new Map((res.results || []).map(p => [p.domain, p]));
+        
+        // 遍历所有可用域名 (domainOptions)，如果没有在价格表中，则视为免费
+        priceList.value = domainOptions.value.map(opt => {
+            const domain = opt.value;
+            const priceData = pricesMap.get(domain);
+            return {
+                domain: domain,
+                // 如果有价格数据且价格大于0，显示价格；否则显示 0
+                price_yuan: priceData ? priceData.price_yuan : '0.00',
+                price: priceData ? priceData.price : 0
+            }
+        })
     } catch (e) {
         message.error('Failed to load prices');
     } finally {
@@ -304,12 +316,16 @@ const columns = [
     }
 ]
 
+// [核心修改] 价格表列定义：0元显示为“免费”
 const priceColumns = [
     { title: t('domain'), key: 'domain' },
     { 
         title: t('price'), 
         key: 'price_yuan',
         render(row) {
+            if (row.price === 0) {
+                return h(NTag, { type: 'success', size: 'small', bordered: false }, { default: () => t('free') })
+            }
             return `${row.price_yuan} ${t('currency')}`
         }
     }
