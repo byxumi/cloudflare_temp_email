@@ -10,7 +10,7 @@ const {
     loading, auth, jwt, settings, openSettings,
     userOpenSettings, userSettings, announcement,
     showAuth, adminAuth, showAdminAuth, userJwt,
-    userBalance 
+    userBalance // [新增] 引入全局余额
 } = useGlobalState();
 
 const instance = axios.create({
@@ -149,6 +149,7 @@ const getUserSettings = async (message) => {
         if (!userJwt.value) return;
         const res = await api.fetch("/user_api/settings")
         Object.assign(userSettings.value, res)
+        // auto refresh user jwt
         if (userSettings.value.new_user_token) {
             try {
                 await api.fetch("/user_api/settings", {
@@ -207,9 +208,12 @@ export const api = {
     adminDeleteAddress,
     bindUserAddress,
 
+    // --- 计费系统 API ---
+    
     getUserBalance: async () => {
         try {
             const res = await apiFetch('/user_api/billing/balance');
+            // [关键] 自动更新全局 store
             userBalance.value = res.balance || 0;
             return res.balance || 0;
         } catch (error) {
@@ -220,7 +224,6 @@ export const api = {
     getDomainPrice: async (domain) => {
         return await apiFetch(`/user_api/billing/price?domain=${domain}`);
     },
-    // [新增] 用户获取价格列表
     getUserDomainPrices: async () => {
         return await apiFetch(`/user_api/billing/prices-list`);
     },
@@ -240,6 +243,7 @@ export const api = {
         return await apiFetch(`/user_api/billing/transactions?limit=${limit}&offset=${offset}`);
     },
     
+    // --- 管理员 API ---
     adminGetTransactions: async (limit, offset) => {
         return await apiFetch(`/admin/billing/transactions?limit=${limit}&offset=${offset}`);
     },
@@ -252,9 +256,9 @@ export const api = {
             body: JSON.stringify({ amount, count, starts_at, expires_at, max_uses })
         });
     },
-    // [修改] 支持查询参数
-    adminGetPrices: async (query = '') => {
-        return await apiFetch(`/admin/billing/prices?query=${query}`);
+    // [关键修复] 增加 limit 和 offset 参数
+    adminGetPrices: async (limit, offset, query = '') => {
+        return await apiFetch(`/admin/billing/prices?limit=${limit}&offset=${offset}&query=${query}`);
     },
     adminSetPrice: async (domain, role_text, price) => {
         return await apiFetch('/admin/billing/prices', {
