@@ -89,7 +89,7 @@ const handleRedeem = async () => {
 }
 
 const handleBuyCard = () => {
-    const myWebsiteUrl = "https://您的发卡网地址.com"; 
+    const myWebsiteUrl = "https://buy.xumicloud.top"; 
     
     if (openSettings.value.buyCardUrl) {
         window.open(openSettings.value.buyCardUrl, '_blank');
