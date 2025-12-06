@@ -8,7 +8,7 @@ import {
     DarkModeFilled, LightModeFilled, MenuFilled,
     AdminPanelSettingsFilled
 } from '@vicons/material'
-import { GithubAlt, Language, User, Home } from '@vicons/fa'
+import { GithubAlt, Language, User, Home, InfoCircle } from '@vicons/fa' // [新增] InfoCircle 图标
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -60,6 +60,7 @@ const { locale, t } = useI18n({
             menu: 'Menu',
             user: 'User',
             ok: 'OK',
+            version: 'Version'
         },
         zh: {
             title: 'Cloudflare 临时邮件',
@@ -71,6 +72,7 @@ const { locale, t } = useI18n({
             menu: '菜单',
             user: '用户',
             ok: '确定',
+            version: '版本'
         }
     }
 });
@@ -178,6 +180,26 @@ const menuOptions = computed(() => [
             }
         ),
         key: "lang"
+    },
+    // [新增] 显示后台配置的版本号
+    {
+        label: () => h(
+            NButton,
+            {
+                text: true,
+                size: "small",
+                style: "width: 100%",
+                // 点击无操作，仅展示
+            },
+            {
+                default: () => openSettings.value.frontendVersion || "v1.0.0",
+                icon: () => h(
+                    NIcon, { component: InfoCircle }
+                )
+            }
+        ),
+        show: !!openSettings.value.frontendVersion, // 只有配置了才显示
+        key: "version"
     },
     {
         label: () => h(
