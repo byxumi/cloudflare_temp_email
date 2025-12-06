@@ -73,7 +73,7 @@ const sendAddressBlockList = ref([])
 const noLimitSendAddressList = ref([])
 const verifiedAddressList = ref([])
 const fromBlockList = ref([])
-const frontendVersion = ref("") // 版本号
+const frontendVersion = ref("") // [修复] 版本号
 const emailRuleSettings = ref({
     blockReceiveUnknowAddressEmail: false,
     emailForwardingList: []
@@ -166,7 +166,7 @@ const fetchData = async () => {
         verifiedAddressList.value = res.verifiedAddressList || []
         fromBlockList.value = res.fromBlockList || []
         noLimitSendAddressList.value = res.noLimitSendAddressList || []
-        // [修复] 确保正确读取版本号
+        // [修复] 读取版本号，后端现在返回扁平结构，直接读取即可
         frontendVersion.value = res.frontendVersion || ""
         emailRuleSettings.value = res.emailRuleSettings || {
             blockReceiveUnknowAddressEmail: false,
@@ -187,14 +187,13 @@ const save = async () => {
                 verifiedAddressList: verifiedAddressList.value || [],
                 fromBlockList: fromBlockList.value || [],
                 noLimitSendAddressList: noLimitSendAddressList.value || [],
-                // [修复] 确保正确保存版本号
+                // [修复] 提交版本号
                 frontendVersion: frontendVersion.value,
                 emailRuleSettings: emailRuleSettings.value,
             })
         })
         message.success(t('successTip'))
-        // 刷新一下数据确认
-        await fetchData(); 
+        await fetchData() // 刷新确认
     } catch (error) {
         message.error(error.message || "error");
     }
