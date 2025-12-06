@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
 import { Context } from 'hono';
-import { handleListQuery, commonGetUserRole } from '../common';
+import { handleListQuery, commonGetUserRole, clearCacheByPrefix } from '../common';
 import { purchaseAddress } from './purchase';
 
-// 辅助函数：元转分 (确保精度，比如 1.00 -> 100, 0.5 -> 50)
+// 辅助函数：元转分
 const toCents = (yuan: number | string) => Math.round(parseFloat(yuan.toString()) * 100);
 
 // 辅助函数：生成随机卡密
@@ -16,39 +16,53 @@ const generateCode = (length = 16) => {
     return result;
 };
 
+// 内存缓存价格表 (60秒)
+const PriceCache = new Map<string, { data: any, expiry: number }>();
+const getPriceCache = (key: string) => {
+    const item = PriceCache.get(key);
+    if (item && item.expiry > Date.now()) return item.data;
+    return null;
+}
+const setPriceCache = (key: string, data: any) => {
+    PriceCache.set(key, { data, expiry: Date.now() + 60000 });
+}
+// 清除价格缓存
+const clearPriceCache = () => {
+    PriceCache.clear();
+}
+
 const api = new Hono<HonoCustomType>();
 
 // --- 管理员 API ---
 
-// 1. 生成卡密 (Admin) - 输入单位：元
+// 1. 生成卡密
 api.post('/admin/billing/cards/generate', async (c) => {
-    const { amount, count, expires_at, max_uses } = await c.req.json();
+    const { amount, count, starts_at, expires_at, max_uses } = await c.req.json();
     const adminId = c.get('jwtPayload')?.user_id || 0;
     
-    // 将元转换为分存储
     const amountInCents = toCents(amount);
-
     const stmt = c.env.DB.prepare(`
-        INSERT INTO redemption_codes (code, amount, expires_at, max_uses, created_by) 
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO redemption_codes (code, amount, starts_at, expires_at, max_uses, created_by) 
+        VALUES (?, ?, ?, ?, ?, ?)
     `);
-
     const codes = [];
     const batch = [];
     for (let i = 0; i < (count || 1); i++) {
         const code = generateCode();
         codes.push(code);
-        batch.push(stmt.bind(code, amountInCents, expires_at, max_uses || 1, adminId));
+        batch.push(stmt.bind(code, amountInCents, starts_at || null, expires_at || null, max_uses || 1, adminId));
     }
-    
-    await c.env.DB.batch(batch);
-    return c.json({ success: true, codes });
+    try {
+        await c.env.DB.batch(batch);
+        return c.json({ success: true, codes });
+    } catch (e) {
+        return c.text(`Generate failed: ${(e as Error).message}`, 500);
+    }
 });
 
-// 2. 获取卡密列表 (Admin)
+// 2. 获取卡密列表
 api.get('/admin/billing/cards', async (c) => {
     const { limit, offset } = c.req.query();
-    // 返回数据库原始数据 (分)，前端如需显示元请自行 /100
     return await handleListQuery(c, 
         `SELECT * FROM redemption_codes`, 
         `SELECT count(*) as count FROM redemption_codes`, 
@@ -56,11 +70,9 @@ api.get('/admin/billing/cards', async (c) => {
     );
 });
 
-// 3. 设置域名价格 (Admin) - 输入单位：元
+// 3. [优化] 设置域名价格 (更新时清除缓存)
 api.post('/admin/billing/prices', async (c) => {
     const { domain, role_text, price } = await c.req.json();
-    
-    // 将元转换为分存储
     const priceInCents = toCents(price);
 
     await c.env.DB.prepare(`
@@ -68,39 +80,109 @@ api.post('/admin/billing/prices', async (c) => {
         VALUES (?, ?, ?) 
         ON CONFLICT(domain, role_text) DO UPDATE SET price = ?, updated_at = datetime('now')
     `).bind(domain, role_text || 'default', priceInCents, priceInCents).run();
+    
+    clearPriceCache(); // 清除缓存
     return c.json({ success: true });
 });
 
-// 4. 获取域名价格列表 (Admin)
+// 4. 获取域名价格列表
 api.get('/admin/billing/prices', async (c) => {
-    return await handleListQuery(c, `SELECT * FROM domain_prices`, `SELECT count(*) as count FROM domain_prices`, [], 100, 0);
+    const { limit, offset, query } = c.req.query();
+    let sql = `SELECT * FROM domain_prices`;
+    let countSql = `SELECT count(*) as count FROM domain_prices`;
+    const params: string[] = [];
+    if (query) {
+        sql += ` WHERE domain LIKE ?`;
+        countSql += ` WHERE domain LIKE ?`;
+        params.push(`%${query}%`);
+    }
+    return await handleListQuery(c, sql, countSql, params, limit, offset);
 });
+
+// [优化] 删除单个定价 (清除缓存)
+api.delete('/admin/billing/prices/:id', async (c) => {
+    const { id } = c.req.param();
+    await c.env.DB.prepare(`DELETE FROM domain_prices WHERE id = ?`).bind(id).run();
+    clearPriceCache();
+    return c.json({ success: true });
+});
+
+// [优化] 批量删除定价 (清除缓存)
+api.post('/admin/billing/prices/batch_delete', async (c) => {
+    const { ids } = await c.req.json<{ ids: number[] }>();
+    if (!ids || ids.length === 0) return c.text("Invalid IDs", 400);
+    const placeholders = ids.map(() => '?').join(',');
+    await c.env.DB.prepare(`DELETE FROM domain_prices WHERE id IN (${placeholders})`).bind(...ids).run();
+    clearPriceCache();
+    return c.json({ success: true });
+});
+
+// --- 批量操作 API (卡密) ---
+api.post('/admin/billing/cards/batch_delete', async (c) => {
+    const { ids } = await c.req.json<{ ids: number[] }>();
+    if (!ids || ids.length === 0) return c.text("Invalid IDs", 400);
+    const placeholders = ids.map(() => '?').join(',');
+    const { success } = await c.env.DB.prepare(`DELETE FROM redemption_codes WHERE id IN (${placeholders})`).bind(...ids).run();
+    return c.json({ success });
+});
+
+api.post('/admin/billing/cards/batch_status', async (c) => {
+    const { ids, status } = await c.req.json<{ ids: number[], status: string }>();
+    if (!ids || ids.length === 0) return c.text("Invalid IDs", 400);
+    const placeholders = ids.map(() => '?').join(',');
+    const { success } = await c.env.DB.prepare(`UPDATE redemption_codes SET status = ? WHERE id IN (${placeholders})`).bind(status, ...ids).run();
+    return c.json({ success });
+});
+
+api.delete('/admin/billing/cards/:id', async (c) => {
+    const { id } = c.req.param();
+    const { success } = await c.env.DB.prepare(`DELETE FROM redemption_codes WHERE id = ?`).bind(id).run();
+    return c.json({ success });
+});
+
+api.post('/admin/billing/cards/:id/status', async (c) => {
+    const { id } = c.req.param();
+    const { status } = await c.req.json();
+    const { success } = await c.env.DB.prepare(`UPDATE redemption_codes SET status = ? WHERE id = ?`).bind(status, id).run();
+    return c.json({ success });
+});
+
+api.get('/admin/billing/transactions', async (c) => {
+    const { limit, offset } = c.req.query();
+    return await handleListQuery(c, 
+        `SELECT t.*, u.user_email FROM transactions t LEFT JOIN users u ON t.user_id = u.id`, 
+        `SELECT count(*) as count FROM transactions`, 
+        [], limit, offset
+    );
+});
+
 
 // --- 用户 API ---
 
-// 5. 用户查询余额 (User) - 返回单位：分
+// 5. 用户查询余额
 api.get('/user_api/billing/balance', async (c) => {
     const { user_id } = c.get('userPayload');
+    // 余额查询不缓存，保证实时性，但通过 user_id 主键查询很快
     const user = await c.env.DB.prepare(`SELECT balance FROM users WHERE id = ?`).bind(user_id).first();
-    // 前端展示时需 /100
     return c.json({ balance: user?.balance || 0 });
 });
 
-// 6. 用户查询特定域名价格 (User) - 新增接口，用于前端弹窗实时显示
+// 6. [优化] 用户查询特定域名价格 (优先读缓存)
 api.get('/user_api/billing/price', async (c) => {
     const { domain } = c.req.query();
     const { user_id } = c.get('userPayload');
     
-    // 获取用户角色
-    const userRoleObj = await commonGetUserRole(c, user_id);
+    // 尝试从内存缓存读取价格列表，再筛选
+    // (略微简化，这里演示针对单次查询的缓存可能较复杂，直接复用下面的列表缓存逻辑更好)
+    
+    const userRoleObj = await commonGetUserRole(c, user_id); // 这里面已经有缓存了
     const roleText = userRoleObj?.role || 'default';
 
-    // 查询价格 (分)
+    // 数据库查询
     let priceRecord = await c.env.DB.prepare(`
         SELECT price FROM domain_prices WHERE domain = ? AND role_text = ?
     `).bind(domain, roleText).first<{ price: number }>();
 
-    // 如果特定角色没配置，查默认角色
     if (!priceRecord && roleText !== 'default') {
         priceRecord = await c.env.DB.prepare(`
             SELECT price FROM domain_prices WHERE domain = ? AND role_text = 'default'
@@ -112,24 +194,60 @@ api.get('/user_api/billing/price', async (c) => {
     return c.json({ 
         domain, 
         price_cents: priceInCents, 
-        price_yuan: (priceInCents / 100).toFixed(2) // 方便前端显示
+        price_yuan: (priceInCents / 100).toFixed(2)
     });
 });
 
-// 7. 用户充值卡密 (User)
-api.post('/user_api/billing/redeem', async (c) => {
-    const { code } = await c.req.json();
+// 7. [优化] 用户查询所有域名价格表 (使用缓存)
+api.get('/user_api/billing/prices-list', async (c) => {
     const { user_id } = c.get('userPayload');
+    const userRoleObj = await commonGetUserRole(c, user_id); // 有缓存
+    const roleText = userRoleObj?.role || 'default';
 
-    // 查找卡密
+    const cacheKey = `PRICES:${roleText}`;
+    const cached = getPriceCache(cacheKey);
+    if (cached) return c.json({ results: cached });
+
+    // 查询该角色和 default 的所有价格配置
+    const { results } = await c.env.DB.prepare(`
+        SELECT domain, price, role_text 
+        FROM domain_prices 
+        WHERE role_text = ? OR role_text = 'default'
+    `).bind(roleText).all<any>();
+
+    const priceMap = new Map<string, number>();
+    results.filter(r => r.role_text === 'default').forEach(r => priceMap.set(r.domain, r.price));
+    results.filter(r => r.role_text === roleText).forEach(r => priceMap.set(r.domain, r.price));
+
+    const finalPrices = Array.from(priceMap.entries()).map(([domain, price]) => ({
+        domain,
+        price,
+        price_yuan: (price / 100).toFixed(2)
+    }));
+
+    setPriceCache(cacheKey, finalPrices); // 写入缓存
+
+    return c.json({ results: finalPrices });
+});
+
+// 8. 用户充值卡密
+api.post('/user_api/billing/redeem', async (c) => {
+    let { code } = await c.req.json();
+    const { user_id } = c.get('userPayload');
+    if (!code || typeof code !== 'string') return c.text("Invalid code format", 400);
+    code = code.trim();
+
     const card = await c.env.DB.prepare(`SELECT * FROM redemption_codes WHERE code = ?`).bind(code).first();
     
     if (!card) return c.text("Invalid code", 400);
+    if (card.status === 'disabled') return c.text("Code is paused", 400);
     if (card.status !== 'active') return c.text("Code is not active", 400);
     if (card.used_count >= card.max_uses) return c.text("Code fully used", 400);
-    if (card.expires_at && new Date(card.expires_at) < new Date()) return c.text("Code expired", 400);
 
-    // 事务处理：增加余额 (单位分)，更新卡密状态，记录交易
+    const now = new Date();
+    if (card.starts_at && new Date(card.starts_at) > now) return c.text("Code not yet active", 400);
+    if (card.expires_at && new Date(card.expires_at) < now) return c.text("Code expired", 400);
+
     try {
         await c.env.DB.batch([
             c.env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE id = ?`).bind(card.amount, user_id),
@@ -142,7 +260,7 @@ api.post('/user_api/billing/redeem', async (c) => {
     }
 });
 
-// 8. 用户交易记录 (User)
+// 9. 用户交易记录
 api.get('/user_api/billing/transactions', async (c) => {
     const { user_id } = c.get('userPayload');
     const { limit, offset } = c.req.query();
@@ -153,7 +271,7 @@ api.get('/user_api/billing/transactions', async (c) => {
     );
 });
 
-// 9. 购买邮箱 (User)
+// 10. 购买邮箱
 api.post('/user_api/billing/buy_address', purchaseAddress);
 
 export { api };

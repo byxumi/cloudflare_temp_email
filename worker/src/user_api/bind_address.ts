@@ -49,11 +49,13 @@ const UserBindAddressModule = {
         if (!db_user_id) {
             return c.text("User not found", 400)
         }
-        // check if binded
+        
+        // 1. 检查是否已经绑定到当前用户 (如果是，直接返回成功)
         const db_user_address_id = await c.env.DB.prepare(
             `SELECT user_id FROM users_address where user_id = ? and address_id = ?`
         ).bind(user_id, address_id).first("user_id");
         if (db_user_address_id) return c.json({ success: true })
+        
         // check if binded address count
         const value = await getJsonSetting(c, CONSTANTS.USER_SETTINGS_KEY);
         const settings = new UserSettings(value);
@@ -69,6 +71,14 @@ const UserBindAddressModule = {
                 return c.text("Max address count reached", 400)
             }
         }
+
+        // [核心修复] 强制绑定逻辑：
+        // 既然用户持有合法的 JWT 凭证，说明拥有该地址权限。
+        // 先删除该地址可能存在的其他绑定关系，防止 UNIQUE 冲突。
+        await c.env.DB.prepare(
+            `DELETE FROM users_address WHERE address_id = ?`
+        ).bind(address_id).run();
+
         // bind
         try {
             const { success } = await c.env.DB.prepare(

@@ -8,19 +8,37 @@ import { AdminWebhookSettings, WebhookMail, WebhookSettings } from './models';
 
 const DEFAULT_NAME_REGEX = /[^a-z0-9]/g;
 
-export const generateRandomName = (c: Context<HonoCustomType>): string => {
-    // name min length min 1
-    const minLength = Math.max(
-        getIntValue(c.env.MIN_ADDRESS_LEN, 1),
-        1
-    );
-    // name max length min 1
-    const maxLength = Math.max(
-        getIntValue(c.env.MAX_ADDRESS_LEN, 30),
-        1
-    );
+// [新增] 简易内存缓存系统
+const GlobalCache = new Map<string, { value: any, expiry: number }>();
 
-    // Build full name recursively until minimum length is reached
+// 写入缓存 (默认 60 秒)
+const setCache = (key: string, value: any, ttlSeconds: number = 60) => {
+    GlobalCache.set(key, { value, expiry: Date.now() + ttlSeconds * 1000 });
+};
+
+// 读取缓存
+const getCache = (key: string) => {
+    const item = GlobalCache.get(key);
+    if (item && item.expiry > Date.now()) {
+        return item.value;
+    }
+    if (item) GlobalCache.delete(key); // 过期删除
+    return null;
+};
+
+// 清除指定前缀的缓存
+export const clearCacheByPrefix = (prefix: string) => {
+    for (const key of GlobalCache.keys()) {
+        if (key.startsWith(prefix)) {
+            GlobalCache.delete(key);
+        }
+    }
+};
+
+export const generateRandomName = (c: Context<HonoCustomType>): string => {
+    const minLength = Math.max(getIntValue(c.env.MIN_ADDRESS_LEN, 1), 1);
+    const maxLength = Math.max(getIntValue(c.env.MAX_ADDRESS_LEN, 30), 1);
+
     const buildName = (currentName: string = ""): string => {
         return currentName.length >= minLength
             ? currentName
@@ -28,9 +46,16 @@ export const generateRandomName = (c: Context<HonoCustomType>): string => {
     };
 
     const fullName = buildName();
-
-    // Return truncated to max length
     return fullName.substring(0, Math.min(fullName.length, maxLength));
+};
+
+export const generateRandomString = (length: number = 16): string => {
+    const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+        result += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return result;
 };
 
 const checkNameRegex = (c: Context<HonoCustomType>, name: string) => {
@@ -72,7 +97,6 @@ export async function updateAddressUpdatedAt(
     if (!address) {
         return;
     }
-    // update address updated_at
     try {
         await c.env.DB.prepare(
             `UPDATE address SET updated_at = datetime('now') where name = ?`
@@ -132,39 +156,31 @@ export const newAddress = async (
         enableCheckNameRegex?: boolean,
     }
 ): Promise<{ address: string, jwt: string, password?: string | null }> => {
-    // trim whitespace and remove special characters
     name = name.trim().replace(getNameRegex(c), '')
-    // check name
     if (enableCheckNameRegex) {
         await checkNameBlockList(c, name);
         checkNameRegex(c, name);
     }
-    // name min length min 1
     const minAddressLength = Math.max(
         checkLengthByConfig ? getIntValue(c.env.MIN_ADDRESS_LEN, 1) : 1,
         1
     );
-    // name max length min 1
     const maxAddressLength = Math.max(
         checkLengthByConfig ? getIntValue(c.env.MAX_ADDRESS_LEN, 30) : 30,
         1
     );
-    // check name length
     if (name.length < minAddressLength) {
         throw new Error(`Name too short (min ${minAddressLength})`);
     }
     if (name.length > maxAddressLength) {
         throw new Error(`Name too long (max ${maxAddressLength})`);
     }
-    // create address with prefix
     if (typeof addressPrefix === "string") {
         name = addressPrefix.trim() + name;
     } else if (enablePrefix) {
         name = getStringValue(c.env.PREFIX).trim() + name;
     }
-    // check domain
     const allowDomains = checkAllowDomains ? await getAllowDomains(c) : getDomains(c);
-    // if domain is not set, select domain based on environment configuration
     if (!domain && allowDomains.length > 0) {
         const createAddressDefaultDomainFirst = getBooleanValue(c.env.CREATE_ADDRESS_DEFAULT_DOMAIN_FIRST);
         if (createAddressDefaultDomainFirst) {
@@ -173,11 +189,9 @@ export const newAddress = async (
             domain = allowDomains[Math.floor(Math.random() * allowDomains.length)];
         }
     }
-    // check domain is valid
     if (!domain || !allowDomains.includes(domain)) {
         throw new Error("Invalid domain")
     }
-    // create address
     name = name + "@" + domain;
     try {
         const { success } = await c.env.DB.prepare(
@@ -198,10 +212,8 @@ export const newAddress = async (
         `SELECT id FROM address where name = ?`
     ).bind(name).first<number>("id");
 
-    // 如果启用地址密码功能，自动生成密码
     const generatedPassword = await generatePasswordForAddress(c, name);
 
-    // create jwt
     const jwt = await Jwt.sign({
         address: name,
         address_id: address_id
@@ -216,7 +228,6 @@ export const newAddress = async (
 const checkNameBlockList = async (
     c: Context<HonoCustomType>, name: string
 ): Promise<void> => {
-    // check name block list
     const blockList = [] as string[];
     try {
         const value = await getJsonSetting(c, CONSTANTS.ADDRESS_BLOCK_LIST_KEY);
@@ -274,11 +285,15 @@ export const cleanup = async (
             ).run();
             break;
         case "emptyAddress":
-            // Delete addresses that have no emails and were created more than N days ago
             await batchDeleteAddressWithData(
                 c,
                 `name NOT IN (SELECT DISTINCT address FROM raw_mails WHERE address IS NOT NULL) AND created_at < datetime('now', '-${cleanDays} day')`
             )
+            break;
+        case "transactions":
+            await c.env.DB.prepare(`
+                DELETE FROM transactions WHERE created_at < datetime('now', '-${cleanDays} day')`
+            ).run();
             break;
         default:
             throw new Error("Invalid cleanType")
@@ -310,13 +325,11 @@ const batchDeleteAddressWithData = async (
         `DELETE FROM users_address WHERE address_id IN ( ` +
         `SELECT id FROM address WHERE ${addressQueryCondition})`
     ).run();
-    // delete address
     await c.env.DB.prepare(`
         DELETE FROM address WHERE ${addressQueryCondition}`
     ).run();
     return true;
 }
-
 
 export const deleteAddressWithData = async (
     c: Context<HonoCustomType>,
@@ -329,7 +342,6 @@ export const deleteAddressWithData = async (
     if (!address && !address_id) {
         throw new Error("Address or address_id required")
     }
-    // get address_id or address
     if (!address_id) {
         address_id = await c.env.DB.prepare(
             `SELECT id FROM address where name = ?`
@@ -339,13 +351,10 @@ export const deleteAddressWithData = async (
             `SELECT name FROM address where id = ?`
         ).bind(address_id).first<string>("name");
     }
-    // check address again
     if (!address || !address_id) {
         throw new Error("Can't find address");
     }
-    // unbind telegram
     await unbindTelegramByAddress(c, address);
-    // delete address and related data
     const { success: mailSuccess } = await c.env.DB.prepare(
         `DELETE FROM raw_mails WHERE address = ? `
     ).bind(address).run();
@@ -376,28 +385,22 @@ export const handleListQuery = async (
     limit: string | number | undefined | null,
     offset: string | number | undefined | null
 ): Promise<Response> => {
-    if (typeof limit === "string") {
-        limit = parseInt(limit);
-    }
-    if (typeof offset === "string") {
-        offset = parseInt(offset);
-    }
-    if (!limit || limit < 0 || limit > 100) {
-        return c.text("Invalid limit", 400)
-    }
-    if (offset == null || offset == undefined || offset < 0) {
-        return c.text("Invalid offset", 400)
-    }
+    if (typeof limit === "string") limit = parseInt(limit);
+    if (typeof offset === "string") offset = parseInt(offset);
+    if (!limit || limit < 0 || limit > 100) return c.text("Invalid limit", 400)
+    if (offset == null || offset == undefined || offset < 0) return c.text("Invalid offset", 400)
+    
     const resultsQuery = `${query} order by id desc limit ? offset ?`;
     const { results } = await c.env.DB.prepare(resultsQuery).bind(
         ...params, limit, offset
     ).all();
-    const count = offset == 0 ? await c.env.DB.prepare(
+    
+    const count = await c.env.DB.prepare(
         countQuery
-    ).bind(...params).first("count") : 0;
+    ).bind(...params).first("count") || 0;
+
     return c.json({ results, count });
 }
-
 
 export const commonParseMail = async (parsedEmailContext: ParsedEmailContext): Promise<{
     sender: string,
@@ -406,33 +409,9 @@ export const commonParseMail = async (parsedEmailContext: ParsedEmailContext): P
     html: string,
     headers?: Record<string, string>[]
 } | undefined> => {
-    // check parsed email context is valid
-    if (!parsedEmailContext || !parsedEmailContext.rawEmail) {
-        return undefined;
-    }
-    // return parsed email if already parsed
-    if (parsedEmailContext.parsedEmail) {
-        return parsedEmailContext.parsedEmail;
-    }
+    if (!parsedEmailContext || !parsedEmailContext.rawEmail) return undefined;
+    if (parsedEmailContext.parsedEmail) return parsedEmailContext.parsedEmail;
     const raw_mail = parsedEmailContext.rawEmail;
-    // TODO: WASM parse email
-    // try {
-    //     const { parse_message_wrapper } = await import('mail-parser-wasm-worker');
-
-    //     const parsedEmail = parse_message_wrapper(raw_mail);
-    //     parsedEmailContext.parsedEmail = {
-    //         sender: parsedEmail.sender || "",
-    //         subject: parsedEmail.subject || "",
-    //         text: parsedEmail.text || "",
-    //         headers: parsedEmail.headers?.map(
-    //             (header) => ({ key: header.key, value: header.value })
-    //         ) || [],
-    //         html: parsedEmail.body_html || "",
-    //     };
-    //     return parsedEmailContext.parsedEmail;
-    // } catch (e) {
-    //     console.error("Failed use mail-parser-wasm-worker to parse email", e);
-    // }
     try {
         const { default: PostalMime } = await import('postal-mime');
         const parsedEmail = await PostalMime.parse(raw_mail);
@@ -451,14 +430,45 @@ export const commonParseMail = async (parsedEmailContext: ParsedEmailContext): P
     return undefined;
 }
 
+// [核心优化] 获取用户角色：内存缓存 -> KV 缓存 -> D1 数据库
 export const commonGetUserRole = async (
     c: Context<HonoCustomType>, user_id: number
 ): Promise<UserRole | undefined | null> => {
+    const cacheKey = `ROLE:${user_id}`;
     const user_roles = getUserRoles(c);
-    const role_text = await c.env.DB.prepare(
+
+    // 1. 内存缓存 (最快)
+    let role_text = getCache(cacheKey);
+    if (role_text) return user_roles.find((r) => r.role === role_text);
+
+    // 2. KV 缓存 (次快，如果有配置)
+    if (c.env.KV) {
+        role_text = await c.env.KV.get(cacheKey);
+        if (role_text) {
+            setCache(cacheKey, role_text, 60); // 同步到内存
+            return user_roles.find((r) => r.role === role_text);
+        }
+    }
+
+    // 3. 数据库查询 (最慢)
+    role_text = await c.env.DB.prepare(
         `SELECT role_text FROM user_roles where user_id = ?`
     ).bind(user_id).first<string | undefined | null>("role_text");
+    
+    // 写入缓存
+    if (role_text) {
+        setCache(cacheKey, role_text, 120); // 内存存 2 分钟
+        if (c.env.KV) await c.env.KV.put(cacheKey, role_text, { expirationTtl: 3600 }); // KV 存 1 小时
+    }
+
     return role_text ? user_roles.find((r) => r.role === role_text) : null;
+}
+
+// 清除角色缓存的工具函数 (用于 Admin 修改角色时调用)
+export const clearUserRoleCache = async (c: Context<HonoCustomType>, user_id: number) => {
+    const cacheKey = `ROLE:${user_id}`;
+    GlobalCache.delete(cacheKey);
+    if (c.env.KV) await c.env.KV.delete(cacheKey);
 }
 
 export const getAddressPrefix = async (c: Context<HonoCustomType>): Promise<string | undefined> => {
@@ -466,6 +476,7 @@ export const getAddressPrefix = async (c: Context<HonoCustomType>): Promise<stri
     if (!user) {
         return getStringValue(c.env.PREFIX);
     }
+    // 这里会用到上面的缓存优化
     const user_role = await commonGetUserRole(c, user.user_id);
     if (typeof user_role?.prefix === "string") {
         return user_role.prefix;
@@ -478,6 +489,7 @@ export const getAllowDomains = async (c: Context<HonoCustomType>): Promise<strin
     if (!user) {
         return getDefaultDomains(c);
     }
+    // 这里也会用到上面的缓存优化
     const user_role = await commonGetUserRole(c, user.user_id);
     return user_role?.domains || getDefaultDomains(c);;
 }
@@ -485,7 +497,6 @@ export const getAllowDomains = async (c: Context<HonoCustomType>): Promise<strin
 export async function sendWebhook(
     settings: WebhookSettings, formatMap: WebhookMail
 ): Promise<{ success: boolean, message?: string }> {
-    // send webhook
     let body = settings.body;
     for (const key of Object.keys(formatMap)) {
         body = body.replace(
@@ -502,7 +513,6 @@ export async function sendWebhook(
     });
     if (!response.ok) {
         console.log("send webhook error", settings.url, settings.method, settings.headers, body);
-        console.log("send webhook error", response.status, response.statusText);
         return { success: false, message: `send webhook error: ${response.status} ${response.statusText}` };
     }
     return { success: true }
@@ -518,14 +528,10 @@ export async function triggerWebhook(
         return
     }
     const webhookList: WebhookSettings[] = []
-
-    // admin mail webhook
     const adminMailWebhookSettings = await c.env.KV.get<WebhookSettings>(CONSTANTS.WEBHOOK_KV_ADMIN_MAIL_SETTINGS_KEY, "json");
     if (adminMailWebhookSettings?.enabled) {
         webhookList.push(adminMailWebhookSettings)
     }
-
-    // user mail webhook
     const adminSettings = await c.env.KV.get<AdminWebhookSettings>(CONSTANTS.WEBHOOK_KV_SETTINGS_KEY, "json");
     if (!adminSettings?.enableAllowList || adminSettings?.allowList.includes(address)) {
         const settings = await c.env.KV.get<WebhookSettings>(
@@ -535,11 +541,7 @@ export async function triggerWebhook(
             webhookList.push(settings)
         }
     }
-
-    // no webhook
-    if (webhookList.length === 0) {
-        return
-    }
+    if (webhookList.length === 0) return
     const mailId = await c.env.DB.prepare(
         `SELECT id FROM raw_mails where address = ? and message_id = ?`
     ).bind(address, message_id).first<string>("id");
@@ -557,9 +559,7 @@ export async function triggerWebhook(
     }
     for (const settings of webhookList) {
         const res = await sendWebhook(settings, webhookMail);
-        if (!res.success) {
-            console.error(res.message);
-        }
+        if (!res.success) console.error(res.message);
     }
 }
 
@@ -568,22 +568,16 @@ export async function triggerAnotherWorker(
     rpcEmailMessage: RPCEmailMessage,
     parsedText: string | undefined | null
 ): Promise<void> {
-    if (!parsedText) {
-        return;
-    }
+    if (!parsedText) return;
 
     const anotherWorkerList: AnotherWorker[] = getAnotherWorkerList(c);
-    if (!getBooleanValue(c.env.ENABLE_ANOTHER_WORKER) || anotherWorkerList.length === 0) {
-        return;
-    }
+    if (!getBooleanValue(c.env.ENABLE_ANOTHER_WORKER) || anotherWorkerList.length === 0) return;
 
     const parsedTextLowercase: string = parsedText.toLowerCase();
     for (const worker of anotherWorkerList) {
-
         const keywords = worker?.keywords ?? [];
         const bindingName = worker?.binding ?? "";
         const methodName = worker.method ?? "rpcEmail";
-
         const serviceBinding = (c.env as any)[bindingName] ?? {};
         const method = serviceBinding[methodName];
 
@@ -591,9 +585,7 @@ export async function triggerAnotherWorker(
             console.log(`method = ${methodName} not found or not function`);
             continue;
         }
-
         if (!keywords.some(keyword => keyword && parsedTextLowercase.includes(keyword.toLowerCase()))) {
-            console.log(`worker.binding = ${bindingName} not match keywords, parsedText = ${parsedText}`);
             continue;
         }
         try {
@@ -606,7 +598,6 @@ export async function triggerAnotherWorker(
                 bodyObj.headers = headerObj
             }
             const requestBody = JSON.stringify(bodyObj);
-            console.log(`exec worker , binding = ${bindingName} , requestBody = ${requestBody}`);
             await method(requestBody);
         } catch (e1) {
             console.error(`execute method = ${methodName} error`, e1);

@@ -1,10 +1,172 @@
-type UserRole = {
+import type {
+    AuthenticatorTransportFuture,
+    CredentialDeviceType,
+    Base64URLString,
+} from '@simplewebauthn/types';
+
+export type Passkey = {
+    id: Base64URLString;
+    publicKey: string;
+    counter: number;
+    deviceType: CredentialDeviceType;
+    backedUp: boolean;
+    transports?: AuthenticatorTransportFuture[];
+};
+
+export class AdminWebhookSettings {
+    enableAllowList: boolean;
+    allowList: string[];
+
+    constructor(enableAllowList: boolean, allowList: string[]) {
+        this.enableAllowList = enableAllowList;
+        this.allowList = allowList;
+    }
+}
+
+export type WebhookMail = {
+    id: string;
+    url?: string;
+    from: string;
+    to: string;
+    subject: string;
+    raw: string;
+    parsedText: string;
+    parsedHtml: string;
+}
+
+export type CleanupSettings = {
+    enableMailsAutoCleanup: boolean | undefined;
+    cleanMailsDays: number;
+    enableUnknowMailsAutoCleanup: boolean | undefined;
+    cleanUnknowMailsDays: number;
+    enableSendBoxAutoCleanup: boolean | undefined;
+    cleanSendBoxDays: number;
+    enableAddressAutoCleanup: boolean | undefined;
+    cleanAddressDays: number;
+    enableInactiveAddressAutoCleanup: boolean | undefined;
+    cleanInactiveAddressDays: number;
+    enableUnboundAddressAutoCleanup: boolean | undefined;
+    cleanUnboundAddressDays: number;
+}
+
+export class GeoData {
+    ip: string;
+    country: string | undefined;
+    city: string | undefined;
+    timezone: string | undefined;
+    postalCode: string | undefined;
+    region: string | undefined;
+    latitude: number | undefined;
+    longitude: number | undefined;
+    regionCode: string | undefined;
+    asOrganization: string | undefined;
+
+    constructor(ip: string | null, data: GeoData | undefined | null) {
+        const {
+            country, city, timezone, postalCode, region,
+            latitude, longitude, regionCode, asOrganization
+        } = data || {};
+        this.ip = ip || "unknown";
+        this.country = country;
+        this.city = city;
+        this.timezone = timezone;
+        this.postalCode = postalCode;
+        this.region = region;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.regionCode = regionCode;
+        this.asOrganization = asOrganization;
+    }
+}
+
+export class UserSettings {
+    enable: boolean | undefined;
+    enableMailVerify: boolean | undefined;
+    verifyMailSender: string | undefined;
+    enableMailAllowList: boolean | undefined;
+    mailAllowList: string[] | undefined;
+    maxAddressCount: number;
+
+    constructor(data: UserSettings | undefined | null) {
+        const {
+            enable, enableMailVerify, verifyMailSender,
+            enableMailAllowList, mailAllowList, maxAddressCount
+        } = data || {};
+        this.enable = enable;
+        this.enableMailVerify = enableMailVerify;
+        this.verifyMailSender = verifyMailSender;
+        this.enableMailAllowList = enableMailAllowList;
+        this.mailAllowList = mailAllowList;
+        this.maxAddressCount = maxAddressCount || 5;
+    }
+}
+
+export class UserInfo {
+    geoData: GeoData;
+    userEmail: string;
+
+    constructor(geoData: GeoData, userEmail: string) {
+        this.geoData = geoData;
+        this.userEmail = userEmail;
+    }
+}
+
+export class WebhookSettings {
+    enabled: boolean = false
+    url: string = ''
+    method: string = 'POST'
+    headers: string = JSON.stringify({
+        "Content-Type": "application/json"
+    }, null, 2)
+    body: string = JSON.stringify({
+        "id": "${id}",
+        "url": "${url}",
+        "from": "${from}",
+        "to": "${to}",
+        "subject": "${subject}",
+        "raw": "${raw}",
+        "parsedText": "${parsedText}",
+        "parsedHtml": "${parsedHtml}",
+    }, null, 2)
+}
+
+export type UserOauth2Settings = {
+    name: string;
+    clientID: string;
+    clientSecret: string;
+    authorizationURL: string;
+    accessTokenURL: string;
+    accessTokenFormat: string;
+    userInfoURL: string;
+    redirectURL: string;
+    logoutURL?: string;
+    userEmailKey: string;
+    scope: string;
+    enableMailAllowList?: boolean | undefined;
+    mailAllowList?: string[] | undefined;
+}
+
+export type EmailRuleSettings = {
+    blockReceiveUnknowAddressEmail: boolean;
+    emailForwardingList: SubdomainForwardAddressList[]
+}
+
+export type RoleConfig = {
+    maxAddressCount?: number;
+    // future configs can be added here
+}
+
+export type RoleAddressConfig = Record<string, RoleConfig>;
+
+// --- 补充类型定义 ---
+
+export type UserRole = {
     domains: string[] | undefined | null,
     role: string,
     prefix: string | undefined | null
 }
 
-type Bindings = {
+export type Bindings = {
     // bindings
     DB: D1Database
     KV: KVNamespace
@@ -81,51 +243,51 @@ type Bindings = {
 
     // telegram config
     TELEGRAM_BOT_TOKEN: string
-    TG_MAX_ADDRESS: number | undefined
+    TG_MAX_ADDRESS: number | string | undefined
     TG_BOT_INFO: string | object | undefined
 
     // webhook config
     FRONTEND_URL: string | undefined
 }
 
-type JwtPayload = {
+export type JwtPayload = {
     address: string
     address_id: number
 }
 
-type UserPayload = {
+export type UserPayload = {
     user_email: string
     user_id: number
     exp: number
     iat: number
 }
 
-type Variables = {
+export type Variables = {
     userPayload: UserPayload,
     userRolePayload: string | undefined | null,
     jwtPayload: JwtPayload,
     lang: string | undefined | null
 }
 
-type HonoCustomType = {
+export type HonoCustomType = {
     "Bindings": Bindings;
     "Variables": Variables;
 }
 
-type AnotherWorker = {
+export type AnotherWorker = {
     binding: string | undefined | null,
     method: string | undefined | null,
     keywords: string[] | undefined | null
 }
 
-type RPCEmailMessage = {
+export type RPCEmailMessage = {
     from: string | undefined | null,
     to: string | undefined | null,
     rawEmail: string | undefined | null,
     headers: object | undefined | null,
 }
 
-type ParsedEmailContext = {
+export type ParsedEmailContext = {
     rawEmail: string,
     parsedEmail?: {
         sender: string,
@@ -136,7 +298,47 @@ type ParsedEmailContext = {
     } | undefined
 }
 
-type SubdomainForwardAddressList = {
+export type SubdomainForwardAddressList = {
     domains: string[] | undefined | null,
     forward: string,
+}
+
+export interface User {
+    id: number;
+    user_id: string;
+    email: string;
+    password?: string;
+    quota_size: number;
+    used_quota_size: number;
+    free_email_time_expire: number;
+    role: string;
+    created_at: number;
+    updated_at: number;
+    telegram_chat_id?: string;
+    telegram_user_id?: string;
+}
+
+export interface EmailRecord {
+    id: number;
+    user_id: string;
+    receiver: string;
+    sender: string;
+    subject: string;
+    body: string;
+    created_at: number;
+    updated_at: number;
+    mail_id: string;
+    seen: boolean;
+    s3_key?: string;
+    sender_ip?: string;
+}
+
+// 【新增】卡密类型定义
+export interface RechargeCode {
+    id: number;
+    code: string;
+    value: number; // 充值天数
+    created_at: number;
+    used_at: number | null;
+    user_id: string | null;
 }

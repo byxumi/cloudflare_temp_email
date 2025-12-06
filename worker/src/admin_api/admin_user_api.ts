@@ -3,9 +3,11 @@ import { Context } from 'hono';
 import { CONSTANTS } from '../constants';
 import { getJsonSetting, saveSetting, checkUserPassword, getDomains, getUserRoles } from '../utils';
 import { UserSettings, GeoData, UserInfo, RoleAddressConfig } from "../models";
-import { handleListQuery } from '../common'
+import { handleListQuery, clearUserRoleCache } from '../common' // [新增] 引入 clearUserRoleCache
 import UserBindAddressModule from '../user_api/bind_address';
 import i18n from '../i18n';
+
+const toCents = (yuan: number | string) => Math.round(parseFloat(yuan.toString()) * 100);
 
 export default {
     getSetting: async (c: Context<HonoCustomType>) => {
@@ -37,24 +39,21 @@ export default {
     },
     getUsers: async (c: Context<HonoCustomType>) => {
         const { limit, offset, query } = c.req.query();
+        const sqlFields = `SELECT u.id as id, u.user_email, u.balance, u.created_at, u.updated_at,`
+            + ` ur.role_text as role_text,`
+            + ` (SELECT COUNT(*) FROM users_address WHERE user_id = u.id) AS address_count`
+            + ` FROM users u`
+            + ` LEFT JOIN user_roles ur ON u.id = ur.user_id`;
+            
         if (query) {
             return await handleListQuery(c,
-                `SELECT u.id as id, u.user_email, u.created_at, u.updated_at,`
-                + ` ur.role_text as role_text,`
-                + ` (SELECT COUNT(*) FROM users_address WHERE user_id = u.id) AS address_count`
-                + ` FROM users u`
-                + ` LEFT JOIN user_roles ur ON u.id = ur.user_id`
-                + ` where u.user_email like ?`,
+                `${sqlFields} where u.user_email like ?`,
                 `SELECT count(*) as count FROM users where user_email like ?`,
                 [`%${query}%`], limit, offset
             );
         }
         return await handleListQuery(c,
-            `SELECT u.id as id, u.user_email, u.created_at, u.updated_at,`
-            + ` ur.role_text as role_text,`
-            + ` (SELECT COUNT(*) FROM users_address WHERE user_id = u.id) AS address_count`
-            + ` FROM users u`
-            + ` LEFT JOIN user_roles ur ON u.id = ur.user_id`,
+            sqlFields,
             `SELECT count(*) as count FROM users`,
             [], limit, offset
         );
@@ -64,7 +63,6 @@ export default {
         if (!email || !password) {
             return c.text("Invalid email or password", 400)
         }
-        // geo data
         const reqIp = c.req.raw.headers.get("cf-connecting-ip")
         const geoData = new GeoData(reqIp, c.req.raw.cf as any);
         const userInfo = new UserInfo(geoData, email);
@@ -98,6 +96,10 @@ export default {
         const { success: addressSuccess } = await c.env.DB.prepare(
             `DELETE FROM users_address WHERE user_id = ?`
         ).bind(user_id).run();
+        
+        // 清除缓存
+        await clearUserRoleCache(c, parseInt(user_id));
+
         if (!success || !addressSuccess) {
             return c.text("Failed to delete user", 500)
         }
@@ -124,6 +126,10 @@ export default {
     updateUserRoles: async (c: Context<HonoCustomType>) => {
         const { user_id, role_text } = await c.req.json();
         if (!user_id) return c.text("Invalid user_id", 400);
+        
+        // [优化] 清除缓存，确保角色变更立即生效
+        await clearUserRoleCache(c, user_id);
+
         if (!role_text) {
             const { success } = await c.env.DB.prepare(
                 `DELETE FROM user_roles WHERE user_id = ?`
@@ -176,4 +182,25 @@ export default {
         await saveSetting(c, CONSTANTS.ROLE_ADDRESS_CONFIG_KEY, JSON.stringify(configs));
         return c.json({ success: true });
     },
+    topUpUser: async (c: Context<HonoCustomType>) => {
+        const { user_id } = c.req.param();
+        const { amount } = await c.req.json();
+        const amountInCents = toCents(amount);
+        const adminId = c.get('jwtPayload')?.user_id || 0;
+
+        if (!user_id || isNaN(amountInCents)) {
+            return c.text("Invalid parameters", 400);
+        }
+
+        try {
+            await c.env.DB.batch([
+                c.env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE id = ?`).bind(amountInCents, user_id),
+                c.env.DB.prepare(`INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, 'admin_topup', ?)`)
+                    .bind(user_id, amountInCents, `Admin Topup by AdminID:${adminId}`)
+            ]);
+            return c.json({ success: true });
+        } catch (e) {
+            return c.text(`Top up failed: ${(e as Error).message}`, 500);
+        }
+    }
 }

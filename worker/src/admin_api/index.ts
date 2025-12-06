@@ -15,7 +15,13 @@ import admin_mail_api from './admin_mail_api'
 import { sendMailbyAdmin } from './send_mail'
 import db_api from './db_api'
 import ip_blacklist_settings from './ip_blacklist_settings'
-import { EmailRuleSettings } from '../models'
+import { EmailRuleSettings, HonoCustomType } from '../models'
+// 【新增】导入卡密 API 处理函数
+import { 
+    adminCreateRechargeCode, 
+    adminListRechargeCodes, 
+    adminDeleteRechargeCode 
+} from './recharge_code_api';
 
 export const api = new Hono<HonoCustomType>()
 
@@ -377,3 +383,11 @@ api.post('admin/db_migration', db_api.migrate);
 // IP blacklist settings
 api.get("/admin/ip_blacklist/settings", ip_blacklist_settings.getIpBlacklistSettings);
 api.post("/admin/ip_blacklist/settings", ip_blacklist_settings.saveIpBlacklistSettings);
+
+// 【关键修复】添加卡密管理路由
+api.post('/admin/recharge_codes', adminCreateRechargeCode)
+api.get('/admin/recharge_codes', adminListRechargeCodes)
+api.delete('/admin/recharge_codes', adminDeleteRechargeCode)
+
+// ...
+api.post('/admin/users/:user_id/topup', admin_user_api.topUpUser); // [新增]

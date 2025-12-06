@@ -1,5 +1,17 @@
+// src/utils.ts
 import { Context } from "hono";
 import { createMimeMessage } from "mimetext";
+import type { HonoCustomType, UserRole, AnotherWorker } from "./types";
+
+// 【新增】标准 JSON 响应辅助函数
+export const jsonResponse = (data: any, status: number = 200) => {
+    return new Response(JSON.stringify(data), {
+        status: status,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+};
 
 export const getJsonObjectValue = <T = any>(
     value: string | any
@@ -324,5 +336,6 @@ export default {
     checkUserPassword,
     getJsonSetting,
     getJsonValue: getJsonObjectValue,
-    getStringList: getStringArray
+    getStringList: getStringArray,
+    jsonResponse
 }

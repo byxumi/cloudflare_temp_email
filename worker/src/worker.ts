@@ -9,13 +9,14 @@ import { api as userApi } from './user_api';
 import { api as adminApi } from './admin_api';
 import { api as apiSendMail } from './mails_api/send_mail_api'
 import { api as telegramApi } from './telegram_api'
+// [关键修复] 引入计费模块
+import { api as billingApi } from './billing';
 
 import i18n from './i18n';
 import { email } from './email';
 import { scheduled } from './scheduled';
 import { getAdminPasswords, getPasswords, getBooleanValue, getStringArray } from './utils';
 import { checkAccessControl } from './ip_blacklist';
-import { api as billingApi } from './billing';
 
 const API_PATHS = [
 	"/api/",
@@ -53,7 +54,7 @@ app.use('/*', async (c, next) => {
 
 	// check header x-custom-auth
 	const passwords = getPasswords(c);
-	if (!c.req.path.startsWith("/open_api") && passwords && passwords.length > 0) {
+	if (passwords && passwords.length > 0) {
 		const auth = c.req.raw.headers.get("x-custom-auth");
 		if (!auth || !passwords.includes(auth)) {
 			return c.text(msgs.CustomAuthPasswordMsg, 401)
@@ -261,9 +262,10 @@ app.route('/', commonApi)
 app.route('/', mailsApi)
 app.route('/', userApi)
 app.route('/', adminApi)
-app.route('/', billingApi);
 app.route('/', apiSendMail)
 app.route('/', telegramApi)
+// [关键修复] 注册计费路由
+app.route('/', billingApi)
 
 const health_check = async (c: Context<HonoCustomType>) => {
 	const lang = c.req.raw.headers.get("x-lang") || c.env.DEFAULT_LANG;
