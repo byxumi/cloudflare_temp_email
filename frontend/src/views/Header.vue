@@ -8,7 +8,7 @@ import {
     DarkModeFilled, LightModeFilled, MenuFilled,
     AdminPanelSettingsFilled
 } from '@vicons/material'
-import { GithubAlt, Language, User, Home, InfoCircle } from '@vicons/fa'
+import { GithubAlt, Language, User, Home, Tag } from '@vicons/fa' // [修改] 引入 Tag 图标
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -181,24 +181,24 @@ const menuOptions = computed(() => [
         ),
         key: "lang"
     },
-    // [修复] 显示版本号
+    // [修改] 显示版本号：带图标、放在语言切换后面
     {
         label: () => h(
             NButton,
             {
                 text: true,
                 size: "small",
-                style: "width: 100%",
-                // 无点击动作
+                type: "info",
+                secondary: true, // 次级样式，不抢眼
+                style: "width: 100%; cursor: default;",
+                // 点击无操作
             },
             {
                 default: () => openSettings.value.frontendVersion || "v1.0.0",
-                icon: () => h(
-                    NIcon, { component: InfoCircle }
-                )
+                icon: () => h(NIcon, { component: Tag }) // 增加 Tag 图标
             }
         ),
-        show: !!openSettings.value.frontendVersion, // 只有设置了才显示
+        show: !!openSettings.value.frontendVersion,
         key: "version"
     },
     {
