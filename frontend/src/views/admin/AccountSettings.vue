@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref, h } from 'vue';
 import { useI18n } from 'vue-i18n'
-import { NButton, NPopconfirm, NInput, NSelect } from 'naive-ui'
+import { NButton, NPopconfirm, NInput, NSelect, NCard, NAlert, NFlex, NFormItemRow, NText, NSwitch, NSpace, NDataTable, NModal } from 'naive-ui'
 
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -36,6 +36,7 @@ const { t } = useI18n({
             add: 'Add',
             cancel: 'Cancel',
             config: 'Config',
+            frontendVersion: 'Frontend Version'
         },
         zh: {
             tip: '您可以手动输入以下多选输入框, 回车增加',
@@ -62,6 +63,7 @@ const { t } = useI18n({
             add: '添加',
             cancel: '取消',
             config: '配置',
+            frontendVersion: '前端版本号'
         }
     }
 });
@@ -71,6 +73,7 @@ const sendAddressBlockList = ref([])
 const noLimitSendAddressList = ref([])
 const verifiedAddressList = ref([])
 const fromBlockList = ref([])
+const frontendVersion = ref("") // [修复] 版本号变量
 const emailRuleSettings = ref({
     blockReceiveUnknowAddressEmail: false,
     emailForwardingList: []
@@ -134,7 +137,6 @@ const emailForwardingColumns = [
 ]
 
 const openEmailForwardingModal = () => {
-    // 从 emailRuleSettings 转换出列表数据
     emailForwardingList.value = emailRuleSettings.value.emailForwardingList ?
         [...emailRuleSettings.value.emailForwardingList] : []
     showEmailForwardingModal.value = true
@@ -164,6 +166,8 @@ const fetchData = async () => {
         verifiedAddressList.value = res.verifiedAddressList || []
         fromBlockList.value = res.fromBlockList || []
         noLimitSendAddressList.value = res.noLimitSendAddressList || []
+        // [修复] 读取版本号
+        frontendVersion.value = res.frontendVersion || ""
         emailRuleSettings.value = res.emailRuleSettings || {
             blockReceiveUnknowAddressEmail: false,
             emailForwardingList: []
@@ -183,6 +187,8 @@ const save = async () => {
                 verifiedAddressList: verifiedAddressList.value || [],
                 fromBlockList: fromBlockList.value || [],
                 noLimitSendAddressList: noLimitSendAddressList.value || [],
+                // [修复] 保存版本号
+                frontendVersion: frontendVersion.value,
                 emailRuleSettings: emailRuleSettings.value,
             })
         })
@@ -209,6 +215,11 @@ onMounted(async () => {
                     {{ t('save') }}
                 </n-button>
             </n-flex>
+            
+            <n-form-item-row :label="t('frontendVersion')">
+                <n-input v-model:value="frontendVersion" placeholder="e.g. v1.0.0" />
+            </n-form-item-row>
+
             <n-form-item-row :label="t('address_block_list')">
                 <n-select v-model:value="addressBlockList" filterable multiple tag
                     :placeholder="t('address_block_list_placeholder')">
@@ -267,7 +278,6 @@ onMounted(async () => {
         </n-card>
     </div>
 
-    <!-- 邮件转发配置弹窗 -->
     <n-modal v-model:show="showEmailForwardingModal" preset="card" :title="t('email_forwarding_config')"
         style="max-width: 800px;">
         <n-space vertical>
