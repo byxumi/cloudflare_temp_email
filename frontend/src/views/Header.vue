@@ -8,7 +8,7 @@ import {
     DarkModeFilled, LightModeFilled, MenuFilled,
     AdminPanelSettingsFilled
 } from '@vicons/material'
-import { GithubAlt, Language, User, Home, InfoCircle } from '@vicons/fa' // [新增] InfoCircle 图标
+import { GithubAlt, Language, User, Home, InfoCircle } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -181,7 +181,7 @@ const menuOptions = computed(() => [
         ),
         key: "lang"
     },
-    // [新增] 显示后台配置的版本号
+    // [修复] 显示版本号
     {
         label: () => h(
             NButton,
@@ -189,7 +189,7 @@ const menuOptions = computed(() => [
                 text: true,
                 size: "small",
                 style: "width: 100%",
-                // 点击无操作，仅展示
+                // 无点击动作
             },
             {
                 default: () => openSettings.value.frontendVersion || "v1.0.0",
@@ -198,7 +198,7 @@ const menuOptions = computed(() => [
                 )
             }
         ),
-        show: !!openSettings.value.frontendVersion, // 只有配置了才显示
+        show: !!openSettings.value.frontendVersion, // 只有设置了才显示
         key: "version"
     },
     {
