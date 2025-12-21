@@ -10,7 +10,7 @@ const {
     loading, auth, jwt, settings, openSettings,
     userOpenSettings, userSettings, announcement,
     showAuth, adminAuth, showAdminAuth, userJwt,
-    userBalance // [新增] 引入全局余额
+    userBalance
 } = useGlobalState();
 
 const instance = axios.create({
@@ -209,11 +209,9 @@ export const api = {
     bindUserAddress,
 
     // --- 计费系统 API ---
-    
     getUserBalance: async () => {
         try {
             const res = await apiFetch('/user_api/billing/balance');
-            // [关键] 自动更新全局 store
             userBalance.value = res.balance || 0;
             return res.balance || 0;
         } catch (error) {
@@ -243,6 +241,14 @@ export const api = {
         return await apiFetch(`/user_api/billing/transactions?limit=${limit}&offset=${offset}`);
     },
     
+    // [修复] 增加 updateAddressRemark 方法，解决前端报错
+    updateAddressRemark: async (address_id, remark) => {
+        return await apiFetch('/user_api/update_remark', {
+            method: 'POST',
+            body: JSON.stringify({ address_id, remark })
+        });
+    },
+
     // --- 管理员 API ---
     adminGetTransactions: async (limit, offset) => {
         return await apiFetch(`/admin/billing/transactions?limit=${limit}&offset=${offset}`);
@@ -256,7 +262,6 @@ export const api = {
             body: JSON.stringify({ amount, count, starts_at, expires_at, max_uses })
         });
     },
-    // [关键修复] 增加 limit 和 offset 参数
     adminGetPrices: async (limit, offset, query = '') => {
         return await apiFetch(`/admin/billing/prices?limit=${limit}&offset=${offset}&query=${query}`);
     },
