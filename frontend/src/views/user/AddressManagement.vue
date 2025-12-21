@@ -2,7 +2,7 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NInputGroup, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NInputGroupLabel, NDataTable } from 'naive-ui'
+import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NStatistic, NGrid, NGi } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -12,9 +12,13 @@ const { openSettings, jwt, userBalance, userSettings, auth, userJwt } = useGloba
 const message = useMessage()
 const { toClipboard } = useClipboard()
 
+// [新增] 签到余额状态
+const checkinBalance = ref(0)
+
 const { t } = useI18n({
     messages: {
         en: {
+            // ... (保留原有翻译)
             createAddress: 'New Address',
             bindExisting: 'Bind Existing',
             address: 'Address',
@@ -52,9 +56,15 @@ const { t } = useI18n({
             currency: 'CNY',
             remark: 'Remark',
             editRemark: 'Edit Remark',
-            remarkPlaceholder: 'Enter remark'
+            remarkPlaceholder: 'Enter remark',
+            // [新增翻译]
+            dailyCheckin: 'Daily Check-in',
+            checkinSuccess: 'Check-in Success! Got ',
+            checkinBalance: 'Check-in Bal: ',
+            mainBalance: 'Main Bal: '
         },
         zh: {
+            // ... (保留原有翻译)
             createAddress: '新建地址',
             bindExisting: '绑定已有',
             address: '邮箱地址',
@@ -92,11 +102,17 @@ const { t } = useI18n({
             currency: '元',
             remark: '备注',
             editRemark: '修改备注',
-            remarkPlaceholder: '请输入备注'
+            remarkPlaceholder: '请输入备注',
+            // [新增翻译]
+            dailyCheckin: '每日签到',
+            checkinSuccess: '签到成功！获得 ',
+            checkinBalance: '签到余额: ',
+            mainBalance: '充值余额: '
         }
     }
 })
 
+// ... (保留原有 ref 定义: data, loading, showCreateModal, etc.)
 const data = ref([])
 const loading = ref(false)
 const showCreateModal = ref(false)
@@ -110,16 +126,15 @@ const transferForm = ref({ addressId: null, targetEmail: '' })
 const showBindModal = ref(false)
 const bindLoading = ref(false)
 const bindForm = ref({ jwt: '' })
-
-// Remark
 const showRemarkModal = ref(false)
 const remarkForm = ref({ addressId: null, remark: '' })
 const remarkLoading = ref(false)
-
 const showPriceModal = ref(false)
 const priceList = ref([])
 const priceLoadingState = ref(false)
+const checkinLoading = ref(false) // [新增]
 
+// ... (保留 computed: domainOptions, currentPrefix)
 const domainOptions = computed(() => {
     return (openSettings.value.domains || []).map(d => ({
         label: d.label || d.value,
@@ -134,6 +149,7 @@ const currentPrefix = computed(() => {
     return openSettings.value.prefix || '';
 })
 
+// ... (保留 fetchData)
 const fetchData = async () => {
     loading.value = true
     try {
@@ -146,12 +162,35 @@ const fetchData = async () => {
     }
 }
 
+// [修改] 刷新余额，同时获取 checkinBalance
 const refreshBalance = async () => {
     try {
-        await api.getUserBalance()
+        const res = await api.getUserBalance()
+        // api.getUserBalance 现在返回对象 { balance, checkin_balance }
+        // 但 store 可能只处理了 userBalance，所以我们需要手动处理 checkinBalance
+        if (res && typeof res === 'object') {
+            checkinBalance.value = res.checkin_balance || 0
+        }
     } catch (e) { console.error(e) }
 }
 
+// [新增] 签到处理函数
+const handleCheckin = async () => {
+    checkinLoading.value = true
+    try {
+        const res = await api.userCheckin();
+        if (res.success) {
+            message.success(t('checkinSuccess') + (res.amount / 100).toFixed(2) + ' ' + t('currency'));
+            refreshBalance();
+        }
+    } catch (e) {
+        message.error(e.message || 'Check-in failed');
+    } finally {
+        checkinLoading.value = false;
+    }
+}
+
+// ... (保留 openPriceModal, watch, generateRandom, openCreateModal, handleCreate, handleSwitch, etc.)
 const openPriceModal = async () => {
     showPriceModal.value = true;
     priceLoadingState.value = true;
@@ -206,7 +245,9 @@ const handleCreate = async () => {
     if (!createForm.value.name) generateRandom();
     if (!createForm.value.domain) return
     
-    if (currentPriceCents.value > userBalance.value) {
+    // [修改] 检查总余额
+    const totalBal = userBalance.value + checkinBalance.value
+    if (currentPriceCents.value > totalBal) {
         message.error(t('insufficientBalance'))
         return
     }
@@ -298,7 +339,6 @@ const handleBind = async () => {
     }
 }
 
-// Remark logic
 const openRemarkModal = (row) => {
     remarkForm.value = { addressId: row.id, remark: row.remark || '' }
     showRemarkModal.value = true
@@ -321,7 +361,6 @@ const handleSaveRemark = async () => {
 const columns = [
     { title: 'ID', key: 'id', width: 50 },
     { title: t('address'), key: 'name' },
-    // [新增] 备注列
     { title: t('remark'), key: 'remark', render(row) {
         return row.remark ? h(NTag, { type: 'info', size: 'small', bordered: false }, { default: () => row.remark }) : '-'
     }},
@@ -372,11 +411,22 @@ onMounted(() => {
         api.getUserSettings(message);
     }
     fetchData();
+    refreshBalance();
 })
 </script>
 
 <template>
     <div>
+        <div style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
+            <n-button type="warning" size="small" :loading="checkinLoading" @click="handleCheckin">
+                📅 {{ t('dailyCheckin') }}
+            </n-button>
+            <div style="font-size: 0.9em;">
+                <span style="margin-right: 15px;">{{ t('mainBalance') }} <b>{{ (userBalance/100).toFixed(2) }}</b></span>
+                <span style="color: #d03050;">{{ t('checkinBalance') }} <b>{{ (checkinBalance/100).toFixed(2) }}</b></span>
+            </div>
+        </div>
+
         <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
             <n-button type="primary" @click="openCreateModal">{{ t('createAddress') }}</n-button>
             <n-button type="info" secondary @click="openPriceModal">{{ t('viewPrices') }}</n-button>
@@ -403,14 +453,16 @@ onMounted(() => {
                     <n-spin :show="priceLoading" size="small">
                         <div v-if="currentPriceCents > 0">
                             <p>{{ t('currentPrice') }} <span style="color: #d03050; font-weight: bold;">{{ (currentPriceCents / 100).toFixed(2) }} 元</span></p>
-                            <p style="font-size: 0.9em; color: #666;">{{ t('balance') }} {{ (userBalance / 100).toFixed(2) }} 元</p>
+                            <p style="font-size: 0.9em; color: #666;">
+                                {{ t('balance') }} {{ ((userBalance + checkinBalance) / 100).toFixed(2) }} 元
+                            </p>
                         </div>
                         <div v-else><n-tag type="success">{{ t('free') }}</n-tag></div>
                     </n-spin>
                 </div>
             </n-form>
             <template #action>
-                <n-button type="primary" :loading="createLoading" :disabled="priceLoading || (currentPriceCents > userBalance)" @click="handleCreate">
+                <n-button type="primary" :loading="createLoading" :disabled="priceLoading || (currentPriceCents > userBalance + checkinBalance)" @click="handleCreate">
                     {{ currentPriceCents > 0 ? t('confirmPurchase') : t('confirm') }}
                 </n-button>
             </template>
