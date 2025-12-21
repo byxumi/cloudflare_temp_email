@@ -49,7 +49,10 @@ const { t } = useI18n({
             bindFailed: 'Bind failed',
             viewPrices: 'View Prices',
             priceList: 'Domain Price List',
-            currency: 'CNY'
+            currency: 'CNY',
+            remark: 'Remark',
+            editRemark: 'Edit Remark',
+            remarkPlaceholder: 'Enter remark'
         },
         zh: {
             createAddress: '新建地址',
@@ -86,7 +89,10 @@ const { t } = useI18n({
             bindFailed: '绑定失败',
             viewPrices: '查看价格',
             priceList: '域名价格表',
-            currency: '元'
+            currency: '元',
+            remark: '备注',
+            editRemark: '修改备注',
+            remarkPlaceholder: '请输入备注'
         }
     }
 })
@@ -105,7 +111,11 @@ const showBindModal = ref(false)
 const bindLoading = ref(false)
 const bindForm = ref({ jwt: '' })
 
-// 价格表弹窗
+// Remark
+const showRemarkModal = ref(false)
+const remarkForm = ref({ addressId: null, remark: '' })
+const remarkLoading = ref(false)
+
 const showPriceModal = ref(false)
 const priceList = ref([])
 const priceLoadingState = ref(false)
@@ -204,17 +214,16 @@ const handleCreate = async () => {
     try {
         const res = await api.buyAddress(createForm.value.name, createForm.value.domain)
         if (res.success) {
-            // [核心修复] 创建成功后，立即切换 JWT 并刷新设置
             if (res.jwt) {
                 jwt.value = res.jwt;
-                await api.getSettings(); // 获取新邮箱信息，确保 Index.vue 能识别
+                await api.getSettings(); 
             }
 
             message.success(t('createSuccess'))
             showCreateModal.value = false
             fetchData()
             refreshBalance()
-            router.push('/') // 跳转到首页
+            router.push('/') 
         }
     } catch (e) {
         if (e.message && e.message.includes('402')) {
@@ -289,9 +298,33 @@ const handleBind = async () => {
     }
 }
 
+// Remark logic
+const openRemarkModal = (row) => {
+    remarkForm.value = { addressId: row.id, remark: row.remark || '' }
+    showRemarkModal.value = true
+}
+
+const handleSaveRemark = async () => {
+    remarkLoading.value = true
+    try {
+        await api.updateAddressRemark(remarkForm.value.addressId, remarkForm.value.remark)
+        message.success('Success')
+        showRemarkModal.value = false
+        fetchData()
+    } catch (e) {
+        message.error(e.message)
+    } finally {
+        remarkLoading.value = false
+    }
+}
+
 const columns = [
     { title: 'ID', key: 'id', width: 50 },
     { title: t('address'), key: 'name' },
+    // [新增] 备注列
+    { title: t('remark'), key: 'remark', render(row) {
+        return row.remark ? h(NTag, { type: 'info', size: 'small', bordered: false }, { default: () => row.remark }) : '-'
+    }},
     { 
         title: t('actions'), 
         key: 'actions',
@@ -302,11 +335,13 @@ const columns = [
                     h(NDropdown, {
                         trigger: 'click',
                         options: [
+                            { label: t('editRemark'), key: 'remark' },
                             { label: t('copyCredential'), key: 'copy' },
                             { label: t('transfer'), key: 'transfer' },
                             { label: t('delete'), key: 'delete', props: { style: 'color: red' } }
                         ],
                         onSelect: (key) => {
+                            if (key === 'remark') openRemarkModal(row)
                             if (key === 'copy') handleCopyCredential(row)
                             if (key === 'transfer') openTransferModal(row)
                             if (key === 'delete') { if(confirm('Confirm Delete?')) handleDelete(row.id) }
@@ -345,6 +380,7 @@ onMounted(() => {
         <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
             <n-button type="primary" @click="openCreateModal">{{ t('createAddress') }}</n-button>
             <n-button type="info" secondary @click="openPriceModal">{{ t('viewPrices') }}</n-button>
+            
             <n-button @click="showBindModal = true">{{ t('bindExisting') }}</n-button>
             <n-button @click="fetchData">刷新</n-button>
         </div>
@@ -403,6 +439,17 @@ onMounted(() => {
             </n-form>
             <template #action>
                 <n-button type="primary" :loading="bindLoading" @click="handleBind">{{ t('confirm') }}</n-button>
+            </template>
+        </n-modal>
+
+        <n-modal v-model:show="showRemarkModal" preset="card" :title="t('editRemark')" style="width: 90%; max-width: 400px">
+            <n-form>
+                <n-form-item :label="t('remark')">
+                    <n-input v-model:value="remarkForm.remark" :placeholder="t('remarkPlaceholder')" />
+                </n-form-item>
+            </n-form>
+            <template #action>
+                <n-button type="primary" :loading="remarkLoading" @click="handleSaveRemark">{{ t('confirm') }}</n-button>
             </template>
         </n-modal>
     </div>
