@@ -10,7 +10,7 @@ const {
     loading, auth, jwt, settings, openSettings,
     userOpenSettings, userSettings, announcement,
     showAuth, adminAuth, showAdminAuth, userJwt,
-    userBalance
+    userBalance // [新增] 引入全局余额变量
 } = useGlobalState();
 
 const instance = axios.create({
@@ -209,14 +209,20 @@ export const api = {
     bindUserAddress,
 
     // --- 计费系统 API ---
+    
     getUserBalance: async () => {
         try {
             const res = await apiFetch('/user_api/billing/balance');
+            // 更新 Store 中的余额 (仅主余额，签到余额暂未放入 store)
             userBalance.value = res.balance || 0;
-            return res.balance || 0;
+            // 返回包含签到余额的对象
+            return {
+                balance: res.balance || 0,
+                checkin_balance: res.checkin_balance || 0
+            };
         } catch (error) {
             console.error(error);
-            return 0;
+            return { balance: 0, checkin_balance: 0 };
         }
     },
     getDomainPrice: async (domain) => {
@@ -241,7 +247,7 @@ export const api = {
         return await apiFetch(`/user_api/billing/transactions?limit=${limit}&offset=${offset}`);
     },
     
-    // [修复] 增加 updateAddressRemark 方法，解决前端报错
+    // [新增] 更新地址备注
     updateAddressRemark: async (address_id, remark) => {
         return await apiFetch('/user_api/update_remark', {
             method: 'POST',
@@ -249,6 +255,13 @@ export const api = {
         });
     },
 
+    // [新增] 用户每日签到
+    userCheckin: async () => {
+        return await apiFetch('/user_api/checkin', {
+            method: 'POST'
+        });
+    },
+    
     // --- 管理员 API ---
     adminGetTransactions: async (limit, offset) => {
         return await apiFetch(`/admin/billing/transactions?limit=${limit}&offset=${offset}`);
