@@ -8,7 +8,7 @@ import {
     DarkModeFilled, LightModeFilled, MenuFilled,
     AdminPanelSettingsFilled
 } from '@vicons/material'
-import { GithubAlt, Language, User, Home, Tag } from '@vicons/fa' // [修改] 引入 Tag 图标
+import { GithubAlt, Language, User, Home } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -60,7 +60,6 @@ const { locale, t } = useI18n({
             menu: 'Menu',
             user: 'User',
             ok: 'OK',
-            version: 'Version'
         },
         zh: {
             title: 'Cloudflare 临时邮件',
@@ -72,7 +71,6 @@ const { locale, t } = useI18n({
             menu: '菜单',
             user: '用户',
             ok: '确定',
-            version: '版本'
         }
     }
 });
@@ -181,26 +179,6 @@ const menuOptions = computed(() => [
         ),
         key: "lang"
     },
-    // [修改] 显示版本号：带图标、放在语言切换后面
-    {
-        label: () => h(
-            NButton,
-            {
-                text: true,
-                size: "small",
-                type: "info",
-                secondary: true, // 次级样式，不抢眼
-                style: "width: 100%; cursor: default;",
-                // 点击无操作
-            },
-            {
-                default: () => openSettings.value.frontendVersion || "v1.0.0",
-                icon: () => h(NIcon, { component: Tag }) // 增加 Tag 图标
-            }
-        ),
-        show: !!openSettings.value.frontendVersion,
-        key: "version"
-    },
     {
         label: () => h(
             NButton,
@@ -260,7 +238,12 @@ onMounted(async () => {
     <div>
         <n-page-header>
             <template #title>
-                <h3>{{ openSettings.title || t('title') }}</h3>
+                <div class="header-title">
+                    <h3>{{ openSettings.title || t('title') }}</h3>
+                    <span v-if="openSettings.frontendVersion" class="version-tag">
+                        {{ openSettings.frontendVersion }}
+                    </span>
+                </div>
             </template>
             <template #avatar>
                 <div @click="logoClick">
@@ -324,5 +307,19 @@ onMounted(async () => {
 
 .n-form .n-button {
     margin-top: 10px;
+}
+
+/* [新增] 样式 */
+.header-title {
+    display: flex;
+    align-items: baseline; /* 底部对齐，让文字看起来更和谐 */
+    gap: 8px; /* 间距 */
+}
+
+.version-tag {
+    font-size: 0.85em; /* 比标题小 */
+    opacity: 0.6; /* 颜色变浅 */
+    font-weight: normal;
+    font-family: monospace; /* 看起来更像版本号 */
 }
 </style>
