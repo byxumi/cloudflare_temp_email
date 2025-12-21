@@ -1,153 +1,208 @@
 <script setup>
-import { ref, onMounted, h } from 'vue';
+import { ref, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NInputNumber, NTag, NSpace, NButton } from 'naive-ui';
-
-import { useGlobalState } from '../../store'
+import { useMessage, NSwitch, NInput, NButton, NDataTable, NModal, NForm, NFormItem, NInputNumber } from 'naive-ui'
 import { api } from '../../api'
 
-const { loading } = useGlobalState()
 const message = useMessage()
-
 const { t } = useI18n({
     messages: {
         en: {
-            role: 'Role',
+            title: 'Role Address Config',
+            add: 'Add',
+            role: 'Role/Address',
             maxAddressCount: 'Max Address Count',
+            actions: 'Actions',
+            edit: 'Edit',
+            delete: 'Delete',
             save: 'Save',
-            successTip: 'Success',
-            noRolesAvailable: 'No roles available in system config',
-            roleConfigDesc: 'Configure maximum address count for each user role. Role-based limits take priority over global settings.',
-            notConfigured: 'Not Configured (Use Global Settings)',
+            noAutoCleanup: 'No Auto Cleanup',
+            allowSend: 'Allow Send',
+            unlimitedSend: 'Unlimited Send',
+            cleanInboxDays: 'Inbox Clean Days (Optional)',
+            cleanSentDays: 'Sent Box Clean Days (Optional)',
+            tips: 'You can configure by user role (e.g. "admin", "vip") or specific email address (e.g. "test@example.com"). Address config takes precedence.',
+            deleteConfirm: 'Are you sure?'
         },
         zh: {
-            role: '角色',
+            title: '角色/地址配置',
+            add: '添加',
+            role: '角色/邮箱地址',
             maxAddressCount: '最大地址数量',
+            actions: '操作',
+            edit: '编辑',
+            delete: '删除',
             save: '保存',
-            successTip: '成功',
-            noRolesAvailable: '系统配置中没有可用的角色',
-            roleConfigDesc: '为每个用户角色配置最大地址数量。角色配置优先于全局设置。',
-            notConfigured: '未配置（使用全局设置）',
+            noAutoCleanup: '不自动清理',
+            allowSend: '允许发件',
+            unlimitedSend: '无限制发件',
+            cleanInboxDays: '收件箱清理天数 (选填)',
+            cleanSentDays: '发件箱清理天数 (选填)',
+            tips: '您可以配置用户角色 (如 "admin", "vip") 或具体邮箱地址。具体地址配置优先级更高。',
+            deleteConfirm: '确定删除吗？'
         }
     }
-});
+})
 
-const systemRoles = ref([])
-const tableData = ref([])
+const data = ref([])
+const showModal = ref(false)
+const form = ref({ key: '', maxAddressCount: 0, noAutoCleanup: false, allowSend: true, unlimitedSend: false, cleanInboxDays: null, cleanSentDays: null })
+const configs = ref({})
 
-const fetchUserRoles = async () => {
+const fetchData = async () => {
     try {
-        const results = await api.fetch(`/admin/user_roles`);
-        systemRoles.value = results;
-    } catch (error) {
-        console.log(error)
-        message.error(error.message || "error");
-    }
-}
-
-const fetchRoleConfigs = async () => {
-    try {
-        const { configs } = await api.fetch(`/admin/role_address_config`);
-        tableData.value = systemRoles.value.map(roleObj => ({
-            role: roleObj.role,
-            max_address_count: configs[roleObj.role]?.maxAddressCount ?? null,
-        }));
-    } catch (error) {
-        console.log(error)
-        message.error(error.message || "error");
-    }
-}
-
-const saveConfig = async () => {
-    try {
-        // convert tableData to object with nested structure
-        const configs = {};
-        tableData.value.forEach(row => {
-            if (row.max_address_count !== null && row.max_address_count !== undefined) {
-                configs[row.role] = { maxAddressCount: row.max_address_count };
+        const res = await api.fetch('/admin/role_address_config')
+        configs.value = res.configs || {}
+        const list = []
+        // Process roles
+        for (const [key, val] of Object.entries(configs.value)) {
+            if (key === 'specificAddresses') continue;
+            list.push({ key, ...val, type: 'Role' })
+        }
+        // Process specific addresses
+        if (configs.value.specificAddresses) {
+            for (const [key, val] of Object.entries(configs.value.specificAddresses)) {
+                list.push({ key, ...val, type: 'Address' })
             }
-        });
+        }
+        data.value = list
+    } catch (e) {
+        message.error(e.message)
+    }
+}
 
-        await api.fetch(`/admin/role_address_config`, {
+const handleSave = async () => {
+    if (!form.value.key) return
+    const key = form.value.key
+    const newConfig = {
+        maxAddressCount: form.value.maxAddressCount,
+        noAutoCleanup: form.value.noAutoCleanup,
+        allowSend: form.value.allowSend,
+        unlimitedSend: form.value.unlimitedSend,
+        cleanInboxDays: form.value.cleanInboxDays,
+        cleanSentDays: form.value.cleanSentDays
+    }
+
+    if (key.includes('@')) {
+        if (!configs.value.specificAddresses) configs.value.specificAddresses = {}
+        configs.value.specificAddresses[key] = newConfig
+    } else {
+        configs.value[key] = newConfig
+    }
+
+    try {
+        await api.fetch('/admin/role_address_config', {
             method: 'POST',
-            body: JSON.stringify({ configs })
-        });
-        message.success(t('successTip'));
-        await fetchRoleConfigs();
-    } catch (error) {
-        console.log(error)
-        message.error(error.message || "error");
+            body: JSON.stringify({ configs: configs.value })
+        })
+        message.success(t('save') + ' Success')
+        showModal.value = false
+        fetchData()
+    } catch (e) {
+        message.error(e.message)
+    }
+}
+
+const handleDelete = async (row) => {
+    if (row.type === 'Address') {
+        delete configs.value.specificAddresses[row.key]
+    } else {
+        delete configs.value[row.key]
+    }
+    try {
+        await api.fetch('/admin/role_address_config', {
+            method: 'POST',
+            body: JSON.stringify({ configs: configs.value })
+        })
+        message.success(t('delete') + ' Success')
+        fetchData()
+    } catch (e) {
+        message.error(e.message)
     }
 }
 
 const columns = [
-    {
-        title: t('role'),
-        key: 'role',
-        width: 200,
+    { title: t('role'), key: 'key' },
+    { title: t('maxAddressCount'), key: 'maxAddressCount' },
+    { 
+        title: t('cleanInboxDays'), 
+        key: 'cleanInboxDays',
         render(row) {
-            return h(NTag, {
-                type: 'info',
-                bordered: false
-            }, {
-                default: () => row.role
-            })
+            return row.cleanInboxDays === undefined || row.cleanInboxDays === null ? 'Default' : row.cleanInboxDays
+        }
+    },
+    { 
+        title: t('cleanSentDays'), 
+        key: 'cleanSentDays',
+        render(row) {
+            return row.cleanSentDays === undefined || row.cleanSentDays === null ? 'Default' : row.cleanSentDays
         }
     },
     {
-        title: t('maxAddressCount'),
-        key: 'max_address_count',
+        title: t('noAutoCleanup'),
+        key: 'noAutoCleanup',
+        render(row) { return row.noAutoCleanup ? 'Yes' : 'No' }
+    },
+    {
+        title: t('allowSend'),
+        key: 'allowSend',
+        render(row) { return row.allowSend !== false ? 'Yes' : 'No' }
+    },
+    {
+        title: t('actions'),
+        key: 'actions',
         render(row) {
-            return h(NInputNumber, {
-                value: row.max_address_count,
-                min: 0,
-                max: 999,
-                clearable: true,
-                placeholder: t('notConfigured'),
-                style: 'width: 200px;',
-                onUpdateValue: (value) => {
-                    row.max_address_count = value;
-                }
-            })
+            return h(NButton, {
+                size: 'small',
+                type: 'error',
+                onClick: () => { if(confirm(t('deleteConfirm'))) handleDelete(row) }
+            }, { default: () => t('delete') })
         }
     }
 ]
 
-onMounted(async () => {
-    await fetchUserRoles();
-    await fetchRoleConfigs();
-})
+const openAdd = () => {
+    form.value = { key: '', maxAddressCount: 5, noAutoCleanup: false, allowSend: true, unlimitedSend: false, cleanInboxDays: null, cleanSentDays: null }
+    showModal.value = true
+}
+
+onMounted(fetchData)
 </script>
 
 <template>
-    <div style="margin-top: 10px;">
-        <n-alert type="info" :bordered="false" style="margin-bottom: 20px;">
-            {{ t('roleConfigDesc') }}
-        </n-alert>
-
-        <n-alert v-if="systemRoles.length === 0" type="warning" :bordered="false">
-            {{ t('noRolesAvailable') }}
-        </n-alert>
-
-        <div v-else>
-            <n-space justify="end" style="margin-bottom: 12px;">
-                <n-button :loading="loading" @click="saveConfig" type="primary">
-                    {{ t('save') }}
-                </n-button>
-            </n-space>
-
-            <n-data-table
-                :columns="columns"
-                :data="tableData"
-                :bordered="false"
-                embedded
-            />
+    <div>
+        <div style="margin-bottom: 10px">
+            <p>{{ t('tips') }}</p>
+            <n-button type="primary" @click="openAdd">{{ t('add') }}</n-button>
         </div>
+        <n-data-table :columns="columns" :data="data" :bordered="false" />
+        <n-modal v-model:show="showModal" preset="card" :title="t('add')" style="width: 500px">
+            <n-form>
+                <n-form-item :label="t('role')">
+                    <n-input v-model:value="form.key" placeholder="admin / user / test@example.com" />
+                </n-form-item>
+                <n-form-item :label="t('maxAddressCount')">
+                    <n-input-number v-model:value="form.maxAddressCount" />
+                </n-form-item>
+                <n-form-item :label="t('cleanInboxDays')">
+                    <n-input-number v-model:value="form.cleanInboxDays" placeholder="Leave empty for default" clearable />
+                </n-form-item>
+                <n-form-item :label="t('cleanSentDays')">
+                    <n-input-number v-model:value="form.cleanSentDays" placeholder="Leave empty for default" clearable />
+                </n-form-item>
+                <n-form-item :label="t('noAutoCleanup')">
+                    <n-switch v-model:value="form.noAutoCleanup" />
+                </n-form-item>
+                <n-form-item :label="t('allowSend')">
+                    <n-switch v-model:value="form.allowSend" />
+                </n-form-item>
+                <n-form-item :label="t('unlimitedSend')">
+                    <n-switch v-model:value="form.unlimitedSend" />
+                </n-form-item>
+            </n-form>
+            <template #action>
+                <n-button type="primary" @click="handleSave">{{ t('save') }}</n-button>
+            </template>
+        </n-modal>
     </div>
 </template>
-
-<style scoped>
-.n-data-table {
-    min-width: 600px;
-}
-</style>
