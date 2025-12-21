@@ -30,6 +30,8 @@ import IpBlacklistSettings from './admin/IpBlacklistSettings.vue';
 import CardManager from './admin/CardManager.vue';
 import PricingManager from './admin/PricingManager.vue';
 import TransactionManager from './admin/TransactionManager.vue';
+// [新增] 引入版本号设置组件
+import VersionSettings from './admin/VersionSettings.vue';
 
 const {
   adminAuth, showAdminAuth, adminTab, loading,
@@ -86,6 +88,7 @@ const { t } = useI18n({
       cardManager: 'Card Management',
       pricingManager: 'Pricing Management',
       transactionManager: 'Transactions',
+      versionSettings: 'Version', // [新增]
     },
     zh: {
       accessHeader: 'Admin 密码',
@@ -119,6 +122,7 @@ const { t } = useI18n({
       cardManager: '卡密管理',
       pricingManager: '定价管理',
       transactionManager: '交易流水',
+      versionSettings: '版本号', // [新增]
     }
   }
 });
@@ -147,6 +151,9 @@ onMounted(async () => {
     <n-tabs v-if="showAdminPage" type="card" v-model:value="adminTab" :placement="globalTabplacement">
       <n-tab-pane name="qucickSetup" :tab="t('qucickSetup')">
         <n-tabs type="bar" justify-content="center" animated>
+          <n-tab-pane name="version_settings" :tab="t('versionSettings')">
+            <VersionSettings />
+          </n-tab-pane>
           <n-tab-pane name="database" :tab="t('database')">
             <DatabaseManager />
           </n-tab-pane>
