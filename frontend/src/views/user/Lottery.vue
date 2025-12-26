@@ -48,7 +48,8 @@ const fetchData = async () => {
         userStatus.value.lottery_tickets = res.lottery_tickets
         settings.value = res.settings
     } catch (e) {
-        message.error(e.message)
+        // 如果后端接口还未准备好，这里可能会报错，暂时忽略
+        console.error(e)
     }
 }
 
