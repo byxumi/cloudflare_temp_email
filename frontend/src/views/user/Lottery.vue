@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NCard, NButton, NStatistic, NGrid, NGi, NResult, NModal, NList, NListItem, NThing, NTag } from 'naive-ui'
+import { useMessage, NCard, NButton, NStatistic, NGrid, NGi, NResult, NModal, NTag } from 'naive-ui'
 import { api } from '../../api'
 
 const message = useMessage()
@@ -62,7 +62,7 @@ const handleDraw = async () => {
         const res = await api.drawLottery()
         result.value = res
         showResult.value = true
-        fetchData() // Refresh status
+        fetchData()
     } catch (e) {
         message.error(e.message)
     } finally {
@@ -94,7 +94,9 @@ const getPrizeText = (prize) => {
         'checkin_balance': t('checkin'),
         'ticket': t('ticket')
     }
-    return `${prize.name} (${valText} ${typeMap[prize.type]})`
+    // 显示 Emoji
+    const emoji = prize.emoji || '🎁';
+    return `${emoji} ${prize.name} (${valText} ${typeMap[prize.type]})`
 }
 
 const getPrizeValueDisplay = (prize) => {
@@ -130,7 +132,7 @@ onMounted(fetchData)
     <div>
         <n-card :bordered="false" class="lottery-card">
             <template #header>
-                <div style="text-align: center; font-size: 1.2rem; font-weight: bold;">{{ t('title') }}</div>
+                <div style="text-align: center; font-size: 1.2rem; font-weight: bold;">{{ t('title') }} 🎰</div>
             </template>
             
             <div v-if="!settings.enabled" style="text-align: center; padding: 20px;">
@@ -160,13 +162,15 @@ onMounted(fetchData)
                     <div style="margin-bottom: 10px; font-weight: bold; color: #666;">{{ t('prizeList') }}</div>
                     <n-grid x-gap="12" y-gap="12" cols="2 s:3 m:4 l:5" responsive="screen">
                         <n-gi v-for="prize in settings.prizes" :key="prize.id">
-                            <n-card size="small" embedded class="prize-item">
+                            <n-card size="small" embedded class="prize-item" :bordered="false">
                                 <div style="text-align: center;">
-                                    <div style="font-weight: bold; margin-bottom: 5px;">{{ prize.name }}</div>
-                                    <n-tag :type="getPrizeTypeTag(prize.type)" size="small" :bordered="false">
+                                    <div style="font-size: 2rem; margin-bottom: 5px;">{{ prize.emoji || '🎁' }}</div>
+                                    <div style="font-weight: bold; margin-bottom: 5px; font-size: 0.95rem;">{{ prize.name }}</div>
+                                    
+                                    <n-tag :type="getPrizeTypeTag(prize.type)" size="tiny" :bordered="false" round style="margin-bottom: 4px;">
                                         {{ getPrizeTypeLabel(prize.type) }}
                                     </n-tag>
-                                    <div v-if="prize.type !== 'none'" style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                                    <div v-if="prize.type !== 'none'" style="font-size: 0.85em; color: #666;">
                                         {{ getPrizeValueDisplay(prize) }}
                                     </div>
                                 </div>
@@ -178,14 +182,17 @@ onMounted(fetchData)
         </n-card>
 
         <n-modal v-model:show="showResult">
-            <n-card style="width: 300px; text-align: center; border-radius: 16px;" :bordered="false" size="huge" role="dialog" aria-modal="true">
+            <n-card style="width: 320px; text-align: center; border-radius: 16px;" :bordered="false" size="huge" role="dialog" aria-modal="true">
+                <div style="font-size: 4rem; margin-bottom: 10px;">
+                    {{ (result.prize && result.prize.emoji) || '🎉' }}
+                </div>
                 <n-result
                     :status="result.prize && result.prize.type !== 'none' ? 'success' : 'info'"
                     :title="result.prize && result.prize.type !== 'none' ? t('win') : t('none')"
                     :description="getPrizeText(result.prize)"
                 >
                 </n-result>
-                <n-button @click="showResult = false" style="margin-top: 20px;" type="primary" size="large" round>
+                <n-button @click="showResult = false" style="margin-top: 20px; width: 100%;" type="primary" size="large" round>
                     开心收下
                 </n-button>
             </n-card>
@@ -212,10 +219,13 @@ onMounted(fetchData)
 .prize-item {
     transition: transform 0.2s;
     cursor: default;
+    background: rgba(255,255,255,0.7);
 }
 
 .prize-item:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .draw-btn-wrapper {
