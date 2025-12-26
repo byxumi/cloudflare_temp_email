@@ -18,7 +18,7 @@ const { t } = useI18n({
             name: 'Name',
             type: 'Type',
             value: 'Value (Yuan/Count)',
-            weight: 'Weight',
+            probability: 'Probability (Weight)', // Changed from Weight
             actions: 'Actions',
             delete: 'Delete',
             balance: 'Main Balance',
@@ -38,7 +38,7 @@ const { t } = useI18n({
             name: '奖品名称',
             type: '类型',
             value: '数值 (元/张)',
-            weight: '权重',
+            probability: '概率 (权重)', // 修改为概率
             actions: '操作',
             delete: '删除',
             balance: '主余额',
@@ -53,7 +53,7 @@ const { t } = useI18n({
 const settings = ref({
     enabled: false,
     costType: 'balance',
-    costAmount: 1, // 默认为1
+    costAmount: 1, 
     prizes: []
 })
 
@@ -70,7 +70,6 @@ const prizeTypeOptions = [
     { label: t('none'), value: 'none' }
 ]
 
-// 辅助函数：判断类型是否是余额类（需要转换单位）
 const isCurrency = (type) => type === 'balance' || type === 'checkin_balance';
 
 const columns = [
@@ -81,7 +80,6 @@ const columns = [
         return h(NSelect, { value: row.type, options: prizeTypeOptions, onUpdateValue: v => settings.value.prizes[index].type = v })
     }},
     { title: t('value'), key: 'value', render(row, index) {
-        // 如果是余额类型，显示小数（元）；如果是券，显示整数
         const precision = isCurrency(row.type) ? 2 : 0;
         return h(NInputNumber, { 
             value: row.value, 
@@ -89,7 +87,8 @@ const columns = [
             onUpdateValue: v => settings.value.prizes[index].value = v 
         })
     }},
-    { title: t('weight'), key: 'weight', width: 100, render(row, index) {
+    // [修改] 显示为 Probability
+    { title: t('probability'), key: 'weight', width: 120, render(row, index) {
         return h(NInputNumber, { value: row.weight, onUpdateValue: v => settings.value.prizes[index].weight = v })
     }},
     { title: t('actions'), key: 'actions', width: 80, render(row, index) {
@@ -100,7 +99,6 @@ const columns = [
 const fetchData = async () => {
     try {
         const res = await api.adminGetLotterySettings()
-        // 从后端读取（分） -> 转换为前端显示（元）
         if (isCurrency(res.costType)) {
             res.costAmount = res.costAmount / 100;
         }
@@ -121,10 +119,8 @@ const fetchData = async () => {
 
 const handleSave = async () => {
     try {
-        // 深拷贝一份，用于提交
         const payload = JSON.parse(JSON.stringify(settings.value));
         
-        // 前端输入（元） -> 转换为后端存储（分）
         if (isCurrency(payload.costType)) {
             payload.costAmount = Math.round(payload.costAmount * 100);
         }
@@ -139,7 +135,6 @@ const handleSave = async () => {
 
         await api.adminSaveLotterySettings(payload)
         message.success(t('saveSuccess'))
-        // 重新拉取以确保同步
         fetchData();
     } catch (e) {
         message.error(e.message)
