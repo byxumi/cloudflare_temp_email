@@ -11,7 +11,7 @@ const { t } = useI18n({
             title: 'Lucky Draw',
             tickets: 'My Tickets',
             draw: 'Draw',
-            cost: 'Cost per draw: ',
+            cost: 'Cost per draw',
             balance: 'Balance',
             checkin: 'Checkin Balance',
             ticket: 'Ticket',
@@ -24,7 +24,7 @@ const { t } = useI18n({
             title: '幸运抽奖',
             tickets: '我的抽奖券',
             draw: '立即抽奖',
-            cost: '每次消耗: ',
+            cost: '每次消耗',
             balance: '余额',
             checkin: '签到余额',
             ticket: '抽奖券',
@@ -48,7 +48,6 @@ const fetchData = async () => {
         userStatus.value.lottery_tickets = res.lottery_tickets
         settings.value = res.settings
     } catch (e) {
-        // 如果后端接口还未准备好，这里可能会报错，暂时忽略
         console.error(e)
     }
 }
@@ -68,24 +67,32 @@ const handleDraw = async () => {
 }
 
 const getCostText = () => {
-    const typeMap = {
-        'balance': t('balance'),
-        'checkin_balance': t('checkin'),
-        'ticket': t('ticket')
+    if (settings.value.costType === 'ticket') {
+        return `${settings.value.costAmount} 张`;
+    } else {
+        // 如果是余额，除以100显示为元
+        return `${(settings.value.costAmount / 100).toFixed(2)} 元`;
     }
-    const unit = settings.value.costType === 'ticket' ? '' : (settings.value.costType === 'balance' ? ' (分)' : '')
-    return `${settings.value.costAmount}${unit} ${typeMap[settings.value.costType]}`
 }
 
 const getPrizeText = (prize) => {
     if (!prize) return ''
     if (prize.type === 'none') return t('none')
+    
+    let valText = '';
+    if (prize.type === 'ticket') {
+        valText = `${prize.value} 张`;
+    } else {
+        // 余额类型除以100
+        valText = `${(prize.value / 100).toFixed(2)} 元`;
+    }
+
     const typeMap = {
         'balance': t('balance'),
         'checkin_balance': t('checkin'),
         'ticket': t('ticket')
     }
-    return `${prize.name} (${prize.value} ${typeMap[prize.type]})`
+    return `${prize.name} (${valText} ${typeMap[prize.type]})`
 }
 
 onMounted(fetchData)
@@ -93,7 +100,7 @@ onMounted(fetchData)
 
 <template>
     <div>
-        <n-card :title="t('title')">
+        <n-card :title="t('title')" :bordered="false" embedded>
             <div v-if="!settings.enabled" style="text-align: center; padding: 20px;">
                 <h3>{{ t('disabled') }}</h3>
             </div>
@@ -108,7 +115,7 @@ onMounted(fetchData)
                 </n-grid>
 
                 <div style="text-align: center; margin-top: 30px;">
-                    <n-button type="primary" size="large" :loading="loading" @click="handleDraw" style="width: 200px; height: 60px; font-size: 20px;">
+                    <n-button type="primary" size="large" :loading="loading" @click="handleDraw" style="width: 200px; height: 60px; font-size: 20px; box-shadow: 0 4px 12px rgba(24, 160, 88, 0.4);">
                         {{ t('draw') }} 🎁
                     </n-button>
                 </div>
@@ -116,14 +123,14 @@ onMounted(fetchData)
         </n-card>
 
         <n-modal v-model:show="showResult">
-            <n-card style="width: 400px; text-align: center;">
+            <n-card style="width: 400px; text-align: center;" :bordered="false" size="huge">
                 <n-result
                     :status="result.prize && result.prize.type !== 'none' ? 'success' : 'info'"
                     :title="result.prize && result.prize.type !== 'none' ? t('win') : t('none')"
                     :description="getPrizeText(result.prize)"
                 >
                 </n-result>
-                <n-button @click="showResult = false" style="margin-top: 20px;">OK</n-button>
+                <n-button @click="showResult = false" style="margin-top: 20px;" type="primary">开心收下</n-button>
             </n-card>
         </n-modal>
     </div>
