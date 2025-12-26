@@ -14,7 +14,7 @@ import UserBar from './user/UserBar.vue';
 import UserMailBox from './user/UserMailBox.vue';
 import UserTransactions from './user/UserTransactions.vue';
 
-// [新增] 异步导入抽奖组件
+// 异步导入抽奖组件
 const Lottery = defineAsyncComponent(() => import('./user/Lottery.vue'))
 
 const { userTab, globalTabplacement, userSettings, userBalance, openSettings } = useGlobalState()
@@ -26,7 +26,7 @@ const showTransactions = ref(false)
 const showRedeemModal = ref(false)
 const balanceLoading = ref(false)
 
-// [新增] 抽奖 Tab 显示控制
+// 抽奖 Tab 显示控制
 const showLotteryTab = ref(false)
 
 const { t } = useI18n({
@@ -44,7 +44,7 @@ const { t } = useI18n({
             myBills: 'My Transactions',
             refreshBalance: 'Refresh',
             buyCard: 'Buy Card',
-            lottery: 'Lottery' // [新增]
+            lottery: 'Lottery'
         },
         zh: {
             address_management: '地址管理',
@@ -59,7 +59,7 @@ const { t } = useI18n({
             myBills: '我的账单',
             refreshBalance: '刷新',
             buyCard: '购买卡密',
-            lottery: '幸运抽奖' // [新增]
+            lottery: '幸运抽奖'
         }
     }
 });
@@ -98,10 +98,13 @@ const handleRedeem = async () => {
 
 onMounted(async () => {
     if (useGlobalState().userJwt.value) {
-        await api.getUserSettings(message);
-        await api.getUserBalance();
+        // 并行加载，加快速度
+        Promise.all([
+            api.getUserSettings(message),
+            api.getUserBalance()
+        ]);
         
-        // [新增] 检查抽奖功能是否开启
+        // 检查抽奖功能是否开启
         try {
             const res = await api.getLotteryStatus()
             if (res && res.settings && res.settings.enabled) {
@@ -118,35 +121,37 @@ onMounted(async () => {
     <div>
         <UserBar />
         
-        <div class="wallet-container" style="margin: 10px 0; padding: 15px; background-color: var(--n-card-color); border-radius: 8px; border: 1px solid var(--n-border-color);">
-            <div class="balance-wrapper">
-                <n-statistic :label="t('balance')">
-                    <template #prefix>
-                        ￥
-                    </template>
-                    <template #suffix>
-                        <n-button text class="refresh-btn" @click="refreshBalance" :loading="balanceLoading">
-                            <template #icon><n-icon><Sync /></n-icon></template>
-                        </n-button>
-                    </template>
-                    {{ (userBalance / 100).toFixed(2) }}
-                </n-statistic>
+        <n-card :bordered="false" embedded style="margin-bottom: 15px;">
+            <div class="wallet-container">
+                <div class="balance-wrapper">
+                    <n-statistic :label="t('balance')">
+                        <template #prefix>
+                            ￥
+                        </template>
+                        <template #suffix>
+                            <n-button text class="refresh-btn" @click="refreshBalance" :loading="balanceLoading">
+                                <template #icon><n-icon><Sync /></n-icon></template>
+                            </n-button>
+                        </template>
+                        {{ (userBalance / 100).toFixed(2) }}
+                    </n-statistic>
+                </div>
+                <n-space>
+                    <n-button type="primary" @click="showRedeemModal = true">
+                        <template #icon><n-icon><CreditCard /></n-icon></template>
+                        {{ t('redeem') }}
+                    </n-button>
+                    <n-button @click="showTransactions = true">
+                        <template #icon><n-icon><History /></n-icon></template>
+                        {{ t('viewBills') }}
+                    </n-button>
+                    <n-button v-if="openSettings.buyCardUrl" tag="a" :href="openSettings.buyCardUrl" target="_blank" type="warning" secondary>
+                        <template #icon><n-icon><ShoppingCart /></n-icon></template>
+                        {{ t('buyCard') }}
+                    </n-button>
+                </n-space>
             </div>
-            <n-space>
-                <n-button type="primary" @click="showRedeemModal = true">
-                    <template #icon><n-icon><CreditCard /></n-icon></template>
-                    {{ t('redeem') }}
-                </n-button>
-                <n-button @click="showTransactions = true">
-                    <template #icon><n-icon><History /></n-icon></template>
-                    {{ t('viewBills') }}
-                </n-button>
-                <n-button v-if="openSettings.buyCardUrl" tag="a" :href="openSettings.buyCardUrl" target="_blank" type="warning" secondary>
-                    <template #icon><n-icon><ShoppingCart /></n-icon></template>
-                    {{ t('buyCard') }}
-                </n-button>
-            </n-space>
-        </div>
+        </n-card>
 
         <div>
             <n-tabs type="line" animated :placement="globalTabplacement" v-model:value="userTab">
@@ -165,7 +170,7 @@ onMounted(async () => {
             </n-tabs>
         </div>
 
-        <n-modal v-model:show="showRedeemModal" preset="card" :title="t('recharge')" style="width: 90%; max-width: 400px">
+        <n-modal v-model:show="showRedeemModal" preset="card" :title="t('redeem')" style="width: 90%; max-width: 400px">
             <n-space vertical>
                 <n-input v-model:value="redeemCode" :placeholder="t('redeemPlaceholder')" @keydown.enter="handleRedeem" />
                 <n-button type="primary" block @click="handleRedeem" :loading="redeemLoading">
