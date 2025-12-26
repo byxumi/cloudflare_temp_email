@@ -30,8 +30,9 @@ import IpBlacklistSettings from './admin/IpBlacklistSettings.vue';
 import CardManager from './admin/CardManager.vue';
 import PricingManager from './admin/PricingManager.vue';
 import TransactionManager from './admin/TransactionManager.vue';
-// [新增] 引入版本号设置组件
 import VersionSettings from './admin/VersionSettings.vue';
+// [新增] 引入抽奖设置
+import LotterySettings from './admin/LotterySettings.vue';
 
 const {
   adminAuth, showAdminAuth, adminTab, loading,
@@ -88,7 +89,8 @@ const { t } = useI18n({
       cardManager: 'Card Management',
       pricingManager: 'Pricing Management',
       transactionManager: 'Transactions',
-      versionSettings: 'Version', // [新增]
+      versionSettings: 'Version',
+      lotterySettings: 'Lottery Settings', // [新增]
     },
     zh: {
       accessHeader: 'Admin 密码',
@@ -122,7 +124,8 @@ const { t } = useI18n({
       cardManager: '卡密管理',
       pricingManager: '定价管理',
       transactionManager: '交易流水',
-      versionSettings: '版本号', // [新增]
+      versionSettings: '版本号',
+      lotterySettings: '抽奖设置', // [新增]
     }
   }
 });
@@ -131,7 +134,6 @@ const showAdminPasswordModal = computed(() => !showAdminPage.value || showAdminA
 const tmpAdminAuth = ref('')
 
 onMounted(async () => {
-  // make sure user_id is fetched
   if (!userSettings.value.user_id) await api.getUserSettings(message);
 })
 </script>
@@ -168,6 +170,7 @@ onMounted(async () => {
           </n-tab-pane>
         </n-tabs>
       </n-tab-pane>
+      
       <n-tab-pane name="account" :tab="t('account')">
         <n-tabs type="bar" justify-content="center" animated>
           <n-tab-pane name="account" :tab="t('account')">
@@ -217,6 +220,9 @@ onMounted(async () => {
           </n-tab-pane>
           <n-tab-pane name="transactionManager" :tab="t('transactionManager')">
             <TransactionManager />
+          </n-tab-pane>
+          <n-tab-pane name="lotterySettings" :tab="t('lotterySettings')">
+            <LotterySettings />
           </n-tab-pane>
         </n-tabs>
       </n-tab-pane>
