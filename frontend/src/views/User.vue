@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, defineAsyncComponent } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NIcon, NModal, NInput, NButton, NSpace, NTabs, NTabPane, NCard, NStatistic } from 'naive-ui'
+import { useMessage, NIcon, NModal, NInput, NButton, NSpace, NTabs, NTabPane, NStatistic } from 'naive-ui'
 import { History, Sync, CreditCard, ShoppingCart } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
@@ -14,7 +14,7 @@ import UserBar from './user/UserBar.vue';
 import UserMailBox from './user/UserMailBox.vue';
 import UserTransactions from './user/UserTransactions.vue';
 
-// 异步导入抽奖组件
+// 异步导入抽奖组件 (请确保您已经创建了 frontend/src/views/user/Lottery.vue 文件)
 const Lottery = defineAsyncComponent(() => import('./user/Lottery.vue'))
 
 const { userTab, globalTabplacement, userSettings, userBalance, openSettings } = useGlobalState()
@@ -121,21 +121,21 @@ onMounted(async () => {
     <div>
         <UserBar />
         
-        <n-card :bordered="false" embedded style="margin-bottom: 15px;">
-            <div class="wallet-container">
-                <div class="balance-wrapper">
-                    <n-statistic :label="t('balance')">
-                        <template #prefix>
-                            ￥
-                        </template>
-                        <template #suffix>
-                            <n-button text class="refresh-btn" @click="refreshBalance" :loading="balanceLoading">
-                                <template #icon><n-icon><Sync /></n-icon></template>
-                            </n-button>
-                        </template>
-                        {{ (userBalance / 100).toFixed(2) }}
-                    </n-statistic>
-                </div>
+        <div class="wallet-glass-card">
+            <div class="balance-info">
+                <n-statistic :label="t('balance')">
+                    <template #prefix>
+                        ￥
+                    </template>
+                    <template #suffix>
+                        <n-button text class="refresh-btn" @click="refreshBalance" :loading="balanceLoading">
+                            <template #icon><n-icon><Sync /></n-icon></template>
+                        </n-button>
+                    </template>
+                    <span style="font-weight: 600;">{{ (userBalance / 100).toFixed(2) }}</span>
+                </n-statistic>
+            </div>
+            <div class="wallet-actions">
                 <n-space>
                     <n-button type="primary" @click="showRedeemModal = true">
                         <template #icon><n-icon><CreditCard /></n-icon></template>
@@ -151,7 +151,7 @@ onMounted(async () => {
                     </n-button>
                 </n-space>
             </div>
-        </n-card>
+        </div>
 
         <div>
             <n-tabs type="line" animated :placement="globalTabplacement" v-model:value="userTab">
@@ -186,32 +186,41 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.wallet-container {
+/* [新增] 毛玻璃效果样式 */
+.wallet-glass-card {
+    margin-bottom: 20px;
+    padding: 24px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 16px;
+
+    /* 浅色半透明背景 + 模糊滤镜 */
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.balance-wrapper {
-    flex: 1;
-    min-width: 120px;
+.balance-info {
+    min-width: 150px;
 }
 
 .refresh-btn {
-    margin-left: 8px; 
-    vertical-align: middle;
+    margin-left: 8px;
+    vertical-align: sub;
 }
 
 @media (max-width: 600px) {
-    .wallet-container {
+    .wallet-glass-card {
         flex-direction: column;
         align-items: flex-start;
     }
-    .balance-wrapper {
+    .wallet-actions {
         width: 100%;
-        margin-bottom: 10px;
     }
 }
 </style>
