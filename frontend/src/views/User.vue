@@ -14,7 +14,7 @@ import UserBar from './user/UserBar.vue';
 import UserMailBox from './user/UserMailBox.vue';
 import UserTransactions from './user/UserTransactions.vue';
 
-// 异步导入抽奖组件 (请确保您已经创建了 frontend/src/views/user/Lottery.vue 文件)
+// 异步导入抽奖组件
 const Lottery = defineAsyncComponent(() => import('./user/Lottery.vue'))
 
 const { userTab, globalTabplacement, userSettings, userBalance, openSettings } = useGlobalState()
@@ -44,7 +44,8 @@ const { t } = useI18n({
             myBills: 'My Transactions',
             refreshBalance: 'Refresh',
             buyCard: 'Buy Card',
-            lottery: 'Lottery'
+            lottery: 'Lottery',
+            recharge: 'Recharge'
         },
         zh: {
             address_management: '地址管理',
@@ -53,13 +54,14 @@ const { t } = useI18n({
             wallet: '钱包',
             balance: '余额',
             redeem: '充值',
-            redeemPlaceholder: '输入卡密',
+            redeemPlaceholder: '请输入卡密',
             redeemSuccess: '充值成功',
             viewBills: '账单',
             myBills: '我的账单',
             refreshBalance: '刷新',
             buyCard: '购买卡密',
-            lottery: '幸运抽奖'
+            lottery: '幸运抽奖',
+            recharge: '充值'
         }
     }
 });
@@ -96,6 +98,16 @@ const handleRedeem = async () => {
     }
 }
 
+// [恢复] 购买卡密逻辑（包含您的备用链接）
+const handleBuyCard = () => {
+    const myWebsiteUrl = "https://buy.xumicloud.top"; 
+    if (openSettings.value.buyCardUrl) {
+        window.open(openSettings.value.buyCardUrl, '_blank');
+    } else {
+        window.open(myWebsiteUrl, '_blank');
+    }
+}
+
 onMounted(async () => {
     if (useGlobalState().userJwt.value) {
         // 并行加载，加快速度
@@ -122,7 +134,7 @@ onMounted(async () => {
         <UserBar />
         
         <div class="wallet-glass-card">
-            <div class="balance-info">
+            <div class="balance-wrapper">
                 <n-statistic :label="t('balance')">
                     <template #prefix>
                         ￥
@@ -135,19 +147,21 @@ onMounted(async () => {
                     <span style="font-weight: 600;">{{ (userBalance / 100).toFixed(2) }}</span>
                 </n-statistic>
             </div>
-            <div class="wallet-actions">
+            <div class="action-wrapper">
                 <n-space>
                     <n-button type="primary" @click="showRedeemModal = true">
                         <template #icon><n-icon><CreditCard /></n-icon></template>
                         {{ t('redeem') }}
                     </n-button>
+                    
+                    <n-button type="warning" secondary @click="handleBuyCard">
+                        <template #icon><n-icon><ShoppingCart /></n-icon></template>
+                        {{ t('buyCard') }}
+                    </n-button>
+
                     <n-button @click="showTransactions = true">
                         <template #icon><n-icon><History /></n-icon></template>
                         {{ t('viewBills') }}
-                    </n-button>
-                    <n-button v-if="openSettings.buyCardUrl" tag="a" :href="openSettings.buyCardUrl" target="_blank" type="warning" secondary>
-                        <template #icon><n-icon><ShoppingCart /></n-icon></template>
-                        {{ t('buyCard') }}
                     </n-button>
                 </n-space>
             </div>
@@ -186,26 +200,24 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* [新增] 毛玻璃效果样式 */
+/* 毛玻璃效果样式 */
 .wallet-glass-card {
-    margin-bottom: 20px;
-    padding: 24px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 16px;
-
-    /* 浅色半透明背景 + 模糊滤镜 */
     background: rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.3);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
 }
 
-.balance-info {
+.balance-wrapper {
     min-width: 150px;
 }
 
@@ -219,8 +231,15 @@ onMounted(async () => {
         flex-direction: column;
         align-items: flex-start;
     }
-    .wallet-actions {
+    .action-wrapper {
         width: 100%;
+    }
+    .action-wrapper .n-space {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .action-wrapper .n-button {
+        flex: 1;
     }
 }
 </style>
