@@ -12,13 +12,12 @@ const { openSettings, jwt, userBalance, userSettings, auth, userJwt } = useGloba
 const message = useMessage()
 const { toClipboard } = useClipboard()
 
-// [新增] 签到余额状态
+// 签到余额状态
 const checkinBalance = ref(0)
 
 const { t } = useI18n({
     messages: {
         en: {
-            // ... (保留原有翻译)
             createAddress: 'New Address',
             bindExisting: 'Bind Existing',
             address: 'Address',
@@ -57,14 +56,12 @@ const { t } = useI18n({
             remark: 'Remark',
             editRemark: 'Edit Remark',
             remarkPlaceholder: 'Enter remark',
-            // [新增翻译]
             dailyCheckin: 'Daily Check-in',
             checkinSuccess: 'Check-in Success! Got ',
             checkinBalance: 'Check-in Bal: ',
             mainBalance: 'Main Bal: '
         },
         zh: {
-            // ... (保留原有翻译)
             createAddress: '新建地址',
             bindExisting: '绑定已有',
             address: '邮箱地址',
@@ -103,7 +100,6 @@ const { t } = useI18n({
             remark: '备注',
             editRemark: '修改备注',
             remarkPlaceholder: '请输入备注',
-            // [新增翻译]
             dailyCheckin: '每日签到',
             checkinSuccess: '签到成功！获得 ',
             checkinBalance: '签到余额: ',
@@ -112,7 +108,6 @@ const { t } = useI18n({
     }
 })
 
-// ... (保留原有 ref 定义: data, loading, showCreateModal, etc.)
 const data = ref([])
 const loading = ref(false)
 const showCreateModal = ref(false)
@@ -132,9 +127,8 @@ const remarkLoading = ref(false)
 const showPriceModal = ref(false)
 const priceList = ref([])
 const priceLoadingState = ref(false)
-const checkinLoading = ref(false) // [新增]
+const checkinLoading = ref(false)
 
-// ... (保留 computed: domainOptions, currentPrefix)
 const domainOptions = computed(() => {
     return (openSettings.value.domains || []).map(d => ({
         label: d.label || d.value,
@@ -149,7 +143,6 @@ const currentPrefix = computed(() => {
     return openSettings.value.prefix || '';
 })
 
-// ... (保留 fetchData)
 const fetchData = async () => {
     loading.value = true
     try {
@@ -162,19 +155,16 @@ const fetchData = async () => {
     }
 }
 
-// [修改] 刷新余额，同时获取 checkinBalance
 const refreshBalance = async () => {
     try {
         const res = await api.getUserBalance()
-        // api.getUserBalance 现在返回对象 { balance, checkin_balance }
-        // 但 store 可能只处理了 userBalance，所以我们需要手动处理 checkinBalance
         if (res && typeof res === 'object') {
             checkinBalance.value = res.checkin_balance || 0
         }
     } catch (e) { console.error(e) }
 }
 
-// [新增] 签到处理函数
+// [修改] 签到处理函数
 const handleCheckin = async () => {
     checkinLoading.value = true
     try {
@@ -182,6 +172,9 @@ const handleCheckin = async () => {
         if (res.success) {
             message.success(t('checkinSuccess') + (res.amount / 100).toFixed(2) + ' ' + t('currency'));
             refreshBalance();
+        } else {
+            // 处理 "success": false 的情况，例如“今天已经签到过了”
+            message.warning(res.message || "Operation failed");
         }
     } catch (e) {
         message.error(e.message || 'Check-in failed');
@@ -190,7 +183,6 @@ const handleCheckin = async () => {
     }
 }
 
-// ... (保留 openPriceModal, watch, generateRandom, openCreateModal, handleCreate, handleSwitch, etc.)
 const openPriceModal = async () => {
     showPriceModal.value = true;
     priceLoadingState.value = true;
@@ -245,7 +237,6 @@ const handleCreate = async () => {
     if (!createForm.value.name) generateRandom();
     if (!createForm.value.domain) return
     
-    // [修改] 检查总余额
     const totalBal = userBalance.value + checkinBalance.value
     if (currentPriceCents.value > totalBal) {
         message.error(t('insufficientBalance'))
