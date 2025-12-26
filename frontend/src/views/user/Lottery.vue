@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NCard, NButton, NStatistic, NGrid, NGi, NResult, NModal } from 'naive-ui'
+import { useMessage, NCard, NButton, NStatistic, NGrid, NGi, NResult, NModal, NList, NListItem, NThing, NTag } from 'naive-ui'
 import { api } from '../../api'
 
 const message = useMessage()
@@ -18,7 +18,9 @@ const { t } = useI18n({
             win: 'You Won!',
             none: 'No luck this time',
             prize: 'Prize: ',
-            disabled: 'Lottery is currently disabled'
+            disabled: 'Lottery is currently disabled',
+            prizeList: 'Prize List',
+            val: 'Value'
         },
         zh: {
             title: '幸运抽奖',
@@ -31,14 +33,16 @@ const { t } = useI18n({
             win: '恭喜中奖！',
             none: '很遗憾，未中奖',
             prize: '奖品: ',
-            disabled: '抽奖活动暂未开启'
+            disabled: '抽奖活动暂未开启',
+            prizeList: '奖品列表',
+            val: '价值'
         }
     }
 })
 
 const loading = ref(false)
 const userStatus = ref({ lottery_tickets: 0 })
-const settings = ref({ enabled: false, costType: 'balance', costAmount: 0 })
+const settings = ref({ enabled: false, costType: 'balance', costAmount: 0, prizes: [] })
 const showResult = ref(false)
 const result = ref({ success: false, prize: null })
 
@@ -46,7 +50,7 @@ const fetchData = async () => {
     try {
         const res = await api.getLotteryStatus()
         userStatus.value.lottery_tickets = res.lottery_tickets
-        settings.value = res.settings
+        settings.value = res.settings || { enabled: false, prizes: [] }
     } catch (e) {
         console.error(e)
     }
@@ -70,7 +74,6 @@ const getCostText = () => {
     if (settings.value.costType === 'ticket') {
         return `${settings.value.costAmount} 张`;
     } else {
-        // 如果是余额，除以100显示为元
         return `${(settings.value.costAmount / 100).toFixed(2)} 元`;
     }
 }
@@ -83,7 +86,6 @@ const getPrizeText = (prize) => {
     if (prize.type === 'ticket') {
         valText = `${prize.value} 张`;
     } else {
-        // 余额类型除以100
         valText = `${(prize.value / 100).toFixed(2)} 元`;
     }
 
@@ -95,43 +97,131 @@ const getPrizeText = (prize) => {
     return `${prize.name} (${valText} ${typeMap[prize.type]})`
 }
 
+const getPrizeValueDisplay = (prize) => {
+    if (prize.type === 'none') return '';
+    if (prize.type === 'ticket') return `${prize.value} 张`;
+    return `${(prize.value / 100).toFixed(2)} 元`;
+}
+
+const getPrizeTypeTag = (type) => {
+    switch (type) {
+        case 'balance': return 'success';
+        case 'checkin_balance': return 'warning';
+        case 'ticket': return 'info';
+        case 'none': return 'default';
+        default: return 'default';
+    }
+}
+
+const getPrizeTypeLabel = (type) => {
+    const map = {
+        'balance': t('balance'),
+        'checkin_balance': t('checkin'),
+        'ticket': t('ticket'),
+        'none': t('none')
+    }
+    return map[type] || type
+}
+
 onMounted(fetchData)
 </script>
 
 <template>
     <div>
-        <n-card :title="t('title')" :bordered="false" embedded>
+        <n-card :bordered="false" class="lottery-card">
+            <template #header>
+                <div style="text-align: center; font-size: 1.2rem; font-weight: bold;">{{ t('title') }}</div>
+            </template>
+            
             <div v-if="!settings.enabled" style="text-align: center; padding: 20px;">
                 <h3>{{ t('disabled') }}</h3>
             </div>
             <div v-else>
-                <n-grid :cols="2" style="margin-bottom: 20px;">
-                    <n-gi>
-                        <n-statistic :label="t('tickets')" :value="userStatus.lottery_tickets" />
-                    </n-gi>
-                    <n-gi>
-                        <n-statistic :label="t('cost')" :value="getCostText()" />
-                    </n-gi>
-                </n-grid>
+                <div class="status-bar">
+                    <n-statistic :label="t('tickets')" :value="userStatus.lottery_tickets" />
+                    <n-statistic :label="t('cost')" :value="getCostText()" />
+                </div>
 
-                <div style="text-align: center; margin-top: 30px;">
-                    <n-button type="primary" size="large" :loading="loading" @click="handleDraw" style="width: 200px; height: 60px; font-size: 20px; box-shadow: 0 4px 12px rgba(24, 160, 88, 0.4);">
-                        {{ t('draw') }} 🎁
-                    </n-button>
+                <div style="text-align: center; margin: 30px 0;">
+                    <div class="draw-btn-wrapper">
+                        <n-button 
+                            type="primary" 
+                            circle
+                            style="width: 120px; height: 120px; font-size: 24px; font-weight: bold; box-shadow: 0 0 20px rgba(24, 160, 88, 0.4);"
+                            :loading="loading" 
+                            @click="handleDraw"
+                        >
+                            {{ t('draw') }}
+                        </n-button>
+                    </div>
+                </div>
+
+                <div class="prize-list-container">
+                    <div style="margin-bottom: 10px; font-weight: bold; color: #666;">{{ t('prizeList') }}</div>
+                    <n-grid x-gap="12" y-gap="12" cols="2 s:3 m:4 l:5" responsive="screen">
+                        <n-gi v-for="prize in settings.prizes" :key="prize.id">
+                            <n-card size="small" embedded class="prize-item">
+                                <div style="text-align: center;">
+                                    <div style="font-weight: bold; margin-bottom: 5px;">{{ prize.name }}</div>
+                                    <n-tag :type="getPrizeTypeTag(prize.type)" size="small" :bordered="false">
+                                        {{ getPrizeTypeLabel(prize.type) }}
+                                    </n-tag>
+                                    <div v-if="prize.type !== 'none'" style="margin-top: 5px; font-size: 0.9em; color: #666;">
+                                        {{ getPrizeValueDisplay(prize) }}
+                                    </div>
+                                </div>
+                            </n-card>
+                        </n-gi>
+                    </n-grid>
                 </div>
             </div>
         </n-card>
 
         <n-modal v-model:show="showResult">
-            <n-card style="width: 400px; text-align: center;" :bordered="false" size="huge">
+            <n-card style="width: 300px; text-align: center; border-radius: 16px;" :bordered="false" size="huge" role="dialog" aria-modal="true">
                 <n-result
                     :status="result.prize && result.prize.type !== 'none' ? 'success' : 'info'"
                     :title="result.prize && result.prize.type !== 'none' ? t('win') : t('none')"
                     :description="getPrizeText(result.prize)"
                 >
                 </n-result>
-                <n-button @click="showResult = false" style="margin-top: 20px;" type="primary">开心收下</n-button>
+                <n-button @click="showResult = false" style="margin-top: 20px;" type="primary" size="large" round>
+                    开心收下
+                </n-button>
             </n-card>
         </n-modal>
     </div>
 </template>
+
+<style scoped>
+.lottery-card {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    border-radius: 12px;
+}
+
+.status-bar {
+    display: flex;
+    justify-content: space-around;
+    background: rgba(0,0,0,0.03);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.prize-item {
+    transition: transform 0.2s;
+    cursor: default;
+}
+
+.prize-item:hover {
+    transform: translateY(-2px);
+}
+
+.draw-btn-wrapper {
+    display: inline-block;
+    padding: 10px;
+    border-radius: 50%;
+    background: rgba(24, 160, 88, 0.1);
+}
+</style>
