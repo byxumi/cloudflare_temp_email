@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NCard, NForm, NFormItem, NSwitch, NInputNumber, NSelect, NButton, NDataTable, NInput, NSpace } from 'naive-ui'
+import { useMessage, NCard, NForm, NFormItem, NSwitch, NInputNumber, NSelect, NButton, NDataTable, NInput } from 'naive-ui'
 import { api } from '../../api'
 
 const message = useMessage()
