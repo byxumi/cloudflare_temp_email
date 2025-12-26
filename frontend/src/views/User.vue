@@ -44,8 +44,7 @@ const { t } = useI18n({
             myBills: 'My Transactions',
             refreshBalance: 'Refresh',
             buyCard: 'Buy Card',
-            lottery: 'Lottery',
-            recharge: 'Recharge'
+            lottery: 'Lottery'
         },
         zh: {
             address_management: '地址管理',
@@ -60,8 +59,7 @@ const { t } = useI18n({
             myBills: '我的账单',
             refreshBalance: '刷新',
             buyCard: '购买卡密',
-            lottery: '幸运抽奖',
-            recharge: '充值'
+            lottery: '幸运抽奖'
         }
     }
 });
@@ -98,7 +96,6 @@ const handleRedeem = async () => {
     }
 }
 
-// [恢复] 购买卡密逻辑（包含您的备用链接）
 const handleBuyCard = () => {
     const myWebsiteUrl = "https://buy.xumicloud.top"; 
     if (openSettings.value.buyCardUrl) {
@@ -110,13 +107,12 @@ const handleBuyCard = () => {
 
 onMounted(async () => {
     if (useGlobalState().userJwt.value) {
-        // 并行加载，加快速度
+        // 并行加载
         Promise.all([
             api.getUserSettings(message),
             api.getUserBalance()
         ]);
         
-        // 检查抽奖功能是否开启
         try {
             const res = await api.getLotteryStatus()
             if (res && res.settings && res.settings.enabled) {
@@ -133,7 +129,7 @@ onMounted(async () => {
     <div>
         <UserBar />
         
-        <div class="wallet-glass-card">
+        <div class="glass-panel wallet-container">
             <div class="balance-wrapper">
                 <n-statistic :label="t('balance')">
                     <template #prefix>
@@ -167,7 +163,7 @@ onMounted(async () => {
             </div>
         </div>
 
-        <div>
+        <div class="glass-panel">
             <n-tabs type="line" animated :placement="globalTabplacement" v-model:value="userTab">
                 <n-tab-pane name="user_mail_box_tab" :tab="t('user_mail_box_tab')">
                     <UserMailBox />
@@ -200,16 +196,19 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* 毛玻璃效果样式 */
-.wallet-glass-card {
+/* 通用毛玻璃卡片样式 */
+.glass-panel {
     background: rgba(255, 255, 255, 0.6);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
     border-radius: 12px;
-    padding: 24px;
+    padding: 20px;
     margin-bottom: 20px;
+}
+
+.wallet-container {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -227,7 +226,7 @@ onMounted(async () => {
 }
 
 @media (max-width: 600px) {
-    .wallet-glass-card {
+    .wallet-container {
         flex-direction: column;
         align-items: flex-start;
     }
