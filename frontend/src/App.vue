@@ -1,5 +1,5 @@
 <script setup>
-import { darkTheme, NGlobalStyle, zhCN, dateZhCN, enUS, dateEnUS } from 'naive-ui'
+import { darkTheme, zhCN, dateZhCN, enUS, dateEnUS } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
 import { useScript } from '@unhead/vue'
 import { useI18n } from 'vue-i18n'
@@ -30,150 +30,85 @@ const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
 const showSplash = ref(true)
 
-// [UI 美化] 全局主题覆盖配置
+// [深度美化] 全局主题覆盖配置
 const themeOverrides = computed(() => {
-  // 定义基础透明度和颜色变量
   const isDarkTheme = isDark.value;
-  const alpha = isDarkTheme ? 0.6 : 0.7; // 基础透明度
   
-  // 玻璃背景色
+  // 核心色板
+  const primary = '#4361ee'; // 更加稳重的蓝紫色
+  const primaryHover = '#4895ef';
+  const success = '#06d6a0';
+  const warning = '#ffd166';
+  const error = '#ef476f';
+
+  // 玻璃参数
+  const glassAlpha = isDarkTheme ? 0.6 : 0.75;
   const glassBg = isDarkTheme 
-    ? `rgba(30, 30, 35, ${alpha})` 
-    : `rgba(255, 255, 255, ${alpha})`;
+    ? `rgba(20, 20, 23, ${glassAlpha})` 
+    : `rgba(255, 255, 255, ${glassAlpha})`;
   
-  // 悬停态玻璃背景
-  const glassBgHover = isDarkTheme 
-    ? `rgba(50, 50, 55, ${alpha + 0.1})` 
-    : `rgba(255, 255, 255, ${alpha + 0.15})`;
-
-  // 玻璃边框颜色（精细描边）
-  const glassBorder = isDarkTheme
-    ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(255, 255, 255, 0.4)';
-
-  // 现代配色方案
-  const primaryColor = '#3a86ff'; // 鲜亮蓝
-  const primaryColorHover = '#5c9aff';
-  const primaryColorPressed = '#2a6fd9';
-  const successColor = '#06d6a0'; // 清新绿
-  const warningColor = '#ffd166'; // 柔和黄
-  const errorColor = '#ef476f';   // 现代红
-
-  const transparent = 'transparent';
+  const borderColor = isDarkTheme 
+    ? 'rgba(255, 255, 255, 0.08)' 
+    : 'rgba(255, 255, 255, 0.6)';
 
   return {
     common: {
-      primaryColor: primaryColor,
-      primaryColorHover: primaryColorHover,
-      primaryColorPressed: primaryColorPressed,
-      successColor: successColor,
-      warningColor: warningColor,
-      errorColor: errorColor,
+      primaryColor: primary,
+      primaryColorHover: primaryHover,
+      primaryColorPressed: '#3f37c9',
+      successColor: success,
+      warningColor: warning,
+      errorColor: error,
       
-      borderRadius: '16px', // 全局大圆角
-      borderRadiusSmall: '10px',
+      borderRadius: '16px',
+      borderRadiusSmall: '8px',
       fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
       
-      // 让基础组件背景透明，透出全局背景
-      bodyColor: transparent,
+      // 基础背景透明，交由 CSS 处理
+      bodyColor: 'transparent',
       cardColor: glassBg,
-      modalColor: isDarkTheme ? 'rgba(35, 35, 40, 0.85)' : 'rgba(255, 255, 255, 0.85)', // 弹窗稍微不透明一点
+      modalColor: glassBg,
       popoverColor: glassBg,
-      tableColor: transparent,
-      tableHeaderColor: isDarkTheme ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.4)', 
-      inputColor: isDarkTheme ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.4)',
-    },
-    LoadingBar: {
-      colorLoading: primaryColor,
-      colorError: errorColor,
-      height: '3px'
+      tableColor: 'transparent',
+      
+      // 文字颜色微调
+      textColorBase: isDarkTheme ? '#f0f0f0' : '#2d3436',
+      textColor1: isDarkTheme ? '#e0e0e0' : '#2d3436',
+      textColor2: isDarkTheme ? '#a0a0a0' : '#636e72',
     },
     Card: {
       borderRadius: '20px',
-      color: glassBg,
-      borderColor: glassBorder,
-      // 柔和的阴影
-      boxShadow: isDarkTheme 
-        ? '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05)' 
-        : '0 8px 32px rgba(31, 38, 135, 0.07), inset 0 0 0 1px rgba(255, 255, 255, 0.3)'
+      borderColor: borderColor,
+      // 移除默认阴影，使用 CSS 类增强
+      boxShadow: 'none' 
     },
     Modal: {
-      color: isDarkTheme ? 'rgba(30, 30, 35, 0.8)' : 'rgba(255, 255, 255, 0.8)',
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      borderColor: glassBorder,
-      borderRadius: '24px'
-    },
-    Dialog: {
-      color: glassBg,
-      borderRadius: '20px',
-      borderColor: glassBorder
-    },
-    DataTable: {
-      thColor: isDarkTheme ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.4)',
-      tdColor: transparent,
-      tdColorHover: isDarkTheme ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.5)',
-      borderColor: glassBorder,
-      borderRadius: '12px'
-    },
-    Input: {
-      color: isDarkTheme ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.4)',
-      colorFocus: isDarkTheme ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.7)',
-      border: `1px solid ${glassBorder}`,
-      borderRadius: '12px',
-      // 输入框内文字颜色
-      textColor: isDarkTheme ? '#eee' : '#333',
-    },
-    Select: {
-      peers: {
-        InternalSelection: {
-          color: isDarkTheme ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.4)',
-          border: `1px solid ${glassBorder}`,
-          borderRadius: '12px',
-        },
-        InternalSelectMenu: {
-          color: isDarkTheme ? 'rgba(30, 30, 35, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
-          optionColorHover: glassBgHover,
-          padding: '6px',
-          borderRadius: '16px'
-        }
-      }
-    },
-    Dropdown: {
-      color: isDarkTheme ? 'rgba(30, 30, 35, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-      optionColorHover: glassBgHover,
-      borderRadius: '16px'
-    },
-    Layout: {
-      color: transparent,
-      headerColor: transparent,
-      footerColor: transparent,
-      siderColor: transparent
-    },
-    Tabs: {
-      tabBorderRadius: '12px',
-      panePadding: '20px 0 0 0', // 调整 Tab 内容的间距
-      tabColor: transparent,
-      tabBorderColor: transparent
+      borderRadius: '24px',
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+      borderColor: borderColor
     },
     Button: {
       fontWeight: '600',
       borderRadiusMedium: '12px',
       borderRadiusLarge: '14px',
-      // 按钮阴影
-      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)',
-      boxShadowHover: '0 6px 16px rgba(0, 0, 0, 0.12)',
-      boxShadowPressed: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
+      // 按钮自带微光泽
+      colorOpacitySecondary: 0.15,
+      colorSecondaryHover: 0.25,
+    },
+    Input: {
+      borderRadius: '12px',
+      border: `1px solid ${borderColor}`,
+      color: isDarkTheme ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)',
+      colorFocus: isDarkTheme ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.8)',
+    },
+    Tabs: {
+      tabBorderRadius: '10px',
+      tabGapSmallCard: '4px',
+      panePadding: '20px 0 0 0'
     },
     Statistic: {
-      labelFontWeight: '500'
-    },
-    Pagination: {
-      itemColor: transparent,
-      itemColorHover: glassBgHover,
-      itemColorActive: glassBgHover,
-      itemBorder: `1px solid ${glassBorder}`,
-      itemBorderRadius: '8px'
+      labelFontWeight: '500',
+      valueFontWeight: '700'
     }
   }
 })
@@ -190,7 +125,6 @@ onMounted(async () => {
   }
 
   const token = import.meta.env.VITE_CF_WEB_ANALY_TOKEN;
-
   const exist = document.querySelector('script[src="https://static.cloudflareinsights.com/beacon.min.js"]') !== null
   if (token && !exist) {
     const script = document.createElement('script');
@@ -238,6 +172,8 @@ onMounted(async () => {
   >
     <n-global-style />
     
+    <div class="noise-overlay"></div>
+
     <Transition name="splash">
       <div v-if="showSplash" class="splash-screen">
         <div class="splash-content">
@@ -250,16 +186,14 @@ onMounted(async () => {
     <n-loading-bar-provider>
       <RouterLoadingBar />
       
-      <n-spin description="loading..." :show="loading">
+      <n-spin description="Loading..." :show="loading">
         <n-notification-provider container-style="margin-top: 60px;">
           <n-message-provider container-style="margin-top: 20px;">
             
             <div class="app-container">
-              <div class="bg-overlay"></div>
-
-              <n-grid :cols="gridMaxCols" class="main-grid" :x-gap="isMobile ? 0 : 24">
+              <n-grid :cols="gridMaxCols" class="main-grid" :x-gap="isMobile ? 0 : 28">
                 <n-gi v-if="showSideMargin" span="1">
-                  <div class="side-ad" v-if="showAd">
+                  <div class="side-ad glass-module" v-if="showAd">
                     <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
                       data-ad-format="auto" data-full-width-responsive="true"></ins>
                   </div>
@@ -267,26 +201,26 @@ onMounted(async () => {
                 
                 <n-gi :span="!showSideMargin ? gridMaxCols : (gridMaxCols - 2)">
                   <div class="main-content">
-                    <div class="sticky-header-wrapper">
+                    <div class="sticky-header-wrapper glass-module-header">
                       <Header class="app-header" />
                     </div>
                     
                     <div class="router-container">
                       <router-view v-slot="{ Component }">
-                        <transition name="fade" mode="out-in">
+                        <transition name="page-fade" mode="out-in">
                           <component :is="Component" />
                         </transition>
                       </router-view>
                     </div>
 
-                    <div class="floating-footer-wrapper">
+                    <div class="footer-wrapper glass-module-footer">
                       <Footer class="app-footer" />
                     </div>
                   </div>
                 </n-gi>
                 
                 <n-gi v-if="showSideMargin" span="1">
-                  <div class="side-ad" v-if="showAd">
+                  <div class="side-ad glass-module" v-if="showAd">
                     <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
                       data-ad-format="auto" data-full-width-responsive="true"></ins>
                   </div>
@@ -294,7 +228,7 @@ onMounted(async () => {
               </n-grid>
             </div>
 
-            <n-back-top :bottom="50" :right="30" />
+            <n-back-top :bottom="50" :right="30" class="glass-module-icon" />
           </n-message-provider>
         </n-notification-provider>
       </n-spin>
@@ -303,209 +237,237 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === 1. 全局基础与背景设置 === */
-*, *::before, *::after {
-  box-sizing: border-box;
+/* === 1. 全局环境与背景 === */
+:root {
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --glass-shadow-hover: 0 16px 48px 0 rgba(31, 38, 135, 0.15);
+  --glass-border-light: rgba(255, 255, 255, 0.5);
+  --glass-border-dark: rgba(255, 255, 255, 0.1);
+  --primary-gradient: linear-gradient(135deg, #4361ee 0%, #3f37c9 100%);
 }
 
 body {
-  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   margin: 0;
-  
-  /* 梦幻渐变背景 - 浅色模式 */
-  background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* 极光渐变背景 */
+  background: 
+    radial-gradient(at 0% 0%, rgba(67, 97, 238, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(76, 201, 240, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(247, 37, 133, 0.08) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, rgba(114, 9, 183, 0.08) 0px, transparent 50%),
+    linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
   background-attachment: fixed;
   background-size: cover;
-  
-  letter-spacing: 0.01em;
-  color: #333;
-  overflow-x: hidden;
-  width: 100%;
   min-height: 100vh;
+  color: #2d3436;
+  overflow-x: hidden;
 }
 
-/* 深色模式背景 */
 [data-theme='dark'] body {
-  background: linear-gradient(135deg, #1f1c2c 0%, #928dab 100%);
-  color: #eee;
+  background: 
+    radial-gradient(at 0% 0%, rgba(67, 97, 238, 0.1) 0px, transparent 50%),
+    linear-gradient(135deg, #0f0f13 0%, #1a1a20 100%);
+  color: #f0f0f0;
 }
 
-/* === 开屏动画样式 === */
-.splash-screen {
+/* 噪点纹理 - 增加高级感 */
+.noise-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 9999;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* === 2. 深度模块化美化 (Modular Beautification) === */
+
+/* 通用玻璃模块基础类 */
+.glass-module, 
+.n-card, 
+.n-modal, 
+.n-drawer,
+.glass-panel {
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  background-clip: padding-box !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: var(--glass-shadow) !important;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+/* 悬停浮动效果 - 增加交互感 */
+.n-card:not(.n-card--bordered):hover,
+.glass-module:hover,
+.glass-panel:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--glass-shadow-hover) !important;
+  border-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* 深色模式适配 */
+[data-theme='dark'] .glass-module, 
+[data-theme='dark'] .n-card {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* 顶部导航 - 独立胶囊模块 */
+.glass-module-header {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  border-radius: 20px;
+  margin-bottom: 24px;
+}
+[data-theme='dark'] .glass-module-header {
+  background: rgba(30, 30, 35, 0.7);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 底部页脚 - 悬浮胶囊 */
+.glass-module-footer {
+  backdrop-filter: blur(12px);
   background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(40px) saturate(160%);
-  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  border-radius: 16px;
+  transition: transform 0.3s ease;
+}
+.glass-module-footer:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.6);
+}
+[data-theme='dark'] .glass-module-footer {
+  background: rgba(30, 30, 35, 0.4);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* 按钮 - 现代渐变与阴影 */
+.n-button--primary-type {
+  background: var(--primary-gradient) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+}
+.n-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+.n-button:active {
+  transform: translateY(0);
+}
+
+/* 标签页 (Tabs) - 胶囊式切换 */
+.n-tabs .n-tabs-nav--card-type .n-tabs-tab {
+  border: none !important;
+  background: transparent !important;
+  position: relative;
+  transition: all 0.3s ease !important;
+  color: #666;
+}
+.n-tabs .n-tabs-nav--card-type .n-tabs-tab--active {
+  background: rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  color: #4361ee !important;
+  font-weight: bold;
+  border-radius: 10px !important;
+}
+[data-theme='dark'] .n-tabs .n-tabs-nav--card-type .n-tabs-tab--active {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+
+/* 输入框 - 融入背景 */
+.n-input .n-input-wrapper {
+  background: rgba(255, 255, 255, 0.4);
+}
+[data-theme='dark'] .n-input .n-input-wrapper {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* 表格 - 去除杂乱背景，强调内容 */
+.n-data-table {
+  background: transparent !important;
+}
+.n-data-table th {
+  background: rgba(255, 255, 255, 0.3) !important;
+  font-weight: 600;
+}
+[data-theme='dark'] .n-data-table th {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+.n-data-table td {
+  background: transparent !important;
+}
+
+/* 滚动条微调 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* === 开屏动画 === */
+.splash-screen {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(50px);
   display: flex;
   justify-content: center;
   align-items: center;
 }
 [data-theme='dark'] .splash-screen {
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.5);
 }
 .splash-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 32px;
+  display: flex; flex-direction: column; align-items: center; gap: 32px;
 }
 .splash-logo {
-  width: 100px;
-  height: 100px;
-  border-radius: 24px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
-  animation: logo-pulse 2s ease-in-out infinite;
+  width: 90px; height: 90px;
+  border-radius: 22px;
+  box-shadow: 0 15px 35px rgba(67, 97, 238, 0.25);
+  animation: float 3s ease-in-out infinite;
 }
 .splash-loader {
-  width: 60px;
-  height: 4px;
-  background: rgba(58, 134, 255, 0.2);
+  width: 50px; height: 3px;
+  background: rgba(67, 97, 238, 0.1);
   border-radius: 2px;
-  position: relative;
-  overflow: hidden;
+  position: relative; overflow: hidden;
 }
 .splash-loader::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100%;
-  background: #3a86ff;
+  content: ''; position: absolute; top: 0; left: 0; height: 100%; width: 100%;
+  background: #4361ee;
   transform: translateX(-100%);
-  animation: loader-finish 1.5s ease-in-out infinite;
-  border-radius: 2px;
+  animation: loading 1.5s infinite;
 }
-@keyframes logo-pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
-@keyframes loader-finish {
+@keyframes loading {
   0% { transform: translateX(-100%); }
   50% { transform: translateX(0); }
   100% { transform: translateX(100%); }
 }
 .splash-leave-active {
-  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.6s ease, filter 0.6s ease;
 }
 .splash-leave-to {
   opacity: 0;
-  backdrop-filter: blur(0px);
-  transform: scale(1.1);
-}
-
-/* === 滚动条美化 === */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 3px;
-  transition: background 0.3s;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
-}
-[data-theme='dark'] ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-}
-[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.n-switch {
-  margin-left: 10px;
-  margin-right: 10px;
-}
-
-/* === 全局组件深度样式优化 === */
-
-/* 强制开启毛玻璃特效 (针对部分可能漏掉样式的组件) */
-.n-card, 
-.n-modal, 
-.n-drawer, 
-.n-dialog,
-.n-popover,
-.n-dropdown-menu,
-.n-select-menu,
-.glass-panel {
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-/* 卡片悬停微动效 */
-.n-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 16px 40px -12px rgba(31, 38, 135, 0.15) !important;
-}
-
-/* Tab 按钮样式重写，使其更现代 */
-.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
-  background-color: rgba(255, 255, 255, 0.3) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  border-bottom: none !important;
-  margin-right: 6px !important;
-  border-radius: 12px 12px 0 0 !important;
-  transition: all 0.3s ease !important;
-  font-weight: 500;
-  opacity: 0.8;
-}
-.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab:hover {
-  background-color: rgba(255, 255, 255, 0.5) !important;
-  opacity: 1;
-}
-.n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
-  background-color: rgba(255, 255, 255, 0.85) !important;
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
-  font-weight: 600;
-  opacity: 1;
-  color: #3a86ff !important; /* 激活时文字变蓝 */
-}
-
-/* 深色模式下的 Tab */
-[data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
-  background-color: rgba(0, 0, 0, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.05) !important;
-  color: #aaa;
-}
-[data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
-  background-color: rgba(60, 60, 65, 0.8) !important;
-  color: #fff !important;
-}
-
-/* 按钮微动效 */
-.n-button {
-  transition: all 0.2s !important;
-}
-.n-button:hover {
-  transform: translateY(-1px);
-}
-.n-button:active {
-  transform: translateY(0) scale(0.98);
-}
-
-/* 输入框聚焦时的光晕效果 */
-.n-input--focus {
-  box-shadow: 0 0 0 3px rgba(58, 134, 255, 0.2);
-}
-
-/* 去除部分组件的默认背景，防止遮挡毛玻璃 */
-.n-data-table, .n-data-table .n-data-table-th, .n-data-table .n-data-table-td,
-.n-list, .n-list .n-list-item,
-.n-layout, .n-layout-header, .n-layout-footer, .n-layout-sider {
-  background-color: transparent !important;
+  filter: blur(10px);
 }
 </style>
 
@@ -514,140 +476,77 @@ body {
   min-height: 100vh;
   width: 100%;
   position: relative;
-}
-
-/* 背景覆盖层 - 用于调节背景亮度和纹理 */
-.bg-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(255, 255, 255, 0.5) 0px, transparent 50%),
-    radial-gradient(at 90% 100%, rgba(255, 255, 255, 0.5) 0px, transparent 50%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-:deep(.n-config-provider--theme-dark) .bg-overlay {
-  background-image: none;
-  background-color: rgba(0, 0, 0, 0.3); /* 稍微压暗深色背景 */
+  z-index: 1;
 }
 
 .main-grid {
-  position: relative;
-  z-index: 1;
-  min-height: 100vh;
-  max-width: 1440px; 
-  width: 100%;
+  max-width: 1300px;
   margin: 0 auto;
+  min-height: 100vh;
 }
 
 .main-content {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 0 24px; 
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* 移动端适配 */
-@media (max-width: 600px) {
-  .main-content {
-    padding: 0 12px;
-  }
+  padding: 0 20px;
+  min-height: 100vh;
 }
 
 .sticky-header-wrapper {
   position: sticky;
-  top: 20px;
+  top: 16px;
   z-index: 100;
-  margin: 0 0 24px 0;
   padding: 12px 24px;
-  border-radius: 20px;
-  /* 头部毛玻璃 */
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s ease;
-  max-width: 100%;
-  box-sizing: border-box;
-}
-
-:deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
-  background: rgba(30, 30, 35, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.app-header {
-  margin-bottom: 0; 
+  margin-top: 16px;
 }
 
 .router-container {
   flex: 1;
   width: 100%;
-  max-width: 1100px;
-  margin: 0 auto;
-  padding-top: 10px;
+  margin-top: 20px;
   padding-bottom: 40px;
-  overflow-x: visible; 
 }
 
-.floating-footer-wrapper {
+.footer-wrapper {
   margin-top: auto;
-  margin-bottom: 20px;
-  padding: 10px 24px;
-  /* 底部悬浮毛玻璃 */
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(12px) saturate(120%);
-  -webkit-backdrop-filter: blur(12px) saturate(120%);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  text-align: center;
-  align-self: center;
+  margin-bottom: 24px;
+  padding: 12px 24px;
   width: fit-content;
-  min-width: auto;
-  max-width: 100%;
-  box-sizing: border-box;
-  transition: transform 0.2s;
-}
-
-.floating-footer-wrapper:hover {
-  background: rgba(255, 255, 255, 0.6);
-  transform: translateY(-2px);
-}
-
-:deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
-  background: rgba(30, 30, 35, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.app-footer {
-  padding-bottom: 0;
+  align-self: center;
 }
 
 .side-ad {
-  height: 100%;
+  height: calc(100vh - 40px);
+  margin-top: 20px;
+  border-radius: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
 }
 
-/* 路由切换淡入淡出动画 */
-.fade-enter-active,
-.fade-leave-active {
+.page-fade-enter-active,
+.page-fade-leave-active {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
-
-.fade-enter-from,
-.fade-leave-to {
+.page-fade-enter-from {
   opacity: 0;
   transform: translateY(10px);
+}
+.page-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+@media (max-width: 600px) {
+  .main-content {
+    padding: 0 12px;
+  }
+  .sticky-header-wrapper {
+    top: 8px;
+    margin-top: 8px;
+    padding: 10px 16px;
+    border-radius: 16px;
+  }
 }
 </style>
