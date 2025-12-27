@@ -1,9 +1,11 @@
 <script setup>
 import { ref, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NDataTable, NTag, NTime } from 'naive-ui'
+import { useMessage, NDataTable, NTag, NTime, NList, NListItem, NThing, NSpace, NPagination, NEmpty } from 'naive-ui'
 import { api } from '../../api'
+import { useGlobalState } from '../../store'
 
+const { isMobile } = useGlobalState()
 const message = useMessage()
 const { t } = useI18n({
     messages: {
@@ -54,6 +56,36 @@ const pagination = ref({
     }
 })
 
+// 辅助函数：获取类型对应的颜色和文本
+const getTypeConfig = (type) => {
+    const text = t(`types.${type}`) || type;
+    let color = 'default';
+    let sign = ''; // 金额符号前缀
+
+    switch (type) {
+        case 'checkin':
+        case 'lottery_win':
+        case 'redeem':
+        case 'admin_topup':
+            color = 'success'; // 绿色（收入）
+            sign = '+';
+            break;
+        case 'purchase':
+        case 'lottery_cost':
+            color = 'warning'; // 橙色（支出）
+            sign = '';
+            break;
+        case 'checkin_expire':
+            color = 'error'; // 红色（过期）
+            sign = '';
+            break;
+        default:
+            color = 'default';
+    }
+    return { text, color, sign };
+}
+
+// 表格列定义 (Desktop)
 const columns = [
     { 
         title: t('time'), 
@@ -68,28 +100,8 @@ const columns = [
         key: 'type',
         width: 120,
         render(row) {
-            let typeText = t(`types.${row.type}`) || row.type;
-            let typeColor = 'default';
-
-            switch (row.type) {
-                case 'checkin':
-                case 'lottery_win':
-                case 'redeem':
-                case 'admin_topup':
-                    typeColor = 'success'; // 绿色（收入）
-                    break;
-                case 'purchase':
-                case 'lottery_cost':
-                    typeColor = 'warning'; // 橙色（支出）
-                    break;
-                case 'checkin_expire':
-                    typeColor = 'error'; // 红色（过期）
-                    break;
-                default:
-                    typeColor = 'default';
-            }
-            
-            return h(NTag, { type: typeColor, bordered: false, size: 'small' }, { default: () => typeText })
+            const config = getTypeConfig(row.type);
+            return h(NTag, { type: config.color, bordered: false, size: 'small' }, { default: () => config.text })
         }
     },
     { 
@@ -127,12 +139,109 @@ onMounted(fetchData)
 </script>
 
 <template>
-    <n-data-table
-        :columns="columns"
-        :data="data"
-        :loading="loading"
-        :pagination="pagination"
-        remote
-        :bordered="false"
-    />
+    <div class="transactions-container">
+        <div v-if="isMobile">
+            <n-list v-if="data.length > 0">
+                <n-list-item v-for="item in data" :key="item.id">
+                    <div class="mobile-item">
+                        <div class="mobile-item-header">
+                            <div class="mobile-item-type">
+                                <n-tag :type="getTypeConfig(item.type).color" size="small" :bordered="false" round>
+                                    {{ getTypeConfig(item.type).text }}
+                                </n-tag>
+                                <span class="mobile-item-time">
+                                    <n-time :time="new Date(item.created_at)" format="MM-dd HH:mm" />
+                                </span>
+                            </div>
+                            <div class="mobile-item-amount" :class="{
+                                'income': item.amount > 0,
+                                'expense': item.amount < 0
+                            }">
+                                {{ item.amount > 0 ? '+' : '' }}{{ (item.amount / 100).toFixed(2) }}
+                            </div>
+                        </div>
+                        <div class="mobile-item-desc" v-if="item.description">
+                            {{ item.description }}
+                        </div>
+                    </div>
+                </n-list-item>
+            </n-list>
+            
+            <n-empty v-else :description="t('none')" style="margin: 40px 0" />
+
+            <div class="mobile-pagination" v-if="data.length > 0">
+                <n-pagination
+                    v-model:page="pagination.page"
+                    :item-count="pagination.itemCount"
+                    :page-size="pagination.pageSize"
+                    simple
+                    @update:page="pagination.onChange"
+                />
+            </div>
+        </div>
+
+        <n-data-table
+            v-else
+            :columns="columns"
+            :data="data"
+            :loading="loading"
+            :pagination="pagination"
+            remote
+            :bordered="false"
+            single-column
+        />
+    </div>
 </template>
+
+<style scoped>
+/* 移动端列表样式 */
+.mobile-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mobile-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mobile-item-type {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mobile-item-time {
+    font-size: 0.85em;
+    color: #999;
+}
+
+.mobile-item-amount {
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+.mobile-item-amount.income {
+    color: #18a058;
+}
+
+.mobile-item-amount.expense {
+    color: #f0a020; /* 或者 #d03050 */
+}
+
+.mobile-item-desc {
+    font-size: 0.9em;
+    color: #666;
+    background: #f9f9f9;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.mobile-pagination {
+    display: flex;
+    justify-content: center;
+    padding: 15px 0;
+}
+</style>
