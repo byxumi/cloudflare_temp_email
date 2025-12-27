@@ -12,19 +12,28 @@ export const getRouterPathWithLang = (path: string, lang: string) => {
     return `/${lang}${path}`;
 }
 
-export const utcToLocalDate = (utcDate: string, useUTCDate: boolean) => {
+export const utcToLocalDate = (utcDate: string, useUTCDate: boolean = false) => {
+    // 原始输入通常是 "YYYY-MM-DD HH:mm:ss"，添加 UTC 后缀以便 Date 对象正确解析
     const utcDateString = `${utcDate} UTC`;
-    if (useUTCDate) {
-        return utcDateString;
-    }
+    
     try {
         const date = new Date(utcDateString);
         // if invalid date string
-        if (isNaN(date.getTime())) return utcDateString;
+        if (isNaN(date.getTime())) return utcDate;
 
-        return date.toLocaleString();
+        // 强制转换为 UTC+8 (Asia/Shanghai)
+        return new Intl.DateTimeFormat('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false,
+            timeZone: 'Asia/Shanghai'
+        }).format(date).replace(/\//g, '-');
     } catch (e) {
         console.error(e);
+        return utcDateString;
     }
-    return utcDateString;
 }
