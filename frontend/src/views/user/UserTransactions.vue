@@ -1,18 +1,19 @@
 <script setup>
 import { ref, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NDataTable, NTag, NTime, NIcon, NPagination, NEmpty, NSpin } from 'naive-ui'
+import { useMessage, NDataTable, NTag, NIcon, NPagination, NEmpty, NSpin } from 'naive-ui'
 import { 
-    CalendarCheck, // 签到
-    Gift,          // 抽奖
-    ShoppingCart,  // 购买
-    CreditCard,    // 充值
-    Clock,         // 过期
-    UserEdit,      // 管理员
-    MoneyBillAlt   // 默认
+    CalendarCheck, 
+    Gift,          
+    ShoppingCart,  
+    CreditCard,    
+    Clock,         
+    UserEdit,      
+    MoneyBillAlt   
 } from '@vicons/fa'
 import { api } from '../../api'
 import { useGlobalState } from '../../store'
+import { utcToLocalDate } from '../../utils' // [新增] 引入时间处理函数
 
 const { isMobile } = useGlobalState()
 const message = useMessage()
@@ -65,7 +66,6 @@ const pagination = ref({
     }
 })
 
-// 获取图标配置
 const getIconConfig = (type) => {
     switch (type) {
         case 'checkin': return { icon: CalendarCheck, color: '#18a058', bg: 'rgba(24, 160, 88, 0.1)' };
@@ -79,7 +79,6 @@ const getIconConfig = (type) => {
     }
 }
 
-// 获取文本和颜色配置
 const getTypeConfig = (type) => {
     const text = t(`types.${type}`) || type;
     let color = 'default';
@@ -103,14 +102,14 @@ const getTypeConfig = (type) => {
     return { text, color };
 }
 
-// 表格列定义 (Desktop)
 const columns = [
     { 
         title: t('time'), 
         key: 'created_at',
         width: 160,
         render(row) {
-            return h(NTime, { time: new Date(row.created_at), type: 'datetime' })
+            // [修改] 使用 utcToLocalDate 替代 NTime
+            return h('span', null, utcToLocalDate(row.created_at))
         }
     },
     { 
@@ -172,7 +171,7 @@ onMounted(fetchData)
                             <div class="card-info">
                                 <div class="card-title">{{ getTypeConfig(item.type).text }}</div>
                                 <div class="card-time">
-                                    <n-time :time="new Date(item.created_at)" format="yyyy-MM-dd HH:mm" />
+                                    {{ utcToLocalDate(item.created_at) }}
                                 </div>
                             </div>
 
@@ -218,7 +217,6 @@ onMounted(fetchData)
 </template>
 
 <style scoped>
-/* 移动端列表样式优化 */
 .mobile-list {
     display: flex;
     flex-direction: column;
@@ -226,12 +224,10 @@ onMounted(fetchData)
 }
 
 .mobile-card {
-    /* 移除背景色和阴影，使其更像账单列表，或者保留卡片样式 */
     background: #fff;
     border-radius: 8px;
     padding: 12px;
     border: 1px solid #f0f0f0;
-    /* 禁止水平滚动 */
     width: 100%; 
     box-sizing: border-box;
 }
@@ -254,7 +250,7 @@ onMounted(fetchData)
 
 .card-info {
     flex: 1;
-    min-width: 0; /* 允许文本截断 */
+    min-width: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -285,7 +281,7 @@ onMounted(fetchData)
 }
 
 .card-amount.expense {
-    color: #333; /* 支出通常用黑色或深色 */
+    color: #333;
 }
 
 .card-footer {
@@ -298,7 +294,7 @@ onMounted(fetchData)
     font-size: 12px;
     color: #888;
     line-height: 1.4;
-    word-break: break-all; /* 关键：强制换行，防止撑开宽度 */
+    word-break: break-all;
     white-space: normal;
 }
 
