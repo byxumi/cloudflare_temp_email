@@ -1,7 +1,16 @@
 <script setup>
 import { ref, onMounted, h } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NDataTable, NTag, NTime, NList, NListItem, NThing, NSpace, NPagination, NEmpty } from 'naive-ui'
+import { useMessage, NDataTable, NTag, NTime, NIcon, NPagination, NEmpty, NSpin } from 'naive-ui'
+import { 
+    CalendarCheck, // 签到
+    Gift,          // 抽奖
+    ShoppingCart,  // 购买
+    CreditCard,    // 充值
+    Clock,         // 过期
+    UserEdit,      // 管理员
+    MoneyBillAlt   // 默认
+} from '@vicons/fa'
 import { api } from '../../api'
 import { useGlobalState } from '../../store'
 
@@ -56,33 +65,42 @@ const pagination = ref({
     }
 })
 
-// 辅助函数：获取类型对应的颜色和文本
+// 获取图标配置
+const getIconConfig = (type) => {
+    switch (type) {
+        case 'checkin': return { icon: CalendarCheck, color: '#18a058', bg: 'rgba(24, 160, 88, 0.1)' };
+        case 'lottery_win': return { icon: Gift, color: '#f0a020', bg: 'rgba(240, 160, 32, 0.1)' };
+        case 'lottery_cost': return { icon: Gift, color: '#666', bg: '#f5f5f5' };
+        case 'purchase': return { icon: ShoppingCart, color: '#2080f0', bg: 'rgba(32, 128, 240, 0.1)' };
+        case 'redeem': return { icon: CreditCard, color: '#18a058', bg: 'rgba(24, 160, 88, 0.1)' };
+        case 'checkin_expire': return { icon: Clock, color: '#d03050', bg: 'rgba(208, 48, 80, 0.1)' };
+        case 'admin_topup': return { icon: UserEdit, color: '#18a058', bg: 'rgba(24, 160, 88, 0.1)' };
+        default: return { icon: MoneyBillAlt, color: '#666', bg: '#eee' };
+    }
+}
+
+// 获取文本和颜色配置
 const getTypeConfig = (type) => {
     const text = t(`types.${type}`) || type;
     let color = 'default';
-    let sign = ''; // 金额符号前缀
-
     switch (type) {
         case 'checkin':
         case 'lottery_win':
         case 'redeem':
         case 'admin_topup':
-            color = 'success'; // 绿色（收入）
-            sign = '+';
+            color = 'success'; 
             break;
         case 'purchase':
         case 'lottery_cost':
-            color = 'warning'; // 橙色（支出）
-            sign = '';
+            color = 'warning'; 
             break;
         case 'checkin_expire':
-            color = 'error'; // 红色（过期）
-            sign = '';
+            color = 'error'; 
             break;
         default:
             color = 'default';
     }
-    return { text, color, sign };
+    return { text, color };
 }
 
 // 表格列定义 (Desktop)
@@ -111,7 +129,7 @@ const columns = [
         render(row) {
             const amt = (row.amount / 100).toFixed(2);
             const style = {
-                color: row.amount > 0 ? '#18a058' : (row.amount < 0 ? '#d03050' : ''),
+                color: row.amount > 0 ? '#18a058' : (row.amount < 0 ? '#d03050' : '#333'),
                 fontWeight: 'bold'
             };
             return h('span', { style }, (row.amount > 0 ? '+' : '') + amt + ' 元');
@@ -139,45 +157,51 @@ onMounted(fetchData)
 </script>
 
 <template>
-    <div class="transactions-container">
+    <div class="transactions-page">
         <div v-if="isMobile">
-            <n-list v-if="data.length > 0">
-                <n-list-item v-for="item in data" :key="item.id">
-                    <div class="mobile-item">
-                        <div class="mobile-item-header">
-                            <div class="mobile-item-type">
-                                <n-tag :type="getTypeConfig(item.type).color" size="small" :bordered="false" round>
-                                    {{ getTypeConfig(item.type).text }}
-                                </n-tag>
-                                <span class="mobile-item-time">
-                                    <n-time :time="new Date(item.created_at)" format="MM-dd HH:mm" />
-                                </span>
+            <n-spin :show="loading">
+                <div v-if="data.length > 0" class="mobile-list">
+                    <div v-for="item in data" :key="item.id" class="mobile-card">
+                        <div class="card-main">
+                            <div class="card-icon" :style="{ background: getIconConfig(item.type).bg }">
+                                <n-icon :size="20" :color:="getIconConfig(item.type).color">
+                                    <component :is="getIconConfig(item.type).icon" />
+                                </n-icon>
                             </div>
-                            <div class="mobile-item-amount" :class="{
+
+                            <div class="card-info">
+                                <div class="card-title">{{ getTypeConfig(item.type).text }}</div>
+                                <div class="card-time">
+                                    <n-time :time="new Date(item.created_at)" format="yyyy-MM-dd HH:mm" />
+                                </div>
+                            </div>
+
+                            <div class="card-amount" :class="{
                                 'income': item.amount > 0,
                                 'expense': item.amount < 0
                             }">
                                 {{ item.amount > 0 ? '+' : '' }}{{ (item.amount / 100).toFixed(2) }}
                             </div>
                         </div>
-                        <div class="mobile-item-desc" v-if="item.description">
-                            {{ item.description }}
+                        
+                        <div class="card-footer" v-if="item.description">
+                            <div class="desc-text">{{ item.description }}</div>
                         </div>
                     </div>
-                </n-list-item>
-            </n-list>
-            
-            <n-empty v-else :description="t('none')" style="margin: 40px 0" />
+                </div>
+                
+                <n-empty v-else :description="t('none')" style="margin-top: 50px;" />
 
-            <div class="mobile-pagination" v-if="data.length > 0">
-                <n-pagination
-                    v-model:page="pagination.page"
-                    :item-count="pagination.itemCount"
-                    :page-size="pagination.pageSize"
-                    simple
-                    @update:page="pagination.onChange"
-                />
-            </div>
+                <div class="mobile-pagination" v-if="data.length > 0">
+                    <n-pagination
+                        v-model:page="pagination.page"
+                        :item-count="pagination.itemCount"
+                        :page-size="pagination.pageSize"
+                        simple
+                        @update:page="pagination.onChange"
+                    />
+                </div>
+            </n-spin>
         </div>
 
         <n-data-table
@@ -194,54 +218,94 @@ onMounted(fetchData)
 </template>
 
 <style scoped>
-/* 移动端列表样式 */
-.mobile-item {
+/* 移动端列表样式优化 */
+.mobile-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 12px;
 }
 
-.mobile-item-header {
+.mobile-card {
+    /* 移除背景色和阴影，使其更像账单列表，或者保留卡片样式 */
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px;
+    border: 1px solid #f0f0f0;
+    /* 禁止水平滚动 */
+    width: 100%; 
+    box-sizing: border-box;
+}
+
+.card-main {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 12px;
 }
 
-.mobile-item-type {
+.card-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
-.mobile-item-time {
-    font-size: 0.85em;
+.card-info {
+    flex: 1;
+    min-width: 0; /* 允许文本截断 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.card-title {
+    font-weight: 500;
+    font-size: 15px;
+    color: #333;
+    margin-bottom: 2px;
+}
+
+.card-time {
+    font-size: 12px;
     color: #999;
 }
 
-.mobile-item-amount {
+.card-amount {
+    font-size: 16px;
     font-weight: 600;
-    font-size: 1.1em;
+    flex-shrink: 0;
+    margin-left: 10px;
+    color: #333;
 }
 
-.mobile-item-amount.income {
+.card-amount.income {
     color: #18a058;
 }
 
-.mobile-item-amount.expense {
-    color: #f0a020; /* 或者 #d03050 */
+.card-amount.expense {
+    color: #333; /* 支出通常用黑色或深色 */
 }
 
-.mobile-item-desc {
-    font-size: 0.9em;
-    color: #666;
-    background: #f9f9f9;
-    padding: 4px 8px;
-    border-radius: 4px;
+.card-footer {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed #eee;
+}
+
+.desc-text {
+    font-size: 12px;
+    color: #888;
+    line-height: 1.4;
+    word-break: break-all; /* 关键：强制换行，防止撑开宽度 */
+    white-space: normal;
 }
 
 .mobile-pagination {
     display: flex;
     justify-content: center;
-    padding: 15px 0;
+    margin-top: 20px;
+    margin-bottom: 20px;
 }
 </style>
