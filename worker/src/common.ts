@@ -4,29 +4,28 @@ import { Jwt } from 'hono/utils/jwt'
 import { getBooleanValue, getDomains, getStringValue, getIntValue, getUserRoles, getDefaultDomains, getJsonSetting, getAnotherWorkerList, hashPassword } from './utils';
 import { unbindTelegramByAddress } from './telegram_api/common';
 import { CONSTANTS } from './constants';
-import { AdminWebhookSettings, WebhookMail, WebhookSettings } from './models';
+import { AdminWebhookSettings, WebhookMail, WebhookSettings, RoleAddressConfig, RoleConfig } from './models';
 
 const DEFAULT_NAME_REGEX = /[^a-z0-9]/g;
 
-// [新增] 简易内存缓存系统
+// ==========================================
+// [新增] 简易内存缓存系统 (修复报错的关键)
+// ==========================================
 const GlobalCache = new Map<string, { value: any, expiry: number }>();
 
-// 写入缓存 (默认 60 秒)
 const setCache = (key: string, value: any, ttlSeconds: number = 60) => {
     GlobalCache.set(key, { value, expiry: Date.now() + ttlSeconds * 1000 });
 };
 
-// 读取缓存
 const getCache = (key: string) => {
     const item = GlobalCache.get(key);
     if (item && item.expiry > Date.now()) {
         return item.value;
     }
-    if (item) GlobalCache.delete(key); // 过期删除
+    if (item) GlobalCache.delete(key);
     return null;
 };
 
-// 清除指定前缀的缓存
 export const clearCacheByPrefix = (prefix: string) => {
     for (const key of GlobalCache.keys()) {
         if (key.startsWith(prefix)) {
@@ -35,16 +34,18 @@ export const clearCacheByPrefix = (prefix: string) => {
     }
 };
 
+// ==========================================
+// 基础工具函数
+// ==========================================
+
 export const generateRandomName = (c: Context<HonoCustomType>): string => {
     const minLength = Math.max(getIntValue(c.env.MIN_ADDRESS_LEN, 1), 1);
     const maxLength = Math.max(getIntValue(c.env.MAX_ADDRESS_LEN, 30), 1);
-
     const buildName = (currentName: string = ""): string => {
         return currentName.length >= minLength
             ? currentName
             : buildName(currentName + Math.random().toString(36).substring(2, 15));
     };
-
     const fullName = buildName();
     return fullName.substring(0, Math.min(fullName.length, maxLength));
 };
@@ -122,18 +123,15 @@ const generatePasswordForAddress = async (
     if (!getBooleanValue(c.env.ENABLE_ADDRESS_PASSWORD)) {
         return null;
     }
-
     const plainPassword = generateRandomPassword();
     const hashedPassword = await hashPassword(plainPassword);
     const { success } = await c.env.DB.prepare(
         `UPDATE address SET password = ?, updated_at = datetime('now') WHERE name = ?`
     ).bind(hashedPassword, address).run();
-
     if (!success) {
         console.warn("Failed to set generated password for address:", address);
         return null;
     }
-
     return plainPassword;
 }
 
@@ -211,9 +209,7 @@ export const newAddress = async (
     const address_id = await c.env.DB.prepare(
         `SELECT id FROM address where name = ?`
     ).bind(name).first<number>("id");
-
     const generatedPassword = await generatePasswordForAddress(c, name);
-
     const jwt = await Jwt.sign({
         address: name,
         address_id: address_id
@@ -240,6 +236,9 @@ const checkNameBlockList = async (
     }
 }
 
+// ==========================================
+// [新增] 增强的清理逻辑：支持自定义天数
+// ==========================================
 export const cleanup = async (
     c: Context<HonoCustomType>,
     cleanType: string | undefined | null,
@@ -248,52 +247,124 @@ export const cleanup = async (
     if (!cleanType || typeof cleanDays !== 'number' || cleanDays < 0 || cleanDays > 1000) {
         throw new Error("Invalid cleanType or cleanDays")
     }
-    console.log(`Cleanup ${cleanType} before ${cleanDays} days`);
+    console.log(`Cleanup ${cleanType} using default ${cleanDays} days`);
+
+    const roleConfigs = await getJsonSetting<RoleAddressConfig>(c, CONSTANTS.ROLE_ADDRESS_CONFIG_KEY) || {};
+    
+    // 策略 Map
+    const inboxPolicy = new Map<number, string[]>();
+    const sentPolicy = new Map<number, string[]>();
+    const exemptInbox: string[] = [];
+    const exemptSent: string[] = [];
+
+    const addPolicy = (map: Map<number, string[]>, days: number, address: string) => {
+        if (days < 0) return;
+        if (!map.has(days)) map.set(days, []);
+        map.get(days)?.push(address);
+    }
+
+    // 1. 处理具体地址配置
+    if (roleConfigs.specificAddresses) {
+        for (const [addr, config] of Object.entries(roleConfigs.specificAddresses)) {
+            if (config.noAutoCleanup) exemptInbox.push(addr);
+            else if (typeof config.cleanInboxDays === 'number') addPolicy(inboxPolicy, config.cleanInboxDays, addr);
+            
+            if (config.noAutoCleanup) exemptSent.push(addr);
+            else if (typeof config.cleanSentDays === 'number') addPolicy(sentPolicy, config.cleanSentDays, addr);
+        }
+    }
+
+    // 2. 处理角色配置
+    const specialRoles: { role: string, config: RoleConfig }[] = [];
+    for (const [key, config] of Object.entries(roleConfigs)) {
+        if (key === 'specificAddresses') continue;
+        if (config.noAutoCleanup || typeof config.cleanInboxDays === 'number' || typeof config.cleanSentDays === 'number') {
+            specialRoles.push({ role: key, config });
+        }
+    }
+
+    if (specialRoles.length > 0) {
+        const rolePlaceholders = specialRoles.map(() => '?').join(',');
+        const roleNames = specialRoles.map(r => r.role);
+        
+        const results = await c.env.DB.prepare(`
+            SELECT a.name as address, ur.role_text 
+            FROM address a
+            JOIN users_address ua ON a.id = ua.address_id
+            JOIN user_roles ur ON ua.user_id = ur.user_id
+            WHERE ur.role_text IN (${rolePlaceholders})
+        `).bind(...roleNames).all<{ address: string, role_text: string }>();
+
+        if (results.results) {
+            for (const row of results.results) {
+                if (roleConfigs.specificAddresses && roleConfigs.specificAddresses[row.address]) continue;
+
+                const config = roleConfigs[row.role_text];
+                if (!config) continue;
+
+                if (config.noAutoCleanup) exemptInbox.push(row.address);
+                else if (typeof config.cleanInboxDays === 'number') addPolicy(inboxPolicy, config.cleanInboxDays, row.address);
+
+                if (config.noAutoCleanup) exemptSent.push(row.address);
+                else if (typeof config.cleanSentDays === 'number') addPolicy(sentPolicy, config.cleanSentDays, row.address);
+            }
+        }
+    }
+
+    const executeCleanup = async (table: 'raw_mails' | 'sendbox', defaultDays: number, policyMap: Map<number, string[]>, exemptList: string[]) => {
+        const allSpecialAddresses = [...exemptList];
+        for (const addrs of policyMap.values()) {
+            allSpecialAddresses.push(...addrs);
+        }
+
+        if (allSpecialAddresses.length > 0) {
+            const placeholders = allSpecialAddresses.map(() => '?').join(',');
+            await c.env.DB.prepare(`
+                DELETE FROM ${table} 
+                WHERE created_at < datetime('now', '-${defaultDays} day') 
+                AND address NOT IN (${placeholders})
+            `).bind(...allSpecialAddresses).run();
+        } else {
+            await c.env.DB.prepare(`
+                DELETE FROM ${table} WHERE created_at < datetime('now', '-${defaultDays} day')
+            `).run();
+        }
+
+        for (const [days, addresses] of policyMap.entries()) {
+            if (addresses.length === 0) continue;
+            const placeholders = addresses.map(() => '?').join(',');
+            await c.env.DB.prepare(`
+                DELETE FROM ${table} 
+                WHERE created_at < datetime('now', '-${days} day') 
+                AND address IN (${placeholders})
+            `).bind(...addresses).run();
+        }
+    }
+
     switch (cleanType) {
-        case "inactiveAddress":
-            await batchDeleteAddressWithData(
-                c,
-                `updated_at < datetime('now', '-${cleanDays} day')`
-            )
-            break;
-        case "addressCreated":
-            await batchDeleteAddressWithData(
-                c,
-                `created_at < datetime('now', '-${cleanDays} day')`
-            )
-            break;
-        case "unboundAddress":
-            await batchDeleteAddressWithData(
-                c,
-                `id NOT IN (SELECT address_id FROM users_address) AND created_at < datetime('now', '-${cleanDays} day')`
-            )
-            break;
         case "mails":
-            await c.env.DB.prepare(`
-                DELETE FROM raw_mails WHERE created_at < datetime('now', '-${cleanDays} day')`
-            ).run();
-            break;
-        case "mails_unknow":
-            await c.env.DB.prepare(`
-                DELETE FROM raw_mails WHERE address NOT IN
-                (select name from address) AND created_at < datetime('now', '-${cleanDays} day')`
-            ).run();
+            await executeCleanup('raw_mails', cleanDays, inboxPolicy, exemptInbox);
             break;
         case "sendbox":
-            await c.env.DB.prepare(`
-                DELETE FROM sendbox WHERE created_at < datetime('now', '-${cleanDays} day')`
-            ).run();
+            await executeCleanup('sendbox', cleanDays, sentPolicy, exemptSent);
+            break;
+        case "inactiveAddress":
+            await batchDeleteAddressWithData(c, `updated_at < datetime('now', '-${cleanDays} day')`);
+            break;
+        case "addressCreated":
+            await batchDeleteAddressWithData(c, `created_at < datetime('now', '-${cleanDays} day')`);
+            break;
+        case "unboundAddress":
+            await batchDeleteAddressWithData(c, `id NOT IN (SELECT address_id FROM users_address) AND created_at < datetime('now', '-${cleanDays} day')`);
+            break;
+        case "mails_unknow":
+            await c.env.DB.prepare(`DELETE FROM raw_mails WHERE address NOT IN (select name from address) AND created_at < datetime('now', '-${cleanDays} day')`).run();
             break;
         case "emptyAddress":
-            await batchDeleteAddressWithData(
-                c,
-                `name NOT IN (SELECT DISTINCT address FROM raw_mails WHERE address IS NOT NULL) AND created_at < datetime('now', '-${cleanDays} day')`
-            )
+            await batchDeleteAddressWithData(c, `name NOT IN (SELECT DISTINCT address FROM raw_mails WHERE address IS NOT NULL) AND created_at < datetime('now', '-${cleanDays} day')`);
             break;
         case "transactions":
-            await c.env.DB.prepare(`
-                DELETE FROM transactions WHERE created_at < datetime('now', '-${cleanDays} day')`
-            ).run();
+            await c.env.DB.prepare(`DELETE FROM transactions WHERE created_at < datetime('now', '-${cleanDays} day')`).run();
             break;
         default:
             throw new Error("Invalid cleanType")
@@ -430,41 +501,43 @@ export const commonParseMail = async (parsedEmailContext: ParsedEmailContext): P
     return undefined;
 }
 
-// [核心优化] 获取用户角色：内存缓存 -> KV 缓存 -> D1 数据库
+// ==========================================
+// [新增] 恢复用户角色缓存逻辑
+// ==========================================
 export const commonGetUserRole = async (
     c: Context<HonoCustomType>, user_id: number
 ): Promise<UserRole | undefined | null> => {
     const cacheKey = `ROLE:${user_id}`;
     const user_roles = getUserRoles(c);
 
-    // 1. 内存缓存 (最快)
+    // 1. 内存缓存
     let role_text = getCache(cacheKey);
     if (role_text) return user_roles.find((r) => r.role === role_text);
 
-    // 2. KV 缓存 (次快，如果有配置)
+    // 2. KV 缓存
     if (c.env.KV) {
         role_text = await c.env.KV.get(cacheKey);
         if (role_text) {
-            setCache(cacheKey, role_text, 60); // 同步到内存
+            setCache(cacheKey, role_text, 60);
             return user_roles.find((r) => r.role === role_text);
         }
     }
 
-    // 3. 数据库查询 (最慢)
+    // 3. 数据库查询
     role_text = await c.env.DB.prepare(
         `SELECT role_text FROM user_roles where user_id = ?`
     ).bind(user_id).first<string | undefined | null>("role_text");
     
     // 写入缓存
     if (role_text) {
-        setCache(cacheKey, role_text, 120); // 内存存 2 分钟
-        if (c.env.KV) await c.env.KV.put(cacheKey, role_text, { expirationTtl: 3600 }); // KV 存 1 小时
+        setCache(cacheKey, role_text, 120);
+        if (c.env.KV) await c.env.KV.put(cacheKey, role_text, { expirationTtl: 3600 });
     }
 
     return role_text ? user_roles.find((r) => r.role === role_text) : null;
 }
 
-// 清除角色缓存的工具函数 (用于 Admin 修改角色时调用)
+// [关键修复] 导出清除缓存函数，修复 Admin API 报错
 export const clearUserRoleCache = async (c: Context<HonoCustomType>, user_id: number) => {
     const cacheKey = `ROLE:${user_id}`;
     GlobalCache.delete(cacheKey);
@@ -476,7 +549,6 @@ export const getAddressPrefix = async (c: Context<HonoCustomType>): Promise<stri
     if (!user) {
         return getStringValue(c.env.PREFIX);
     }
-    // 这里会用到上面的缓存优化
     const user_role = await commonGetUserRole(c, user.user_id);
     if (typeof user_role?.prefix === "string") {
         return user_role.prefix;
@@ -489,7 +561,6 @@ export const getAllowDomains = async (c: Context<HonoCustomType>): Promise<strin
     if (!user) {
         return getDefaultDomains(c);
     }
-    // 这里也会用到上面的缓存优化
     const user_role = await commonGetUserRole(c, user.user_id);
     return user_role?.domains || getDefaultDomains(c);;
 }

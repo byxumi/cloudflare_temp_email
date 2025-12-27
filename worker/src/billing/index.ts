@@ -162,9 +162,12 @@ api.get('/admin/billing/transactions', async (c) => {
 // 5. 用户查询余额
 api.get('/user_api/billing/balance', async (c) => {
     const { user_id } = c.get('userPayload');
-    // 余额查询不缓存，保证实时性，但通过 user_id 主键查询很快
-    const user = await c.env.DB.prepare(`SELECT balance FROM users WHERE id = ?`).bind(user_id).first();
-    return c.json({ balance: user?.balance || 0 });
+    // [修改] 同时查询签到余额
+    const user = await c.env.DB.prepare(`SELECT balance, ifnull(checkin_balance, 0) as checkin_balance FROM users WHERE id = ?`).bind(user_id).first();
+    return c.json({ 
+        balance: user?.balance || 0,
+        checkin_balance: user?.checkin_balance || 0 // [新增]
+    });
 });
 
 // 6. [优化] 用户查询特定域名价格 (优先读缓存)

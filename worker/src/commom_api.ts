@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import utils from './utils';
 import { CONSTANTS } from './constants';
 import { isS3Enabled } from './mails_api/s3_attachment';
+import { UserSettings } from './models';
 
 const api = new Hono<HonoCustomType>
 
@@ -14,6 +15,10 @@ api.get('/open_api/settings', async (c) => {
         const auth = c.req.raw.headers.get("x-custom-auth");
         needAuth = !auth || !passwords.includes(auth);
     }
+    
+    // [修复] 读取并返回版本号
+    const userSettings = await utils.getJsonSetting<UserSettings>(c, CONSTANTS.USER_SETTINGS_KEY);
+    const frontendVersion = userSettings?.frontendVersion || "";
 
     return c.json({
         "title": c.env.TITLE,
@@ -39,6 +44,7 @@ api.get('/open_api/settings', async (c) => {
         "enableWebhook": utils.getBooleanValue(c.env.ENABLE_WEBHOOK),
         "isS3Enabled": isS3Enabled(c),
         "version": CONSTANTS.VERSION,
+        "frontendVersion": frontendVersion, // [确保返回]
         "showGithub": !utils.getBooleanValue(c.env.DISABLE_SHOW_GITHUB),
         "disableAdminPasswordCheck": utils.getBooleanValue(c.env.DISABLE_ADMIN_PASSWORD_CHECK),
         "enableAddressPassword": utils.getBooleanValue(c.env.ENABLE_ADDRESS_PASSWORD)

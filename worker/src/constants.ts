@@ -7,7 +7,8 @@ export const CONSTANTS = {
 
     // DB settings
     ADDRESS_BLOCK_LIST_KEY: 'address_block_list',
-    SEND_BLOCK_LIST_KEY: 'send_block_list',
+    // [修改] 修改为 SEND_ADDRESS_BLOCK_LIST_KEY 以匹配 admin_user_api.ts 中的引用
+    SEND_ADDRESS_BLOCK_LIST_KEY: 'send_address_block_list',
     AUTO_CLEANUP_KEY: 'auto_cleanup',
     USER_SETTINGS_KEY: 'user_settings',
     OAUTH2_SETTINGS_KEY: 'oauth2_settings',
@@ -16,6 +17,10 @@ export const CONSTANTS = {
     EMAIL_RULE_SETTINGS_KEY: 'email_rule_settings',
     ROLE_ADDRESS_CONFIG_KEY: 'role_address_config',
     IP_BLACKLIST_SETTINGS_KEY: 'ip_blacklist_settings',
+    FROM_BLOCK_LIST_KEY: "from_block_list",
+
+    // [新增] 抽奖设置 Key
+    LOTTERY_SETTINGS_KEY: "lottery_settings",
 
     // KV
     TG_KV_PREFIX: "temp-mail-telegram",

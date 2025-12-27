@@ -1,9 +1,8 @@
-// src/utils.ts
 import { Context } from "hono";
 import { createMimeMessage } from "mimetext";
 import type { HonoCustomType, UserRole, AnotherWorker } from "./types";
 
-// 【新增】标准 JSON 响应辅助函数
+// 标准 JSON 响应辅助函数
 export const jsonResponse = (data: any, status: number = 200) => {
     return new Response(JSON.stringify(data), {
         status: status,
@@ -11,6 +10,21 @@ export const jsonResponse = (data: any, status: number = 200) => {
             'Content-Type': 'application/json',
         },
     });
+};
+
+// [新增] 快速返回 message 的辅助函数
+export const jsonMessage = (message: string, status: number = 200) => {
+    return jsonResponse({ message: message }, status);
+};
+
+// [新增] 生成随机字符串 (修复 recharge_code_api 的依赖)
+export const generateRandomString = (length: number = 16): string => {
+    const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for (let i = 0; i < length; i++) {
+        result += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return result;
 };
 
 export const getJsonObjectValue = <T = any>(
@@ -337,5 +351,7 @@ export default {
     getJsonSetting,
     getJsonValue: getJsonObjectValue,
     getStringList: getStringArray,
-    jsonResponse
+    jsonResponse,
+    jsonMessage, // 导出新函数
+    generateRandomString // 导出新函数
 }

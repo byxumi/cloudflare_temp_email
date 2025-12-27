@@ -7,6 +7,8 @@ import passkey from './passkey';
 import oauth2 from './oauth2';
 import user_mail_api from './user_mail_api';
 import { userUseRechargeCode } from './recharge_code_api';
+import { checkin } from './checkin';
+import * as lottery from './lottery'; // [新增]
 
 export const api = new Hono<HonoCustomType>();
 
@@ -33,6 +35,11 @@ api.post('/user_api/bind_address', bind_address.bind);
 api.get('/user_api/bind_address_jwt/:address_id', bind_address.getBindedAddressJwt);
 api.post('/user_api/unbind_address', bind_address.unbind);
 api.post('/user_api/transfer_address', bind_address.transferAddress);
+api.post('/user_api/update_remark', async (c) => {
+    const { user_id } = c.get("userPayload");
+    const { address_id, remark } = await c.req.json();
+    return await bind_address.updateAddressRemark(c, user_id, address_id, remark || "");
+});
 
 // passkey api
 api.get('/user_api/passkey', passkey.getPassKeys);
@@ -43,5 +50,12 @@ api.post('/user_api/passkey/register_response', passkey.registerResponse);
 api.post('/user_api/passkey/authenticate_request', passkey.authenticateRequest);
 api.post('/user_api/passkey/authenticate_response', passkey.authenticateResponse);
 
-// 2. 在文件末尾添加路由
+// recharge
 api.post('/user_api/recharge_code', userUseRechargeCode);
+
+// checkin
+api.post('/user_api/checkin', checkin);
+
+// [新增] lottery
+api.get('/user_api/lottery/status', lottery.getStatus);
+api.post('/user_api/lottery/draw', lottery.draw);

@@ -1,8 +1,171 @@
 import { D1Database, D1Result } from '@cloudflare/workers-types';
 import { RechargeCode, DomainSettings, User, EmailRecord } from '../types';
+import { AuthenticatorTransportFuture, CredentialDeviceType, Base64URLString } from '@simplewebauthn/types';
 
-// 【关键修复】重新导出 types 中的所有类型，防止 "No matching export" 错误
 export * from '../types';
+
+export type Passkey = {
+    id: Base64URLString;
+    publicKey: string;
+    counter: number;
+    deviceType: CredentialDeviceType;
+    backedUp: boolean;
+    transports?: AuthenticatorTransportFuture[];
+};
+
+export class AdminWebhookSettings {
+    enableAllowList: boolean;
+    allowList: string[];
+
+    constructor(enableAllowList: boolean, allowList: string[]) {
+        this.enableAllowList = enableAllowList;
+        this.allowList = allowList;
+    }
+}
+
+export type WebhookMail = {
+    id: string;
+    url?: string;
+    from: string;
+    to: string;
+    subject: string;
+    raw: string;
+    parsedText: string;
+    parsedHtml: string;
+}
+
+export class GeoData {
+    ip: string;
+    country: string | undefined;
+    city: string | undefined;
+    timezone: string | undefined;
+    postalCode: string | undefined;
+    region: string | undefined;
+    latitude: number | undefined;
+    longitude: number | undefined;
+    regionCode: string | undefined;
+    asOrganization: string | undefined;
+
+    constructor(ip: string | null, data: GeoData | undefined | null) {
+        const {
+            country, city, timezone, postalCode, region,
+            latitude, longitude, regionCode, asOrganization
+        } = data || {};
+        this.ip = ip || "unknown";
+        this.country = country;
+        this.city = city;
+        this.timezone = timezone;
+        this.postalCode = postalCode;
+        this.region = region;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.regionCode = regionCode;
+        this.asOrganization = asOrganization;
+    }
+}
+
+export class UserSettings {
+    enable: boolean | undefined;
+    enableMailVerify: boolean | undefined;
+    verifyMailSender: string | undefined;
+    enableMailAllowList: boolean | undefined;
+    mailAllowList: string[] | undefined;
+    maxAddressCount: number;
+    frontendVersion: string;
+
+    constructor(data: UserSettings | undefined | null) {
+        const {
+            enable, enableMailVerify, verifyMailSender,
+            enableMailAllowList, mailAllowList, maxAddressCount,
+            frontendVersion
+        } = data || {};
+        this.enable = enable;
+        this.enableMailVerify = enableMailVerify;
+        this.verifyMailSender = verifyMailSender;
+        this.enableMailAllowList = enableMailAllowList;
+        this.mailAllowList = mailAllowList;
+        this.maxAddressCount = maxAddressCount || 5;
+        this.frontendVersion = frontendVersion || "";
+    }
+}
+
+export class UserInfo {
+    geoData: GeoData;
+    userEmail: string;
+
+    constructor(geoData: GeoData, userEmail: string) {
+        this.geoData = geoData;
+        this.userEmail = userEmail;
+    }
+}
+
+export class WebhookSettings {
+    enabled: boolean = false
+    url: string = ''
+    method: string = 'POST'
+    headers: string = JSON.stringify({
+        "Content-Type": "application/json"
+    }, null, 2)
+    body: string = JSON.stringify({
+        "id": "${id}",
+        "url": "${url}",
+        "from": "${from}",
+        "to": "${to}",
+        "subject": "${subject}",
+        "raw": "${raw}",
+        "parsedText": "${parsedText}",
+        "parsedHtml": "${parsedHtml}",
+    }, null, 2)
+}
+
+export type RoleConfig = {
+    maxAddressCount?: number;
+    noAutoCleanup?: boolean;
+    allowSend?: boolean;
+    unlimitedSend?: boolean;
+    cleanInboxDays?: number;
+    cleanSentDays?: number;
+}
+
+export type RoleAddressConfig = {
+    [key: string]: RoleConfig;
+} & {
+    specificAddresses?: Record<string, RoleConfig>;
+};
+
+// [修改] 增加 emoji 字段
+export type LotteryPrize = {
+    id: string;
+    name: string;
+    emoji?: string; // [新增]
+    type: 'balance' | 'checkin_balance' | 'ticket' | 'none'; 
+    value: number; 
+    weight: number; 
+}
+
+export type LotterySettings = {
+    enabled: boolean;
+    costType: 'balance' | 'checkin_balance' | 'ticket'; 
+    costAmount: number; 
+    prizes: LotteryPrize[]; 
+}
+
+export type CleanupSettings = {
+    enableMailsAutoCleanup: boolean | undefined;
+    cleanMailsDays: number;
+    enableUnknowMailsAutoCleanup: boolean | undefined;
+    cleanUnknowMailsDays: number;
+    enableSendBoxAutoCleanup: boolean | undefined;
+    cleanSendBoxDays: number;
+    enableAddressAutoCleanup: boolean | undefined;
+    cleanAddressDays: number;
+    enableInactiveAddressAutoCleanup: boolean | undefined;
+    cleanInactiveAddressDays: number;
+    enableUnboundAddressAutoCleanup: boolean | undefined;
+    cleanUnboundAddressDays: number;
+    enableEmptyAddressAutoCleanup: boolean | undefined;
+    cleanEmptyAddressDays: number;
+}
 
 export class Model {
     private db: D1Database;
@@ -11,7 +174,6 @@ export class Model {
         this.db = db;
     }
 
-    // --- User related methods ---
     async getUser(userId: string): Promise<User | null> {
         const { results } = await this.db.prepare('SELECT * FROM users WHERE user_id = ?').bind(userId).all<User>();
         return results ? (results[0] || null) : null;
@@ -48,7 +210,6 @@ export class Model {
         return this.db.prepare('DELETE FROM users WHERE user_id = ?').bind(userId).run();
     }
 
-    // --- Email record methods ---
     async insertEmail(email: EmailRecord): Promise<D1Result> {
         return this.db.prepare(
             'INSERT INTO emails (user_id, receiver, sender, subject, body, created_at, updated_at, mail_id, seen, s3_key, sender_ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
@@ -60,7 +221,6 @@ export class Model {
         return results ? results[0].count : 0;
     }
 
-    // --- 【新增】Recharge Code methods (卡密相关方法) ---
     async insertRechargeCode(code: Omit<RechargeCode, 'id' | 'used_at' | 'user_id'>): Promise<D1Result> {
         return this.db.prepare(
             'INSERT INTO recharge_codes (code, value, created_at, used_at, user_id) VALUES (?, ?, ?, ?, ?)'
@@ -92,15 +252,11 @@ export class Model {
         ).bind(usedAt, userId, code).run();
     }
     
-    // === 【新增】域名定价相关方法 ===
-
-    // 获取所有已配置的域名价格
     async getAllDomainSettings(): Promise<DomainSettings[]> {
         const { results } = await this.db.prepare('SELECT * FROM domain_settings').all<DomainSettings>();
         return results || [];
     }
 
-    // 设置域名价格 (插入或更新)
     async upsertDomainSetting(domain: string, price: number): Promise<D1Result> {
         const now = Math.floor(Date.now() / 1000);
         return this.db.prepare(

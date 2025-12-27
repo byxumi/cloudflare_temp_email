@@ -1,8 +1,8 @@
-import { Hono } from 'hono'
+import { Hono, Context, Next } from 'hono'
 import { Jwt } from 'hono/utils/jwt'
 
 import i18n from '../i18n'
-import { sendAdminInternalMail, getJsonSetting, saveSetting, getUserRoles, getBooleanValue, hashPassword } from '../utils'
+import { sendAdminInternalMail, getJsonSetting, saveSetting, getUserRoles, getBooleanValue, hashPassword, getStringValue } from '../utils'
 import { newAddress, handleListQuery } from '../common'
 import { CONSTANTS } from '../constants'
 import cleanup_api from './cleanup_api'
@@ -16,7 +16,10 @@ import { sendMailbyAdmin } from './send_mail'
 import db_api from './db_api'
 import ip_blacklist_settings from './ip_blacklist_settings'
 import { EmailRuleSettings, HonoCustomType } from '../models'
-// 【新增】导入卡密 API 处理函数
+import lottery_api from './lottery';
+// [关键修复] 改为命名导入 { api as billing_api }
+import { api as billing_api } from '../billing/index'; 
+
 import { 
     adminCreateRechargeCode, 
     adminListRechargeCodes, 
@@ -24,6 +27,22 @@ import {
 } from './recharge_code_api';
 
 export const api = new Hono<HonoCustomType>()
+
+// [保持] 在文件内部定义管理员认证中间件
+const adminAuth = async (c: Context<HonoCustomType>, next: Next) => {
+    const adminPassword = getStringValue(c.env.ADMIN_PASSWORD);
+    // 如果设置了 ADMIN_PASSWORD，则必须校验 x-admin-auth 头
+    if (adminPassword) {
+        const auth = c.req.header("x-admin-auth");
+        if (auth !== adminPassword) {
+            return c.text("Unauthorized", 401);
+        }
+    }
+    await next();
+}
+
+// 应用中间件
+api.use('/*', adminAuth);
 
 api.get('/admin/address', async (c) => {
     const { limit, offset, query } = c.req.query();
@@ -142,7 +161,6 @@ api.get('/admin/show_password/:id', async (c) => {
 api.post('/admin/address/:id/reset_password', async (c) => {
     const { id } = c.req.param();
     const { password } = await c.req.json();
-    // 检查功能是否启用
     if (!getBooleanValue(c.env.ENABLE_ADDRESS_PASSWORD)) {
         return c.text("Password management is disabled", 403);
     }
@@ -275,18 +293,21 @@ api.get('/admin/statistics', async (c) => {
 api.get('/admin/account_settings', async (c) => {
     try {
         const blockList = await getJsonSetting(c, CONSTANTS.ADDRESS_BLOCK_LIST_KEY);
-        const sendBlockList = await getJsonSetting(c, CONSTANTS.SEND_BLOCK_LIST_KEY);
+        const sendBlockList = await getJsonSetting(c, CONSTANTS.SEND_ADDRESS_BLOCK_LIST_KEY);
         const verifiedAddressList = await getJsonSetting(c, CONSTANTS.VERIFIED_ADDRESS_LIST_KEY);
         const fromBlockList = c.env.KV ? await c.env.KV.get<string[]>(CONSTANTS.EMAIL_KV_BLACK_LIST, 'json') : [];
         const emailRuleSettings = await getJsonSetting<EmailRuleSettings>(c, CONSTANTS.EMAIL_RULE_SETTINGS_KEY);
         const noLimitSendAddressList = await getJsonSetting(c, CONSTANTS.NO_LIMIT_SEND_ADDRESS_LIST_KEY);
+        const lotterySettings = await getJsonSetting(c, CONSTANTS.LOTTERY_SETTINGS_KEY);
+
         return c.json({
             blockList: blockList || [],
             sendBlockList: sendBlockList || [],
             verifiedAddressList: verifiedAddressList || [],
             fromBlockList: fromBlockList || [],
             noLimitSendAddressList: noLimitSendAddressList || [],
-            emailRuleSettings: emailRuleSettings || {}
+            emailRuleSettings: emailRuleSettings || {},
+            lotterySettings: lotterySettings || {}
         })
     } catch (error) {
         console.error(error);
@@ -295,7 +316,6 @@ api.get('/admin/account_settings', async (c) => {
 })
 
 api.post('/admin/account_settings', async (c) => {
-    /** @type {{ blockList: Array<string>, sendBlockList: Array<string> }} */
     const {
         blockList, sendBlockList, noLimitSendAddressList,
         verifiedAddressList, fromBlockList, emailRuleSettings
@@ -311,7 +331,7 @@ api.post('/admin/account_settings', async (c) => {
         JSON.stringify(blockList)
     );
     await saveSetting(
-        c, CONSTANTS.SEND_BLOCK_LIST_KEY,
+        c, CONSTANTS.SEND_ADDRESS_BLOCK_LIST_KEY,
         JSON.stringify(sendBlockList)
     );
     await saveSetting(
@@ -355,6 +375,7 @@ api.get('/admin/role_address_config', admin_user_api.getRoleAddressConfig)
 api.post('/admin/role_address_config', admin_user_api.saveRoleAddressConfig)
 api.get('/admin/users/bind_address/:user_id', admin_user_api.getBindedAddresses)
 api.post('/admin/users/bind_address', admin_user_api.bindAddress)
+api.post('/admin/users/:user_id/topup', admin_user_api.topUpUser);
 
 // user oauth2 settings
 api.get('/admin/user_oauth2_settings', oauth2_settings.getUserOauth2Settings)
@@ -384,10 +405,14 @@ api.post('admin/db_migration', db_api.migrate);
 api.get("/admin/ip_blacklist/settings", ip_blacklist_settings.getIpBlacklistSettings);
 api.post("/admin/ip_blacklist/settings", ip_blacklist_settings.saveIpBlacklistSettings);
 
-// 【关键修复】添加卡密管理路由
+// Recharge Codes
 api.post('/admin/recharge_codes', adminCreateRechargeCode)
 api.get('/admin/recharge_codes', adminListRechargeCodes)
 api.delete('/admin/recharge_codes', adminDeleteRechargeCode)
 
-// ...
-api.post('/admin/users/:user_id/topup', admin_user_api.topUpUser); // [新增]
+// Lottery Settings
+api.get('/admin/lottery/settings', lottery_api.getSettings);
+api.post('/admin/lottery/settings', lottery_api.saveSettings);
+
+// Billing & Cards
+api.route('/admin/billing', billing_api);

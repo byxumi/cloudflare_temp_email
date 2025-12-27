@@ -3,40 +3,90 @@ import { Context } from 'hono';
 import { CONSTANTS } from '../constants';
 import { getJsonSetting, saveSetting, checkUserPassword, getDomains, getUserRoles } from '../utils';
 import { UserSettings, GeoData, UserInfo, RoleAddressConfig } from "../models";
-import { handleListQuery, clearUserRoleCache } from '../common' // [新增] 引入 clearUserRoleCache
+import { handleListQuery, clearUserRoleCache } from '../common'
 import UserBindAddressModule from '../user_api/bind_address';
 import i18n from '../i18n';
 
 const toCents = (yuan: number | string) => Math.round(parseFloat(yuan.toString()) * 100);
 
+// 辅助函数：安全保存，防止 undefined 报错
+const safeSave = async (c: any, key: string, value: any) => {
+    if (!key) {
+        console.error("Missing key for safeSave");
+        return;
+    }
+    if (value === undefined || value === null) return;
+    const strValue = typeof value === 'string' ? value : JSON.stringify(value);
+    await saveSetting(c, key, strValue);
+}
+
 export default {
     getSetting: async (c: Context<HonoCustomType>) => {
-        const value = await getJsonSetting(c, CONSTANTS.USER_SETTINGS_KEY);
-        const settings = new UserSettings(value);
-        return c.json(settings)
+        const userSettings = await getJsonSetting<UserSettings>(c, CONSTANTS.USER_SETTINGS_KEY);
+        const settings = new UserSettings(userSettings);
+
+        const blockList = await getJsonSetting(c, CONSTANTS.ADDRESS_BLOCK_LIST_KEY) || [];
+        const sendBlockList = await getJsonSetting(c, CONSTANTS.SEND_ADDRESS_BLOCK_LIST_KEY) || [];
+        const verifiedAddressList = await getJsonSetting(c, CONSTANTS.VERIFIED_ADDRESS_LIST_KEY) || [];
+        const fromBlockList = await getJsonSetting(c, CONSTANTS.FROM_BLOCK_LIST_KEY) || [];
+        const noLimitSendAddressList = await getJsonSetting(c, CONSTANTS.NO_LIMIT_SEND_ADDRESS_LIST_KEY) || [];
+        const emailRuleSettings = await getJsonSetting(c, CONSTANTS.EMAIL_RULE_SETTINGS_KEY) || {
+            blockReceiveUnknowAddressEmail: false,
+            emailForwardingList: []
+        };
+
+        return c.json({
+            ...settings,
+            blockList,
+            sendBlockList,
+            verifiedAddressList,
+            fromBlockList,
+            noLimitSendAddressList,
+            emailRuleSettings,
+            frontendVersion: settings.frontendVersion
+        })
     },
+
     saveSetting: async (c: Context<HonoCustomType>) => {
-        const value = await c.req.json();
-        const settings = new UserSettings(value);
-        if (settings.enableMailVerify && !c.env.KV) {
+        const body = await c.req.json();
+        
+        // 1. 使用安全保存函数处理列表
+        if (body.blockList) await safeSave(c, CONSTANTS.ADDRESS_BLOCK_LIST_KEY, body.blockList);
+        if (body.sendBlockList) await safeSave(c, CONSTANTS.SEND_ADDRESS_BLOCK_LIST_KEY, body.sendBlockList);
+        if (body.verifiedAddressList) await safeSave(c, CONSTANTS.VERIFIED_ADDRESS_LIST_KEY, body.verifiedAddressList);
+        if (body.fromBlockList) await safeSave(c, CONSTANTS.FROM_BLOCK_LIST_KEY, body.fromBlockList);
+        if (body.noLimitSendAddressList) await safeSave(c, CONSTANTS.NO_LIMIT_SEND_ADDRESS_LIST_KEY, body.noLimitSendAddressList);
+        if (body.emailRuleSettings) await safeSave(c, CONSTANTS.EMAIL_RULE_SETTINGS_KEY, body.emailRuleSettings);
+
+        // 2. 处理 UserSettings (包含版本号)
+        const oldSettings = await getJsonSetting<UserSettings>(c, CONSTANTS.USER_SETTINGS_KEY);
+        
+        // [关键] 强制读取 frontendVersion，即使 body 中未显式包含其他字段
+        const frontendVersion = body.frontendVersion !== undefined 
+            ? body.frontendVersion 
+            : (oldSettings?.frontendVersion || "");
+
+        const newSettings = new UserSettings({
+            ...oldSettings,
+            ...body,
+            frontendVersion: frontendVersion // 显式赋值
+        });
+        
+        // 校验
+        if (newSettings.enableMailVerify && !c.env.KV) {
             return c.text("Please enable KV first if you want to enable mail verify", 403)
         }
-        if (settings.enableMailVerify && !settings.verifyMailSender) {
+        if (newSettings.enableMailVerify && !newSettings.verifyMailSender) {
             return c.text("Please provide verifyMailSender", 400)
         }
-        if (settings.enableMailVerify && settings.verifyMailSender) {
-            const mailDomain = settings.verifyMailSender.split("@")[1];
-            const domains = getDomains(c);
-            if (!domains.includes(mailDomain)) {
-                return c.text(`VerifyMailSender(${settings.verifyMailSender}) domain must in ${JSON.stringify(domains, null, 2)}`, 400)
-            }
-        }
-        if (settings.maxAddressCount < 0) {
-            return c.text("Invalid maxAddressCount", 400)
-        }
-        await saveSetting(c, CONSTANTS.USER_SETTINGS_KEY, JSON.stringify(settings));
+        
+        // 保存 UserSettings
+        await safeSave(c, CONSTANTS.USER_SETTINGS_KEY, newSettings);
+        
         return c.json({ success: true })
     },
+
+    // ... (以下函数保持原样)
     getUsers: async (c: Context<HonoCustomType>) => {
         const { limit, offset, query } = c.req.query();
         const sqlFields = `SELECT u.id as id, u.user_email, u.balance, u.created_at, u.updated_at,`
@@ -96,10 +146,7 @@ export default {
         const { success: addressSuccess } = await c.env.DB.prepare(
             `DELETE FROM users_address WHERE user_id = ?`
         ).bind(user_id).run();
-        
-        // 清除缓存
         await clearUserRoleCache(c, parseInt(user_id));
-
         if (!success || !addressSuccess) {
             return c.text("Failed to delete user", 500)
         }
@@ -126,10 +173,7 @@ export default {
     updateUserRoles: async (c: Context<HonoCustomType>) => {
         const { user_id, role_text } = await c.req.json();
         if (!user_id) return c.text("Invalid user_id", 400);
-        
-        // [优化] 清除缓存，确保角色变更立即生效
         await clearUserRoleCache(c, user_id);
-
         if (!role_text) {
             const { success } = await c.env.DB.prepare(
                 `DELETE FROM user_roles WHERE user_id = ?`
@@ -154,9 +198,7 @@ export default {
         return c.json({ success: true })
     },
     bindAddress: async (c: Context<HonoCustomType>) => {
-        const {
-            user_email, address, user_id, address_id
-        } = await c.req.json();
+        const { user_email, address, user_id, address_id } = await c.req.json();
         const db_user_id = user_id ?? await c.env.DB.prepare(
             `SELECT id FROM users WHERE user_email = ?`
         ).bind(user_email).first<number | undefined | null>("id");
@@ -168,9 +210,7 @@ export default {
     getBindedAddresses: async (c: Context<HonoCustomType>) => {
         const { user_id } = c.req.param();
         const results = await UserBindAddressModule.getBindedAddressesById(c, user_id);
-        return c.json({
-            results: results,
-        });
+        return c.json({ results: results });
     },
     getRoleAddressConfig: async (c: Context<HonoCustomType>) => {
         const value = await getJsonSetting<RoleAddressConfig>(c, CONSTANTS.ROLE_ADDRESS_CONFIG_KEY);
@@ -179,7 +219,7 @@ export default {
     },
     saveRoleAddressConfig: async (c: Context<HonoCustomType>) => {
         const { configs } = await c.req.json<{ configs: RoleAddressConfig }>();
-        await saveSetting(c, CONSTANTS.ROLE_ADDRESS_CONFIG_KEY, JSON.stringify(configs));
+        await safeSave(c, CONSTANTS.ROLE_ADDRESS_CONFIG_KEY, configs);
         return c.json({ success: true });
     },
     topUpUser: async (c: Context<HonoCustomType>) => {
@@ -187,11 +227,9 @@ export default {
         const { amount } = await c.req.json();
         const amountInCents = toCents(amount);
         const adminId = c.get('jwtPayload')?.user_id || 0;
-
         if (!user_id || isNaN(amountInCents)) {
             return c.text("Invalid parameters", 400);
         }
-
         try {
             await c.env.DB.batch([
                 c.env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE id = ?`).bind(amountInCents, user_id),

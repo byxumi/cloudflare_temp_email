@@ -3,9 +3,14 @@ import { cleanup } from './common'
 import { CONSTANTS } from './constants'
 import { getJsonSetting } from './utils';
 import { CleanupSettings } from './models';
+import { cleanupExpiredCheckins } from './user_api/checkin'; // [新增]
 
 export async function scheduled(event: ScheduledEvent, env: Bindings, ctx: any) {
     console.log("Scheduled event: ", event);
+    
+    // [新增] 执行签到过期清理
+    await cleanupExpiredCheckins({ env: env } as Context<HonoCustomType>);
+
     const autoCleanupSetting = await getJsonSetting<CleanupSettings>(
         { env: env, } as Context<HonoCustomType>,
         CONSTANTS.AUTO_CLEANUP_KEY
