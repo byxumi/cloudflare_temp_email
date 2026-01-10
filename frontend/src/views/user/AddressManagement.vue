@@ -2,8 +2,9 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NStatistic, NGrid, NGi } from 'naive-ui'
+import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
+import { Copy, Key } from '@vicons/fa'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
@@ -38,6 +39,7 @@ const { t } = useI18n({
             unbindSuccess: 'Unbind Successfully',
             switch: 'Switch',
             copyCredential: 'Copy Credential',
+            copyEmail: 'Copy Email',
             transfer: 'Transfer',
             transferTitle: 'Transfer Address',
             targetEmail: 'Target User Email',
@@ -82,6 +84,7 @@ const { t } = useI18n({
             unbindSuccess: '解绑成功',
             switch: '切换',
             copyCredential: '复制凭证',
+            copyEmail: '复制邮箱',
             transfer: '转移',
             transferTitle: '转移地址',
             targetEmail: '目标用户邮箱',
@@ -90,7 +93,7 @@ const { t } = useI18n({
             jwtPlaceholder: '粘贴邮箱地址凭证 (JWT)',
             bindSuccess: '绑定成功',
             switched: '已切换到 ',
-            copied: '已复制凭证',
+            copied: '已复制',
             more: '更多',
             random: '随机',
             bindFailed: '绑定失败',
@@ -164,7 +167,6 @@ const refreshBalance = async () => {
     } catch (e) { console.error(e) }
 }
 
-// [修改] 签到处理函数
 const handleCheckin = async () => {
     checkinLoading.value = true
     try {
@@ -173,7 +175,6 @@ const handleCheckin = async () => {
             message.success(t('checkinSuccess') + (res.amount / 100).toFixed(2) + ' ' + t('currency'));
             refreshBalance();
         } else {
-            // 处理 "success": false 的情况，例如“今天已经签到过了”
             message.warning(res.message || "Operation failed");
         }
     } catch (e) {
@@ -282,7 +283,27 @@ const handleSwitch = async (row) => {
     }
 }
 
-const handleCopyCredential = async (row) => { try { const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); if (res.jwt) { await toClipboard(res.jwt); message.success(t('copied')) } } catch (e) { message.error(e.message) } }
+const handleCopyCredential = async (row) => { 
+    try { 
+        const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); 
+        if (res.jwt) { 
+            await toClipboard(res.jwt); 
+            message.success(t('copied')) 
+        } 
+    } catch (e) { 
+        message.error(e.message) 
+    } 
+}
+
+const handleCopyEmail = async (row) => {
+    try {
+        await toClipboard(row.name);
+        message.success(t('copied'));
+    } catch (e) {
+        message.error(e.message || "Copy failed");
+    }
+}
+
 const openTransferModal = (row) => { transferForm.value = { addressId: row.id, targetEmail: '' }; showTransferModal.value = true }
 const handleTransfer = async () => { if (!transferForm.value.targetEmail) return; transferLoading.value = true; try { await api.fetch('/user_api/transfer_address', { method: 'POST', body: JSON.stringify({ address_id: transferForm.value.addressId, target_user_email: transferForm.value.targetEmail }) }); message.success(t('transferSuccess')); showTransferModal.value = false; fetchData() } catch (e) { message.error(e.message) } finally { transferLoading.value = false } }
 const handleDelete = async (addressId) => { try { await api.fetch('/user_api/unbind_address', { method: 'POST', body: JSON.stringify({ address_id: addressId }) }); message.success(t('unbindSuccess')); fetchData() } catch (e) { message.error(e.message) } }
@@ -359,20 +380,28 @@ const columns = [
         title: t('actions'), 
         key: 'actions',
         render(row) {
-            return h(NSpace, null, {
+            return h(NSpace, { size: 'small' }, {
                 default: () => [
                     h(NButton, { size: 'tiny', type: 'primary', secondary: true, onClick: () => handleSwitch(row) }, { default: () => t('switch') }),
+                    // 复制邮箱按钮
+                    h(NTooltip, null, {
+                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyEmail(row) }, { icon: () => h(NIcon, null, { default: () => h(Copy) }) }),
+                        default: () => t('copyEmail')
+                    }),
+                    // 复制凭证按钮
+                    h(NTooltip, null, {
+                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyCredential(row) }, { icon: () => h(NIcon, null, { default: () => h(Key) }) }),
+                        default: () => t('copyCredential')
+                    }),
                     h(NDropdown, {
                         trigger: 'click',
                         options: [
                             { label: t('editRemark'), key: 'remark' },
-                            { label: t('copyCredential'), key: 'copy' },
                             { label: t('transfer'), key: 'transfer' },
                             { label: t('delete'), key: 'delete', props: { style: 'color: red' } }
                         ],
                         onSelect: (key) => {
                             if (key === 'remark') openRemarkModal(row)
-                            if (key === 'copy') handleCopyCredential(row)
                             if (key === 'transfer') openTransferModal(row)
                             if (key === 'delete') { if(confirm('Confirm Delete?')) handleDelete(row.id) }
                         }
@@ -397,12 +426,13 @@ const priceColumns = [
     }
 ]
 
-onMounted(() => {
+onMounted(async () => {
+    // 优化：并行加载数据
+    const promises = [fetchData(), refreshBalance()];
     if (useGlobalState().userJwt.value) {
-        api.getUserSettings(message);
+        promises.push(api.getUserSettings(message));
     }
-    fetchData();
-    refreshBalance();
+    await Promise.all(promises);
 })
 </script>
 
