@@ -3,7 +3,7 @@ import useClipboard from 'vue-clipboard3'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { Copy, User, ExchangeAlt, List } from '@vicons/fa'
+import { Copy, User, List, Key } from '@vicons/fa' // [新增] Key 图标
 
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -12,6 +12,7 @@ import AddressManagement from '../user/AddressManagement.vue'
 import TelegramAddress from './TelegramAddress.vue'
 import LocalAddress from './LocalAddress.vue'
 import { getRouterPathWithLang } from '../../utils'
+import { useMessage, NIcon, NButton, NCard, NAlert, NSkeleton, NModal, NDivider, NCollapse, NCollapseItem } from 'naive-ui'
 
 const { toClipboard } = useClipboard()
 const message = useMessage()
@@ -34,7 +35,8 @@ const { locale, t } = useI18n({
             addressCredentialTip: 'Please copy the Mail Address Credential and you can use it to login to your email account.',
             addressPassword: 'Address Password',
             userLogin: 'User Login',
-            addressManagement: 'Address Mgmt'
+            addressManagement: 'Address Mgmt',
+            copyCredential: 'Copy Credential', // [新增]
         },
         zh: {
             ok: '确定',
@@ -46,7 +48,8 @@ const { locale, t } = useI18n({
             addressCredentialTip: '请复制邮箱地址凭证，你可以使用它登录你的邮箱。',
             addressPassword: '地址密码',
             userLogin: '用户登录',
-            addressManagement: '地址管理'
+            addressManagement: '地址管理',
+            copyCredential: '复制凭证', // [新增]
         }
     }
 });
@@ -69,6 +72,20 @@ const addressLabel = computed(() => {
 const copy = async () => {
     try {
         await toClipboard(settings.value.address)
+        message.success(t('copied'));
+    } catch (e) {
+        message.error(e.message || "error");
+    }
+}
+
+// [新增] 复制凭证函数
+const copyCredential = async () => {
+    try {
+        if (!jwt.value) {
+            message.warning("No credential found");
+            return;
+        }
+        await toClipboard(jwt.value)
         message.success(t('copied'));
     } catch (e) {
         message.error(e.message || "error");
@@ -102,6 +119,9 @@ onMounted(async () => {
                     </n-button>
                     <n-button style="margin-left: 10px" @click="copy" size="small" tertiary type="primary">
                         <n-icon :component="Copy" /> {{ t('copy') }}
+                    </n-button>
+                    <n-button style="margin-left: 10px" @click="copyCredential" size="small" tertiary type="warning">
+                        <n-icon :component="Key" /> {{ t('copyCredential') }}
                     </n-button>
                 </span>
             </n-alert>
