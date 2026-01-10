@@ -2,15 +2,16 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip, NInputNumber } from 'naive-ui'
+import { useMessage, useDialog, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip, NInputNumber } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
-import { Copy, Key, CloudDownloadAlt, PlusSquare } from '@vicons/fa'
+import { Copy, Key, CloudDownloadAlt, PlusSquare, Trash, CheckSquare } from '@vicons/fa'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
 const router = useRouter()
 const { openSettings, jwt, userBalance, userSettings, auth, userJwt } = useGlobalState()
 const message = useMessage()
+const dialog = useDialog()
 const { toClipboard } = useClipboard()
 
 const checkinBalance = ref(0)
@@ -64,7 +65,12 @@ const { t } = useI18n({
             batchCreate: 'Batch New',
             batchExport: 'Export All',
             count: 'Count (1-20)',
-            exportSuccess: 'Export successful, downloading...'
+            exportSuccess: 'Export successful, downloading...',
+            batchDelete: 'Batch Delete',
+            batchExportSelected: 'Export Selected',
+            selected: 'Selected',
+            confirmBatchDelete: 'Confirm delete {count} addresses?',
+            processing: 'Processing...'
         },
         zh: {
             createAddress: '新建地址',
@@ -113,7 +119,12 @@ const { t } = useI18n({
             batchCreate: '批量注册',
             batchExport: '批量导出',
             count: '数量 (1-20)',
-            exportSuccess: '导出成功，正在下载...'
+            exportSuccess: '导出成功，正在下载...',
+            batchDelete: '批量删除',
+            batchExportSelected: '导出选中',
+            selected: '已选',
+            confirmBatchDelete: '确认删除选中的 {count} 个地址吗？',
+            processing: '处理中...'
         }
     }
 })
@@ -142,6 +153,10 @@ const priceLoadingState = ref(false)
 const checkinLoading = ref(false)
 const exportLoading = ref(false)
 
+// [新增] 多选状态
+const checkedRowKeys = ref([])
+const batchActionLoading = ref(false)
+
 const domainOptions = computed(() => {
     return (openSettings.value.domains || []).map(d => ({
         label: d.label || d.value,
@@ -161,6 +176,8 @@ const fetchData = async () => {
     try {
         const res = await api.fetch('/user_api/bind_address')
         data.value = res.results || []
+        // 刷新数据后清空选中
+        checkedRowKeys.value = []
     } catch (e) {
         message.error(e.message)
     } finally {
@@ -233,7 +250,6 @@ watch(() => createForm.value.domain, async (newDomain) => {
     }
 })
 
-// [新增] 监听批量注册域名变化
 watch(() => batchCreateForm.value.domain, async (newDomain) => {
     if (!newDomain) {
         currentPriceCents.value = 0
@@ -261,7 +277,6 @@ const openCreateModal = async () => {
     await refreshBalance()
 }
 
-// [新增] 打开批量注册模态框
 const openBatchCreateModal = async () => {
     batchCreateForm.value.count = 5
     batchCreateForm.value.domain = domainOptions.value.length > 0 ? domainOptions.value[0].value : null
@@ -304,7 +319,6 @@ const handleCreate = async () => {
     }
 }
 
-// [新增] 处理批量注册
 const handleBatchCreate = async () => {
     if (!batchCreateForm.value.domain) return
     const count = batchCreateForm.value.count
@@ -329,19 +343,13 @@ const handleBatchCreate = async () => {
     }
 }
 
-// [新增] 处理批量导出
-const handleExport = async () => {
+// 导出所有（Admin控制权限）
+const handleExportAll = async () => {
     exportLoading.value = true
     try {
         const res = await api.exportAddresses()
         if (res.data) {
-            const blob = new Blob([res.data], { type: 'text/plain' })
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `emails_${Date.now()}.txt`
-            a.click()
-            window.URL.revokeObjectURL(url)
+            downloadFile(res.data, `emails_all_${Date.now()}.txt`)
             message.success(t('exportSuccess'))
         }
     } catch (e) {
@@ -353,6 +361,76 @@ const handleExport = async () => {
     } finally {
         exportLoading.value = false
     }
+}
+
+// 导出选中
+const handleBatchExport = async () => {
+    if (checkedRowKeys.value.length === 0) return;
+    batchActionLoading.value = true;
+    try {
+        const lines = [];
+        for (const id of checkedRowKeys.value) {
+            try {
+                // 获取 JWT (复用 API)
+                const res = await api.fetch(`/user_api/bind_address_jwt/${id}`);
+                const row = data.value.find(item => item.id === id);
+                if (res.jwt && row) {
+                    lines.push(`${row.name}----${res.jwt}`);
+                }
+            } catch (e) {
+                console.error(`Failed to get jwt for ${id}`, e);
+            }
+        }
+        if (lines.length > 0) {
+            downloadFile(lines.join('\n'), `emails_selected_${Date.now()}.txt`);
+            message.success(t('exportSuccess'));
+        } else {
+            message.warning("No data exported");
+        }
+    } catch (e) {
+        message.error(e.message || "Export failed");
+    } finally {
+        batchActionLoading.value = false;
+    }
+}
+
+// 批量删除
+const handleBatchDelete = () => {
+    if (checkedRowKeys.value.length === 0) return;
+    dialog.warning({
+        title: t('batchDelete'),
+        content: t('confirmBatchDelete', { count: checkedRowKeys.value.length }),
+        positiveText: t('confirm'),
+        negativeText: t('cancel'),
+        onPositiveClick: async () => {
+            batchActionLoading.value = true;
+            try {
+                for (const id of checkedRowKeys.value) {
+                    await api.fetch('/user_api/unbind_address', { 
+                        method: 'POST', 
+                        body: JSON.stringify({ address_id: id }) 
+                    });
+                }
+                message.success(t('unbindSuccess'));
+                checkedRowKeys.value = []; // 清空选中
+                fetchData();
+            } catch (e) {
+                message.error(e.message || "Delete failed");
+            } finally {
+                batchActionLoading.value = false;
+            }
+        }
+    });
+}
+
+const downloadFile = (content, filename) => {
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    window.URL.revokeObjectURL(url)
 }
 
 const handleSwitch = async (row) => {
@@ -379,6 +457,15 @@ const handleCopyCredential = async (row) => {
     } catch (e) { 
         message.error(e.message) 
     } 
+}
+
+const handleCopyEmail = async (row) => {
+    try {
+        await toClipboard(row.name);
+        message.success(t('copied'));
+    } catch (e) {
+        message.error(e.message || "Copy failed");
+    }
 }
 
 const openTransferModal = (row) => { transferForm.value = { addressId: row.id, targetEmail: '' }; showTransferModal.value = true }
@@ -448,6 +535,7 @@ const handleSaveRemark = async () => {
 }
 
 const columns = [
+    { type: 'selection' }, // [新增] 开启多选
     { title: 'ID', key: 'id', width: 50 },
     { title: t('address'), key: 'name' },
     { title: t('remark'), key: 'remark', render(row) {
@@ -460,17 +548,21 @@ const columns = [
             return h(NSpace, { size: 'small' }, {
                 default: () => [
                     h(NButton, { size: 'tiny', type: 'primary', secondary: true, onClick: () => handleSwitch(row) }, { default: () => t('switch') }),
+                    h(NTooltip, null, {
+                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyEmail(row) }, { icon: () => h(NIcon, null, { default: () => h(Copy) }) }),
+                        default: () => t('copyEmail')
+                    }),
                     h(NDropdown, {
                         trigger: 'click',
                         options: [
-                            { label: t('copyCredential'), key: 'copy' },
                             { label: t('editRemark'), key: 'remark' },
+                            { label: t('copyCredential'), key: 'copy' },
                             { label: t('transfer'), key: 'transfer' },
                             { label: t('delete'), key: 'delete', props: { style: 'color: red' } }
                         ],
                         onSelect: (key) => {
-                            if (key === 'copy') handleCopyCredential(row)
                             if (key === 'remark') openRemarkModal(row)
+                            if (key === 'copy') handleCopyCredential(row)
                             if (key === 'transfer') openTransferModal(row)
                             if (key === 'delete') { if(confirm('Confirm Delete?')) handleDelete(row.id) }
                         }
@@ -518,11 +610,13 @@ onMounted(async () => {
 
         <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
             <n-button type="primary" @click="openCreateModal">{{ t('createAddress') }}</n-button>
+            
             <n-button type="success" secondary @click="openBatchCreateModal">
                 <template #icon><n-icon><PlusSquare /></n-icon></template>
                 {{ t('batchCreate') }}
             </n-button>
-            <n-button type="warning" secondary @click="handleExport" :loading="exportLoading">
+            
+            <n-button type="warning" secondary @click="handleExportAll" :loading="exportLoading">
                 <template #icon><n-icon><CloudDownloadAlt /></n-icon></template>
                 {{ t('batchExport') }}
             </n-button>
@@ -532,7 +626,29 @@ onMounted(async () => {
             <n-button @click="fetchData">刷新</n-button>
         </div>
 
-        <n-data-table :columns="columns" :data="data" :loading="loading" :bordered="false" />
+        <div v-if="checkedRowKeys.length > 0" class="batch-action-bar">
+            <span style="margin-right: 10px; font-weight: bold;">{{ t('selected') }}: {{ checkedRowKeys.length }}</span>
+            
+            <n-space>
+                <n-button type="error" size="small" :loading="batchActionLoading" @click="handleBatchDelete">
+                    <template #icon><n-icon><Trash /></n-icon></template>
+                    {{ t('batchDelete') }}
+                </n-button>
+                <n-button type="info" size="small" :loading="batchActionLoading" @click="handleBatchExport">
+                    <template #icon><n-icon><CheckSquare /></n-icon></template>
+                    {{ t('batchExportSelected') }}
+                </n-button>
+            </n-space>
+        </div>
+
+        <n-data-table 
+            v-model:checked-row-keys="checkedRowKeys"
+            :row-key="row => row.id"
+            :columns="columns" 
+            :data="data" 
+            :loading="loading" 
+            :bordered="false" 
+        />
 
         <n-modal v-model:show="showCreateModal" preset="card" :title="t('createAddress')" style="width: 90%; max-width: 500px">
             <n-form>
@@ -628,3 +744,16 @@ onMounted(async () => {
         </n-modal>
     </div>
 </template>
+
+<style scoped>
+.batch-action-bar {
+    background-color: rgba(230, 247, 255, 0.6);
+    border: 1px solid rgba(145, 213, 255, 0.6);
+    padding: 8px 16px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+</style>
