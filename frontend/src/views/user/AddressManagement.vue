@@ -2,16 +2,15 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, useDialog, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip, NInputNumber } from 'naive-ui'
+import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip, NInputNumber } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
-import { Copy, Key, CloudDownloadAlt, PlusSquare, Trash, CheckSquare } from '@vicons/fa'
+import { Copy, Key, CloudDownloadAlt, PlusSquare, CheckSquare } from '@vicons/fa'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
 const router = useRouter()
 const { openSettings, jwt, userBalance, userSettings, auth, userJwt } = useGlobalState()
 const message = useMessage()
-const dialog = useDialog()
 const { toClipboard } = useClipboard()
 
 const checkinBalance = ref(0)
@@ -66,10 +65,8 @@ const { t } = useI18n({
             batchExport: 'Export All',
             count: 'Count (1-20)',
             exportSuccess: 'Export successful, downloading...',
-            batchDelete: 'Batch Delete',
             batchExportSelected: 'Export Selected',
             selected: 'Selected',
-            confirmBatchDelete: 'Confirm delete {count} addresses?',
             processing: 'Processing...'
         },
         zh: {
@@ -120,10 +117,8 @@ const { t } = useI18n({
             batchExport: '批量导出',
             count: '数量 (1-20)',
             exportSuccess: '导出成功，正在下载...',
-            batchDelete: '批量删除',
             batchExportSelected: '导出选中',
             selected: '已选',
-            confirmBatchDelete: '确认删除选中的 {count} 个地址吗？',
             processing: '处理中...'
         }
     }
@@ -153,7 +148,7 @@ const priceLoadingState = ref(false)
 const checkinLoading = ref(false)
 const exportLoading = ref(false)
 
-// [新增] 多选状态
+// 多选状态
 const checkedRowKeys = ref([])
 const batchActionLoading = ref(false)
 
@@ -171,7 +166,7 @@ const currentPrefix = computed(() => {
     return openSettings.value.prefix || '';
 })
 
-// [关键修复] 兼容多种数据返回格式，确保列表一定能显示
+// [核心修复] 兼容各种数据返回格式
 const fetchData = async () => {
     loading.value = true
     try {
@@ -181,12 +176,13 @@ const fetchData = async () => {
         } else if (res && Array.isArray(res.results)) {
             data.value = res.results;
         } else {
+            console.error("Unknown response format:", res);
             data.value = [];
         }
         // 刷新数据后清空选中
         checkedRowKeys.value = []
     } catch (e) {
-        message.error(e.message)
+        message.error(e.message || "Fetch failed")
     } finally {
         loading.value = false
     }
@@ -350,7 +346,7 @@ const handleBatchCreate = async () => {
     }
 }
 
-// 导出所有（Admin控制权限）
+// 导出所有
 const handleExportAll = async () => {
     exportLoading.value = true
     try {
@@ -370,7 +366,7 @@ const handleExportAll = async () => {
     }
 }
 
-// [新增] 导出选中
+// 导出选中
 const handleBatchExport = async () => {
     if (checkedRowKeys.value.length === 0) return;
     batchActionLoading.value = true;
@@ -378,7 +374,7 @@ const handleBatchExport = async () => {
         const lines = [];
         for (const id of checkedRowKeys.value) {
             try {
-                // 获取 JWT (复用 API)
+                // 获取 JWT
                 const res = await api.fetch(`/user_api/bind_address_jwt/${id}`);
                 const row = data.value.find(item => item.id === id);
                 if (res.jwt && row) {
@@ -399,35 +395,6 @@ const handleBatchExport = async () => {
     } finally {
         batchActionLoading.value = false;
     }
-}
-
-// [新增] 批量删除
-const handleBatchDelete = () => {
-    if (checkedRowKeys.value.length === 0) return;
-    dialog.warning({
-        title: t('batchDelete'),
-        content: t('confirmBatchDelete', { count: checkedRowKeys.value.length }),
-        positiveText: t('confirm'),
-        negativeText: t('cancel'),
-        onPositiveClick: async () => {
-            batchActionLoading.value = true;
-            try {
-                for (const id of checkedRowKeys.value) {
-                    await api.fetch('/user_api/unbind_address', { 
-                        method: 'POST', 
-                        body: JSON.stringify({ address_id: id }) 
-                    });
-                }
-                message.success(t('unbindSuccess'));
-                checkedRowKeys.value = []; // 清空选中
-                fetchData();
-            } catch (e) {
-                message.error(e.message || "Delete failed");
-            } finally {
-                batchActionLoading.value = false;
-            }
-        }
-    });
 }
 
 const downloadFile = (content, filename) => {
@@ -542,7 +509,7 @@ const handleSaveRemark = async () => {
 }
 
 const columns = [
-    { type: 'selection' }, // [新增] 开启多选
+    { type: 'selection' }, // 多选框
     { title: 'ID', key: 'id', width: 50 },
     { title: t('address'), key: 'name' },
     { title: t('remark'), key: 'remark', render(row) {
@@ -559,19 +526,17 @@ const columns = [
                         trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyEmail(row) }, { icon: () => h(NIcon, null, { default: () => h(Copy) }) }),
                         default: () => t('copyEmail')
                     }),
-                    h(NTooltip, null, {
-                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyCredential(row) }, { icon: () => h(NIcon, null, { default: () => h(Key) }) }),
-                        default: () => t('copyCredential')
-                    }),
                     h(NDropdown, {
                         trigger: 'click',
                         options: [
                             { label: t('editRemark'), key: 'remark' },
+                            { label: t('copyCredential'), key: 'copy' },
                             { label: t('transfer'), key: 'transfer' },
                             { label: t('delete'), key: 'delete', props: { style: 'color: red' } }
                         ],
                         onSelect: (key) => {
                             if (key === 'remark') openRemarkModal(row)
+                            if (key === 'copy') handleCopyCredential(row)
                             if (key === 'transfer') openTransferModal(row)
                             if (key === 'delete') { if(confirm('Confirm Delete?')) handleDelete(row.id) }
                         }
@@ -597,12 +562,11 @@ const priceColumns = [
 ]
 
 onMounted(async () => {
-    // 优化：并行加载数据
-    const promises = [fetchData(), refreshBalance()];
+    // 串行执行，确保 userSettings 加载后再请求数据
     if (useGlobalState().userJwt.value) {
-        promises.push(api.getUserSettings(message));
+        await api.getUserSettings(message);
     }
-    await Promise.all(promises);
+    await Promise.all([fetchData(), refreshBalance()]);
 })
 </script>
 
@@ -638,12 +602,7 @@ onMounted(async () => {
 
         <div v-if="checkedRowKeys.length > 0" class="batch-action-bar">
             <span style="margin-right: 10px; font-weight: bold;">{{ t('selected') }}: {{ checkedRowKeys.length }}</span>
-            
             <n-space>
-                <n-button type="error" size="small" :loading="batchActionLoading" @click="handleBatchDelete">
-                    <template #icon><n-icon><Trash /></n-icon></template>
-                    {{ t('batchDelete') }}
-                </n-button>
                 <n-button type="info" size="small" :loading="batchActionLoading" @click="handleBatchExport">
                     <template #icon><n-icon><CheckSquare /></n-icon></template>
                     {{ t('batchExportSelected') }}
