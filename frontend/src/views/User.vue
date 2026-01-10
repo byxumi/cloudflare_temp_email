@@ -17,7 +17,8 @@ import UserTransactions from './user/UserTransactions.vue';
 // 异步导入抽奖组件
 const Lottery = defineAsyncComponent(() => import('./user/Lottery.vue'))
 
-const { userTab, globalTabplacement, userSettings, userBalance, openSettings } = useGlobalState()
+// [修改] 引入 userJwt 以判断登录状态
+const { userTab, globalTabplacement, userSettings, userBalance, openSettings, userJwt } = useGlobalState()
 
 const message = useMessage()
 const redeemCode = ref('')
@@ -129,55 +130,57 @@ onMounted(async () => {
     <div>
         <UserBar />
         
-        <div class="glass-panel wallet-container">
-            <div class="balance-wrapper">
-                <n-statistic :label="t('balance')">
-                    <template #prefix>
-                        ￥
-                    </template>
-                    <template #suffix>
-                        <n-button text class="refresh-btn" @click="refreshBalance" :loading="balanceLoading">
-                            <template #icon><n-icon><Sync /></n-icon></template>
+        <div v-if="userJwt">
+            <div class="glass-panel wallet-container">
+                <div class="balance-wrapper">
+                    <n-statistic :label="t('balance')">
+                        <template #prefix>
+                            ￥
+                        </template>
+                        <template #suffix>
+                            <n-button text class="refresh-btn" @click="refreshBalance" :loading="balanceLoading">
+                                <template #icon><n-icon><Sync /></n-icon></template>
+                            </n-button>
+                        </template>
+                        <span style="font-weight: 600;">{{ (userBalance / 100).toFixed(2) }}</span>
+                    </n-statistic>
+                </div>
+                <div class="action-wrapper">
+                    <n-space>
+                        <n-button type="primary" @click="showRedeemModal = true">
+                            <template #icon><n-icon><CreditCard /></n-icon></template>
+                            {{ t('redeem') }}
                         </n-button>
-                    </template>
-                    <span style="font-weight: 600;">{{ (userBalance / 100).toFixed(2) }}</span>
-                </n-statistic>
-            </div>
-            <div class="action-wrapper">
-                <n-space>
-                    <n-button type="primary" @click="showRedeemModal = true">
-                        <template #icon><n-icon><CreditCard /></n-icon></template>
-                        {{ t('redeem') }}
-                    </n-button>
-                    
-                    <n-button type="warning" secondary @click="handleBuyCard">
-                        <template #icon><n-icon><ShoppingCart /></n-icon></template>
-                        {{ t('buyCard') }}
-                    </n-button>
+                        
+                        <n-button type="warning" secondary @click="handleBuyCard">
+                            <template #icon><n-icon><ShoppingCart /></n-icon></template>
+                            {{ t('buyCard') }}
+                        </n-button>
 
-                    <n-button @click="showTransactions = true">
-                        <template #icon><n-icon><History /></n-icon></template>
-                        {{ t('viewBills') }}
-                    </n-button>
-                </n-space>
+                        <n-button @click="showTransactions = true">
+                            <template #icon><n-icon><History /></n-icon></template>
+                            {{ t('viewBills') }}
+                        </n-button>
+                    </n-space>
+                </div>
             </div>
-        </div>
 
-        <div class="glass-panel">
-            <n-tabs type="line" animated :placement="globalTabplacement" v-model:value="userTab">
-                <n-tab-pane name="user_mail_box_tab" :tab="t('user_mail_box_tab')">
-                    <UserMailBox />
-                </n-tab-pane>
-                <n-tab-pane name="address_management" :tab="t('address_management')">
-                    <AddressMangement />
-                </n-tab-pane>
-                <n-tab-pane v-if="showLotteryTab" name="lottery" :tab="t('lottery')">
-                    <Lottery />
-                </n-tab-pane>
-                <n-tab-pane name="user_settings" :tab="t('user_settings')">
-                    <UserSettingsPage />
-                </n-tab-pane>
-            </n-tabs>
+            <div class="glass-panel">
+                <n-tabs type="line" animated :placement="globalTabplacement" v-model:value="userTab">
+                    <n-tab-pane name="user_mail_box_tab" :tab="t('user_mail_box_tab')">
+                        <UserMailBox />
+                    </n-tab-pane>
+                    <n-tab-pane name="address_management" :tab="t('address_management')">
+                        <AddressMangement />
+                    </n-tab-pane>
+                    <n-tab-pane v-if="showLotteryTab" name="lottery" :tab="t('lottery')">
+                        <Lottery />
+                    </n-tab-pane>
+                    <n-tab-pane name="user_settings" :tab="t('user_settings')">
+                        <UserSettingsPage />
+                    </n-tab-pane>
+                </n-tabs>
+            </div>
         </div>
 
         <n-modal v-model:show="showRedeemModal" preset="card" :title="t('redeem')" style="width: 90%; max-width: 400px">
