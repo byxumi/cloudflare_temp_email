@@ -15,7 +15,7 @@ const {
 
 const instance = axios.create({
     baseURL: API_BASE,
-    timeout: 30000,
+    timeout: 60000, // 批量操作可能耗时较长，增加超时时间
     validateStatus: (status) => status >= 200 && status <= 500
 });
 
@@ -209,7 +209,6 @@ export const api = {
     bindUserAddress,
 
     // --- 计费系统 API ---
-    
     getUserBalance: async () => {
         try {
             const res = await apiFetch('/user_api/billing/balance');
@@ -240,6 +239,17 @@ export const api = {
             method: 'POST',
             body: JSON.stringify({ name, domain })
         });
+    },
+    // [新增] 批量购买
+    batchBuyAddress: async (domain, count) => {
+        return await apiFetch('/user_api/batch_buy_address', {
+            method: 'POST',
+            body: JSON.stringify({ domain, count })
+        });
+    },
+    // [新增] 批量导出
+    exportAddresses: async () => {
+        return await apiFetch('/user_api/export_addresses');
     },
     getUserTransactions: async (limit, offset) => {
         return await apiFetch(`/user_api/billing/transactions?limit=${limit}&offset=${offset}`);
@@ -338,6 +348,13 @@ export const api = {
         return await apiFetch(`/admin/users/${user_id}/topup`, {
             method: 'POST',
             body: JSON.stringify({ amount })
+        });
+    },
+    // [新增] 管理员切换用户批量导出权限
+    adminToggleBatchAccess: async (user_id, allow) => {
+        return await apiFetch(`/admin/users/${user_id}/batch_access`, {
+            method: 'POST',
+            body: JSON.stringify({ allow })
         });
     }
 }
