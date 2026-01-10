@@ -171,11 +171,18 @@ const currentPrefix = computed(() => {
     return openSettings.value.prefix || '';
 })
 
+// [关键修复] 兼容多种数据返回格式，确保列表一定能显示
 const fetchData = async () => {
     loading.value = true
     try {
         const res = await api.fetch('/user_api/bind_address')
-        data.value = res.results || []
+        if (Array.isArray(res)) {
+            data.value = res;
+        } else if (res && Array.isArray(res.results)) {
+            data.value = res.results;
+        } else {
+            data.value = [];
+        }
         // 刷新数据后清空选中
         checkedRowKeys.value = []
     } catch (e) {
@@ -363,7 +370,7 @@ const handleExportAll = async () => {
     }
 }
 
-// 导出选中
+// [新增] 导出选中
 const handleBatchExport = async () => {
     if (checkedRowKeys.value.length === 0) return;
     batchActionLoading.value = true;
@@ -394,7 +401,7 @@ const handleBatchExport = async () => {
     }
 }
 
-// 批量删除
+// [新增] 批量删除
 const handleBatchDelete = () => {
     if (checkedRowKeys.value.length === 0) return;
     dialog.warning({
@@ -552,17 +559,19 @@ const columns = [
                         trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyEmail(row) }, { icon: () => h(NIcon, null, { default: () => h(Copy) }) }),
                         default: () => t('copyEmail')
                     }),
+                    h(NTooltip, null, {
+                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyCredential(row) }, { icon: () => h(NIcon, null, { default: () => h(Key) }) }),
+                        default: () => t('copyCredential')
+                    }),
                     h(NDropdown, {
                         trigger: 'click',
                         options: [
                             { label: t('editRemark'), key: 'remark' },
-                            { label: t('copyCredential'), key: 'copy' },
                             { label: t('transfer'), key: 'transfer' },
                             { label: t('delete'), key: 'delete', props: { style: 'color: red' } }
                         ],
                         onSelect: (key) => {
                             if (key === 'remark') openRemarkModal(row)
-                            if (key === 'copy') handleCopyCredential(row)
                             if (key === 'transfer') openTransferModal(row)
                             if (key === 'delete') { if(confirm('Confirm Delete?')) handleDelete(row.id) }
                         }
@@ -588,6 +597,7 @@ const priceColumns = [
 ]
 
 onMounted(async () => {
+    // 优化：并行加载数据
     const promises = [fetchData(), refreshBalance()];
     if (useGlobalState().userJwt.value) {
         promises.push(api.getUserSettings(message));
