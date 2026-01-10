@@ -383,12 +383,12 @@ const columns = [
             return h(NSpace, { size: 'small' }, {
                 default: () => [
                     h(NButton, { size: 'tiny', type: 'primary', secondary: true, onClick: () => handleSwitch(row) }, { default: () => t('switch') }),
-                    // 复制邮箱按钮
+                    // [优化] 复制邮箱按钮
                     h(NTooltip, null, {
                         trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyEmail(row) }, { icon: () => h(NIcon, null, { default: () => h(Copy) }) }),
                         default: () => t('copyEmail')
                     }),
-                    // 复制凭证按钮
+                    // [新增] 复制凭证按钮，位于复制邮箱右侧
                     h(NTooltip, null, {
                         trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyCredential(row) }, { icon: () => h(NIcon, null, { default: () => h(Key) }) }),
                         default: () => t('copyCredential')
@@ -427,7 +427,7 @@ const priceColumns = [
 ]
 
 onMounted(async () => {
-    // 优化：并行加载数据
+    // [优化] 并行加载数据，加快首屏速度
     const promises = [fetchData(), refreshBalance()];
     if (useGlobalState().userJwt.value) {
         promises.push(api.getUserSettings(message));
