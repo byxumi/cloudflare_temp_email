@@ -2,9 +2,8 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip } from 'naive-ui'
+import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
-import { Copy, Key } from '@vicons/fa'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
@@ -39,7 +38,6 @@ const { t } = useI18n({
             unbindSuccess: 'Unbind Successfully',
             switch: 'Switch',
             copyCredential: 'Copy Credential',
-            copyEmail: 'Copy Email',
             transfer: 'Transfer',
             transferTitle: 'Transfer Address',
             targetEmail: 'Target User Email',
@@ -84,7 +82,6 @@ const { t } = useI18n({
             unbindSuccess: '解绑成功',
             switch: '切换',
             copyCredential: '复制凭证',
-            copyEmail: '复制邮箱',
             transfer: '转移',
             transferTitle: '转移地址',
             targetEmail: '目标用户邮箱',
@@ -93,7 +90,7 @@ const { t } = useI18n({
             jwtPlaceholder: '粘贴邮箱地址凭证 (JWT)',
             bindSuccess: '绑定成功',
             switched: '已切换到 ',
-            copied: '已复制',
+            copied: '已复制凭证',
             more: '更多',
             random: '随机',
             bindFailed: '绑定失败',
@@ -295,15 +292,6 @@ const handleCopyCredential = async (row) => {
     } 
 }
 
-const handleCopyEmail = async (row) => {
-    try {
-        await toClipboard(row.name);
-        message.success(t('copied'));
-    } catch (e) {
-        message.error(e.message || "Copy failed");
-    }
-}
-
 const openTransferModal = (row) => { transferForm.value = { addressId: row.id, targetEmail: '' }; showTransferModal.value = true }
 const handleTransfer = async () => { if (!transferForm.value.targetEmail) return; transferLoading.value = true; try { await api.fetch('/user_api/transfer_address', { method: 'POST', body: JSON.stringify({ address_id: transferForm.value.addressId, target_user_email: transferForm.value.targetEmail }) }); message.success(t('transferSuccess')); showTransferModal.value = false; fetchData() } catch (e) { message.error(e.message) } finally { transferLoading.value = false } }
 const handleDelete = async (addressId) => { try { await api.fetch('/user_api/unbind_address', { method: 'POST', body: JSON.stringify({ address_id: addressId }) }); message.success(t('unbindSuccess')); fetchData() } catch (e) { message.error(e.message) } }
@@ -383,25 +371,17 @@ const columns = [
             return h(NSpace, { size: 'small' }, {
                 default: () => [
                     h(NButton, { size: 'tiny', type: 'primary', secondary: true, onClick: () => handleSwitch(row) }, { default: () => t('switch') }),
-                    // [优化] 复制邮箱按钮
-                    h(NTooltip, null, {
-                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyEmail(row) }, { icon: () => h(NIcon, null, { default: () => h(Copy) }) }),
-                        default: () => t('copyEmail')
-                    }),
-                    // [新增] 复制凭证按钮，位于复制邮箱右侧
-                    h(NTooltip, null, {
-                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyCredential(row) }, { icon: () => h(NIcon, null, { default: () => h(Key) }) }),
-                        default: () => t('copyCredential')
-                    }),
                     h(NDropdown, {
                         trigger: 'click',
                         options: [
                             { label: t('editRemark'), key: 'remark' },
+                            { label: t('copyCredential'), key: 'copy' },
                             { label: t('transfer'), key: 'transfer' },
                             { label: t('delete'), key: 'delete', props: { style: 'color: red' } }
                         ],
                         onSelect: (key) => {
                             if (key === 'remark') openRemarkModal(row)
+                            if (key === 'copy') handleCopyCredential(row)
                             if (key === 'transfer') openTransferModal(row)
                             if (key === 'delete') { if(confirm('Confirm Delete?')) handleDelete(row.id) }
                         }
@@ -427,7 +407,7 @@ const priceColumns = [
 ]
 
 onMounted(async () => {
-    // [优化] 并行加载数据，加快首屏速度
+    // 优化：并行加载数据
     const promises = [fetchData(), refreshBalance()];
     if (useGlobalState().userJwt.value) {
         promises.push(api.getUserSettings(message));
