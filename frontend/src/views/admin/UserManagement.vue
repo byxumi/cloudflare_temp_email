@@ -1,8 +1,8 @@
 <script setup>
 import { ref, h, onMounted, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n'
-import { NMenu, NButton, NBadge, NTag, NInputNumber, NFormItem } from 'naive-ui';
-import { MenuFilled } from '@vicons/material'
+import { NMenu, NButton, NBadge, NTag, NInputNumber, NFormItem, NIcon } from 'naive-ui';
+import { MenuFilled, CheckCircle, TimesCircle } from '@vicons/material'
 
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -40,7 +40,10 @@ const { t } = useI18n({
             balance: 'Balance',
             topUp: 'Top Up',
             amount: 'Amount (CNY)',
-            topUpSuccess: 'Top Up Successful'
+            topUpSuccess: 'Top Up Successful',
+            allowBatch: 'Allow Batch Export',
+            denyBatch: 'Deny Batch Export',
+            batchExport: 'Export'
         },
         zh: {
             success: '成功',
@@ -67,7 +70,10 @@ const { t } = useI18n({
             balance: '余额',
             topUp: '充值',
             amount: '金额 (元)',
-            topUpSuccess: '充值成功'
+            topUpSuccess: '充值成功',
+            allowBatch: '允许批量导出',
+            denyBatch: '禁止批量导出',
+            batchExport: '导出权限'
         }
     }
 });
@@ -209,10 +215,22 @@ const handleTopUp = async () => {
         await api.adminTopUpUser(curUserId.value, topUpAmount.value)
         message.success(t('topUpSuccess'))
         showTopUp.value = false
-        await fetchData() // 刷新列表以更新余额
+        await fetchData()
     } catch (error) {
         console.log(error)
         message.error(error.message || "error")
+    }
+}
+
+// [新增] 切换批量权限
+const toggleBatchAccess = async (row) => {
+    const newVal = !row.allow_batch;
+    try {
+        await api.adminToggleBatchAccess(row.id, newVal);
+        message.success(t('success'));
+        row.allow_batch = newVal ? 1 : 0; // 手动更新本地状态，避免重新拉取
+    } catch (e) {
+        message.error(e.message || "error");
     }
 }
 
@@ -229,8 +247,16 @@ const columns = [
         title: t('balance'),
         key: "balance",
         render(row) {
-            // 数据库存储单位为分，显示单位为元
             return (row.balance ? row.balance / 100 : 0).toFixed(2)
+        }
+    },
+    {
+        title: t('batchExport'),
+        key: "allow_batch",
+        render(row) {
+            return row.allow_batch 
+                ? h(NTag, { type: "success", size: "small" }, { default: () => "YES" })
+                : h(NTag, { type: "default", size: "small" }, { default: () => "NO" })
         }
     },
     {
@@ -299,6 +325,16 @@ const columns = [
                                             }
                                         },
                                         { default: () => t('topUp') }
+                                    ),
+                                },
+                                // [新增] 切换批量权限按钮
+                                {
+                                    label: () => h(NButton,
+                                        {
+                                            text: true,
+                                            onClick: () => toggleBatchAccess(row)
+                                        },
+                                        { default: () => row.allow_batch ? t('denyBatch') : t('allowBatch') }
                                     ),
                                 },
                                 {
