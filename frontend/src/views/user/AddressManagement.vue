@@ -2,9 +2,9 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, useDialog, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NInputNumber } from 'naive-ui'
+import { useMessage, useDialog, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
-import { CloudDownloadAlt, PlusSquare, CheckSquare } from '@vicons/fa'
+import { Copy, Key } from '@vicons/fa'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
@@ -61,14 +61,7 @@ const { t } = useI18n({
             dailyCheckin: 'Daily Check-in',
             checkinSuccess: 'Check-in Success! Got ',
             checkinBalance: 'Check-in Bal: ',
-            mainBalance: 'Main Bal: ',
-            batchCreate: 'Batch New',
-            batchExport: 'Export All',
-            count: 'Count (1-20)',
-            exportSuccess: 'Export successful, downloading...',
-            batchExportSelected: 'Export Selected',
-            selected: 'Selected',
-            processing: 'Processing...'
+            mainBalance: 'Main Bal: '
         },
         zh: {
             createAddress: '新建地址',
@@ -113,14 +106,7 @@ const { t } = useI18n({
             dailyCheckin: '每日签到',
             checkinSuccess: '签到成功！获得 ',
             checkinBalance: '签到余额: ',
-            mainBalance: '充值余额: ',
-            batchCreate: '批量注册',
-            batchExport: '批量导出',
-            count: '数量 (1-20)',
-            exportSuccess: '导出成功，正在下载...',
-            batchExportSelected: '导出选中',
-            selected: '已选',
-            processing: '处理中...'
+            mainBalance: '充值余额: '
         }
     }
 })
@@ -128,11 +114,9 @@ const { t } = useI18n({
 const data = ref([])
 const loading = ref(false)
 const showCreateModal = ref(false)
-const showBatchCreateModal = ref(false)
 const createLoading = ref(false)
 const priceLoading = ref(false)
 const createForm = ref({ name: '', domain: null })
-const batchCreateForm = ref({ domain: null, count: 5 })
 const currentPriceCents = ref(0)
 const showTransferModal = ref(false)
 const transferLoading = ref(false)
@@ -147,11 +131,9 @@ const showPriceModal = ref(false)
 const priceList = ref([])
 const priceLoadingState = ref(false)
 const checkinLoading = ref(false)
-const exportLoading = ref(false)
 
-// 多选状态
+// 多选状态 (虽然暂无批量按钮，但保留勾选功能)
 const checkedRowKeys = ref([])
-const batchActionLoading = ref(false)
 
 const domainOptions = computed(() => {
     return (openSettings.value.domains || []).map(d => ({
@@ -167,6 +149,7 @@ const currentPrefix = computed(() => {
     return openSettings.value.prefix || '';
 })
 
+// [修复] 数据获取逻辑，增强兼容性
 const fetchData = async () => {
     loading.value = true
     try {
@@ -176,6 +159,7 @@ const fetchData = async () => {
         } else if (res && Array.isArray(res.results)) {
             data.value = res.results;
         } else {
+            console.warn("Address data format error", res);
             data.value = [];
         }
         checkedRowKeys.value = []
@@ -251,22 +235,6 @@ watch(() => createForm.value.domain, async (newDomain) => {
     }
 })
 
-watch(() => batchCreateForm.value.domain, async (newDomain) => {
-    if (!newDomain) {
-        currentPriceCents.value = 0
-        return
-    }
-    priceLoading.value = true
-    try {
-        const res = await api.getDomainPrice(newDomain)
-        currentPriceCents.value = res.price_cents || 0
-    } catch (e) {
-        console.error(e)
-    } finally {
-        priceLoading.value = false
-    }
-})
-
 const generateRandom = () => {
     createForm.value.name = Math.random().toString(36).substring(2, 10);
 }
@@ -275,13 +243,6 @@ const openCreateModal = async () => {
     createForm.value.name = '' 
     createForm.value.domain = domainOptions.value.length > 0 ? domainOptions.value[0].value : null
     showCreateModal.value = true
-    await refreshBalance()
-}
-
-const openBatchCreateModal = async () => {
-    batchCreateForm.value.count = 5
-    batchCreateForm.value.domain = domainOptions.value.length > 0 ? domainOptions.value[0].value : null
-    showBatchCreateModal.value = true
     await refreshBalance()
 }
 
@@ -320,91 +281,6 @@ const handleCreate = async () => {
     }
 }
 
-const handleBatchCreate = async () => {
-    if (!batchCreateForm.value.domain) return
-    const count = batchCreateForm.value.count
-    const totalBal = userBalance.value + checkinBalance.value
-    if (currentPriceCents.value * count > totalBal) {
-        message.error(t('insufficientBalance'))
-        return
-    }
-    createLoading.value = true
-    try {
-        const res = await api.batchBuyAddress(batchCreateForm.value.domain, count)
-        if (res.success) {
-            message.success(`${t('createSuccess')} (${res.count})`)
-            showBatchCreateModal.value = false
-            fetchData()
-            refreshBalance()
-        }
-    } catch (e) {
-        message.error(e.message || 'Error')
-    } finally {
-        createLoading.value = false
-    }
-}
-
-// 导出所有
-const handleExportAll = async () => {
-    exportLoading.value = true
-    try {
-        const res = await api.exportAddresses()
-        if (res.data) {
-            downloadFile(res.data, `emails_all_${Date.now()}.txt`)
-            message.success(t('exportSuccess'))
-        }
-    } catch (e) {
-        if (e.message.includes('403')) {
-            message.error("Permission Denied: Contact admin to enable export")
-        } else {
-            message.error(e.message || "Export failed")
-        }
-    } finally {
-        exportLoading.value = false
-    }
-}
-
-// 导出选中
-const handleBatchExport = async () => {
-    if (checkedRowKeys.value.length === 0) return;
-    batchActionLoading.value = true;
-    try {
-        const lines = [];
-        for (const id of checkedRowKeys.value) {
-            try {
-                // 获取 JWT
-                const res = await api.fetch(`/user_api/bind_address_jwt/${id}`);
-                const row = data.value.find(item => item.id === id);
-                if (res.jwt && row) {
-                    lines.push(`${row.name}----${res.jwt}`);
-                }
-            } catch (e) {
-                console.error(`Failed to get jwt for ${id}`, e);
-            }
-        }
-        if (lines.length > 0) {
-            downloadFile(lines.join('\n'), `emails_selected_${Date.now()}.txt`);
-            message.success(t('exportSuccess'));
-        } else {
-            message.warning("No data exported");
-        }
-    } catch (e) {
-        message.error(e.message || "Export failed");
-    } finally {
-        batchActionLoading.value = false;
-    }
-}
-
-const downloadFile = (content, filename) => {
-    const blob = new Blob([content], { type: 'text/plain' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    window.URL.revokeObjectURL(url)
-}
-
 const handleSwitch = async (row) => {
     try {
         const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`);
@@ -429,6 +305,15 @@ const handleCopyCredential = async (row) => {
     } catch (e) { 
         message.error(e.message) 
     } 
+}
+
+const handleCopyEmail = async (row) => {
+    try {
+        await toClipboard(row.name);
+        message.success(t('copied'));
+    } catch (e) {
+        message.error(e.message || "Copy failed");
+    }
 }
 
 const openTransferModal = (row) => { transferForm.value = { addressId: row.id, targetEmail: '' }; showTransferModal.value = true }
@@ -498,7 +383,7 @@ const handleSaveRemark = async () => {
 }
 
 const columns = [
-    { type: 'selection' },
+    { type: 'selection' }, // 保留多选
     { title: 'ID', key: 'id', width: 50 },
     { title: t('address'), key: 'name' },
     { title: t('remark'), key: 'remark', render(row) {
@@ -511,17 +396,23 @@ const columns = [
             return h(NSpace, { size: 'small' }, {
                 default: () => [
                     h(NButton, { size: 'tiny', type: 'primary', secondary: true, onClick: () => handleSwitch(row) }, { default: () => t('switch') }),
+                    h(NTooltip, null, {
+                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyEmail(row) }, { icon: () => h(NIcon, null, { default: () => h(Copy) }) }),
+                        default: () => t('copyEmail')
+                    }),
+                    h(NTooltip, null, {
+                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyCredential(row) }, { icon: () => h(NIcon, null, { default: () => h(Key) }) }),
+                        default: () => t('copyCredential')
+                    }),
                     h(NDropdown, {
                         trigger: 'click',
                         options: [
                             { label: t('editRemark'), key: 'remark' },
-                            { label: t('copyCredential'), key: 'copy' },
                             { label: t('transfer'), key: 'transfer' },
                             { label: t('delete'), key: 'delete', props: { style: 'color: red' } }
                         ],
                         onSelect: (key) => {
                             if (key === 'remark') openRemarkModal(row)
-                            if (key === 'copy') handleCopyCredential(row)
                             if (key === 'transfer') openTransferModal(row)
                             if (key === 'delete') { if(confirm('Confirm Delete?')) handleDelete(row.id) }
                         }
@@ -547,10 +438,11 @@ const priceColumns = [
 ]
 
 onMounted(async () => {
+    const promises = [fetchData(), refreshBalance()];
     if (useGlobalState().userJwt.value) {
-        await api.getUserSettings(message);
+        promises.push(api.getUserSettings(message));
     }
-    await Promise.all([fetchData(), refreshBalance()]);
+    await Promise.all(promises);
 })
 </script>
 
@@ -569,29 +461,9 @@ onMounted(async () => {
         <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
             <n-button type="primary" @click="openCreateModal">{{ t('createAddress') }}</n-button>
             
-            <n-button type="success" secondary @click="openBatchCreateModal">
-                <template #icon><n-icon><PlusSquare /></n-icon></template>
-                {{ t('batchCreate') }}
-            </n-button>
-            
-            <n-button type="warning" secondary @click="handleExportAll" :loading="exportLoading">
-                <template #icon><n-icon><CloudDownloadAlt /></n-icon></template>
-                {{ t('batchExport') }}
-            </n-button>
-
             <n-button type="info" secondary @click="openPriceModal">{{ t('viewPrices') }}</n-button>
             <n-button @click="showBindModal = true">{{ t('bindExisting') }}</n-button>
             <n-button @click="fetchData">刷新</n-button>
-        </div>
-
-        <div v-if="checkedRowKeys.length > 0" class="batch-action-bar">
-            <span style="margin-right: 10px; font-weight: bold;">{{ t('selected') }}: {{ checkedRowKeys.length }}</span>
-            <n-space>
-                <n-button type="info" size="small" :loading="batchActionLoading" @click="handleBatchExport">
-                    <template #icon><n-icon><CheckSquare /></n-icon></template>
-                    {{ t('batchExportSelected') }}
-                </n-button>
-            </n-space>
         </div>
 
         <n-data-table 
@@ -634,31 +506,6 @@ onMounted(async () => {
             </template>
         </n-modal>
 
-        <n-modal v-model:show="showBatchCreateModal" preset="card" :title="t('batchCreate')" style="width: 90%; max-width: 500px">
-            <n-form>
-                <n-form-item :label="t('domain')" required>
-                    <n-select v-model:value="batchCreateForm.domain" :options="domainOptions" />
-                </n-form-item>
-                <n-form-item :label="t('count')" required>
-                    <n-input-number v-model:value="batchCreateForm.count" :min="1" :max="20" />
-                </n-form-item>
-                <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-                    <n-spin :show="priceLoading" size="small">
-                        <div v-if="currentPriceCents > 0">
-                            <p>单价: {{ (currentPriceCents / 100).toFixed(2) }} 元</p>
-                            <p style="font-weight: bold; color: #d03050;">总价: {{ (currentPriceCents * batchCreateForm.count / 100).toFixed(2) }} 元</p>
-                        </div>
-                        <div v-else><n-tag type="success">{{ t('free') }}</n-tag></div>
-                    </n-spin>
-                </div>
-            </n-form>
-            <template #action>
-                <n-button type="success" :loading="createLoading" :disabled="priceLoading || (currentPriceCents * batchCreateForm.count > userBalance + checkinBalance)" @click="handleBatchCreate">
-                    {{ t('confirm') }}
-                </n-button>
-            </template>
-        </n-modal>
-
         <n-modal v-model:show="showPriceModal" preset="card" :title="t('priceList')" style="width: 90%; max-width: 600px">
             <n-data-table :columns="priceColumns" :data="priceList" :loading="priceLoadingState" :max-height="400" />
         </n-modal>
@@ -697,16 +544,3 @@ onMounted(async () => {
         </n-modal>
     </div>
 </template>
-
-<style scoped>
-.batch-action-bar {
-    background-color: rgba(230, 247, 255, 0.6);
-    border: 1px solid rgba(145, 213, 255, 0.6);
-    padding: 8px 16px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-</style>
