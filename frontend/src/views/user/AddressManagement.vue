@@ -2,9 +2,9 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, useDialog, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip, NInputNumber, NCard, NStatistic, NGrid, NGi } from 'naive-ui'
+import { useMessage, useDialog, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NInputNumber } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
-import { Copy, Key, CloudDownloadAlt, Plus, CheckSquare, Wallet, SyncAlt, Tag, Link } from '@vicons/fa'
+import { CloudDownloadAlt, PlusSquare, CheckSquare } from '@vicons/fa'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
@@ -32,7 +32,7 @@ const { t } = useI18n({
             price: 'Price',
             free: 'Free',
             currentPrice: 'Current Price: ',
-            balance: 'Balance',
+            balance: 'Your Balance: ',
             insufficientBalance: 'Insufficient balance',
             confirmPurchase: 'Confirm Purchase',
             createSuccess: 'Created Successfully',
@@ -52,28 +52,26 @@ const { t } = useI18n({
             more: 'More',
             random: 'Random', 
             bindFailed: 'Bind failed',
-            viewPrices: 'Price List',
+            viewPrices: 'View Prices',
             priceList: 'Domain Price List',
             currency: 'CNY',
             remark: 'Remark',
             editRemark: 'Edit Remark',
             remarkPlaceholder: 'Enter remark',
-            dailyCheckin: 'Check-in',
+            dailyCheckin: 'Daily Check-in',
             checkinSuccess: 'Check-in Success! Got ',
-            checkinBalance: 'Check-in: ',
-            mainBalance: 'Wallet: ',
-            batchCreate: 'Batch Add',
+            checkinBalance: 'Check-in Bal: ',
+            mainBalance: 'Main Bal: ',
+            batchCreate: 'Batch New',
             batchExport: 'Export All',
             count: 'Count (1-20)',
             exportSuccess: 'Export successful, downloading...',
             batchExportSelected: 'Export Selected',
             selected: 'Selected',
-            processing: 'Processing...',
-            totalAssets: 'Total Assets',
-            refresh: 'Refresh'
+            processing: 'Processing...'
         },
         zh: {
-            createAddress: '新建邮箱',
+            createAddress: '新建地址',
             bindExisting: '绑定已有',
             address: '邮箱地址',
             actions: '操作',
@@ -86,7 +84,7 @@ const { t } = useI18n({
             price: '价格',
             free: '免费',
             currentPrice: '当前价格：',
-            balance: '账户余额',
+            balance: '您的余额：',
             insufficientBalance: '余额不足',
             confirmPurchase: '确认购买',
             createSuccess: '创建成功',
@@ -106,7 +104,7 @@ const { t } = useI18n({
             more: '更多',
             random: '随机',
             bindFailed: '绑定失败',
-            viewPrices: '价格表',
+            viewPrices: '查看价格',
             priceList: '域名价格表',
             currency: '元',
             remark: '备注',
@@ -117,14 +115,12 @@ const { t } = useI18n({
             checkinBalance: '签到余额: ',
             mainBalance: '充值余额: ',
             batchCreate: '批量注册',
-            batchExport: '导出全部',
+            batchExport: '批量导出',
             count: '数量 (1-20)',
             exportSuccess: '导出成功，正在下载...',
             batchExportSelected: '导出选中',
             selected: '已选',
-            processing: '处理中...',
-            totalAssets: '资产总览',
-            refresh: '刷新列表'
+            processing: '处理中...'
         }
     }
 })
@@ -376,6 +372,7 @@ const handleBatchExport = async () => {
         const lines = [];
         for (const id of checkedRowKeys.value) {
             try {
+                // 获取 JWT
                 const res = await api.fetch(`/user_api/bind_address_jwt/${id}`);
                 const row = data.value.find(item => item.id === id);
                 if (res.jwt && row) {
@@ -432,15 +429,6 @@ const handleCopyCredential = async (row) => {
     } catch (e) { 
         message.error(e.message) 
     } 
-}
-
-const handleCopyEmail = async (row) => {
-    try {
-        await toClipboard(row.name);
-        message.success(t('copied'));
-    } catch (e) {
-        message.error(e.message || "Copy failed");
-    }
 }
 
 const openTransferModal = (row) => { transferForm.value = { addressId: row.id, targetEmail: '' }; showTransferModal.value = true }
@@ -567,92 +555,53 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="address-management">
-        <div class="dashboard-card glass-panel">
-            <n-grid :x-gap="12" :y-gap="8" :cols="2">
-                <n-gi>
-                    <n-statistic :label="t('balance')">
-                        <template #prefix>
-                            <n-icon color="#18a058"><Wallet /></n-icon>
-                        </template>
-                        <span class="balance-text">{{ (userBalance/100).toFixed(2) }}</span>
-                    </n-statistic>
-                </n-gi>
-                <n-gi>
-                    <div class="checkin-area">
-                        <n-statistic :label="t('dailyCheckin')">
-                            <template #suffix>
-                                <span class="checkin-text">+{{ (checkinBalance/100).toFixed(2) }}</span>
-                            </template>
-                        </n-statistic>
-                        <n-button 
-                            type="warning" 
-                            size="small" 
-                            class="checkin-btn"
-                            :loading="checkinLoading" 
-                            @click="handleCheckin"
-                        >
-                            {{ t('dailyCheckin') }}
-                        </n-button>
-                    </div>
-                </n-gi>
-            </n-grid>
+    <div>
+        <div style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
+            <n-button type="warning" size="small" :loading="checkinLoading" @click="handleCheckin">
+                📅 {{ t('dailyCheckin') }}
+            </n-button>
+            <div style="font-size: 0.9em;">
+                <span style="margin-right: 15px;">{{ t('mainBalance') }} <b>{{ (userBalance/100).toFixed(2) }}</b></span>
+                <span style="color: #d03050;">{{ t('checkinBalance') }} <b>{{ (checkinBalance/100).toFixed(2) }}</b></span>
+            </div>
         </div>
 
-        <div class="action-toolbar">
-            <div class="main-actions">
-                <n-button type="primary" size="medium" @click="openCreateModal">
-                    <template #icon><n-icon><Plus /></n-icon></template>
-                    {{ t('createAddress') }}
-                </n-button>
-                <n-button secondary type="success" size="medium" @click="openBatchCreateModal">
-                    <template #icon><n-icon><PlusSquare /></n-icon></template>
-                    {{ t('batchCreate') }}
-                </n-button>
-                <n-button secondary type="info" size="medium" @click="showBindModal = true">
-                    <template #icon><n-icon><Link /></n-icon></template>
-                    {{ t('bindExisting') }}
-                </n-button>
-            </div>
+        <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <n-button type="primary" @click="openCreateModal">{{ t('createAddress') }}</n-button>
             
-            <div class="sub-actions">
-                <n-button quaternary circle size="small" @click="openPriceModal">
-                    <template #icon><n-icon><Tag /></n-icon></template>
-                </n-button>
-                <n-button quaternary circle size="small" @click="handleExportAll" :loading="exportLoading">
-                    <template #icon><n-icon><CloudDownloadAlt /></n-icon></template>
-                </n-button>
-                <n-button quaternary circle size="small" @click="fetchData">
-                    <template #icon><n-icon><SyncAlt /></n-icon></template>
-                </n-button>
-            </div>
+            <n-button type="success" secondary @click="openBatchCreateModal">
+                <template #icon><n-icon><PlusSquare /></n-icon></template>
+                {{ t('batchCreate') }}
+            </n-button>
+            
+            <n-button type="warning" secondary @click="handleExportAll" :loading="exportLoading">
+                <template #icon><n-icon><CloudDownloadAlt /></n-icon></template>
+                {{ t('batchExport') }}
+            </n-button>
+
+            <n-button type="info" secondary @click="openPriceModal">{{ t('viewPrices') }}</n-button>
+            <n-button @click="showBindModal = true">{{ t('bindExisting') }}</n-button>
+            <n-button @click="fetchData">刷新</n-button>
         </div>
 
-        <transition name="slide-up">
-            <div v-if="checkedRowKeys.length > 0" class="floating-batch-bar">
-                <div class="batch-info">
-                    <n-icon size="20" color="#2080f0"><CheckSquare /></n-icon>
-                    <span>{{ t('selected') }} <b>{{ checkedRowKeys.length }}</b></span>
-                </div>
-                <div class="batch-actions">
-                    <n-button type="info" size="small" :loading="batchActionLoading" @click="handleBatchExport">
-                        {{ t('batchExportSelected') }}
-                    </n-button>
-                </div>
-            </div>
-        </transition>
-
-        <div class="table-container glass-panel">
-            <n-data-table 
-                v-model:checked-row-keys="checkedRowKeys"
-                :row-key="row => row.id"
-                :columns="columns" 
-                :data="data" 
-                :loading="loading" 
-                :bordered="false"
-                :pagination="{ pageSize: 10 }"
-            />
+        <div v-if="checkedRowKeys.length > 0" class="batch-action-bar">
+            <span style="margin-right: 10px; font-weight: bold;">{{ t('selected') }}: {{ checkedRowKeys.length }}</span>
+            <n-space>
+                <n-button type="info" size="small" :loading="batchActionLoading" @click="handleBatchExport">
+                    <template #icon><n-icon><CheckSquare /></n-icon></template>
+                    {{ t('batchExportSelected') }}
+                </n-button>
+            </n-space>
         </div>
+
+        <n-data-table 
+            v-model:checked-row-keys="checkedRowKeys"
+            :row-key="row => row.id"
+            :columns="columns" 
+            :data="data" 
+            :loading="loading" 
+            :bordered="false" 
+        />
 
         <n-modal v-model:show="showCreateModal" preset="card" :title="t('createAddress')" style="width: 90%; max-width: 500px">
             <n-form>
@@ -666,17 +615,20 @@ onMounted(async () => {
                 <n-form-item :label="t('domain')" required>
                     <n-select v-model:value="createForm.domain" :options="domainOptions" />
                 </n-form-item>
-                <div class="price-info-box">
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
                     <n-spin :show="priceLoading" size="small">
                         <div v-if="currentPriceCents > 0">
-                            <p>{{ t('currentPrice') }} <span class="price-tag">{{ (currentPriceCents / 100).toFixed(2) }} {{ t('currency') }}</span></p>
+                            <p>{{ t('currentPrice') }} <span style="color: #d03050; font-weight: bold;">{{ (currentPriceCents / 100).toFixed(2) }} 元</span></p>
+                            <p style="font-size: 0.9em; color: #666;">
+                                {{ t('balance') }} {{ ((userBalance + checkinBalance) / 100).toFixed(2) }} 元
+                            </p>
                         </div>
-                        <div v-else><n-tag type="success" size="small">{{ t('free') }}</n-tag></div>
+                        <div v-else><n-tag type="success">{{ t('free') }}</n-tag></div>
                     </n-spin>
                 </div>
             </n-form>
             <template #action>
-                <n-button type="primary" block :loading="createLoading" :disabled="priceLoading || (currentPriceCents > userBalance + checkinBalance)" @click="handleCreate">
+                <n-button type="primary" :loading="createLoading" :disabled="priceLoading || (currentPriceCents > userBalance + checkinBalance)" @click="handleCreate">
                     {{ currentPriceCents > 0 ? t('confirmPurchase') : t('confirm') }}
                 </n-button>
             </template>
@@ -688,26 +640,20 @@ onMounted(async () => {
                     <n-select v-model:value="batchCreateForm.domain" :options="domainOptions" />
                 </n-form-item>
                 <n-form-item :label="t('count')" required>
-                    <n-input-number v-model:value="batchCreateForm.count" :min="1" :max="20" style="width: 100%" />
+                    <n-input-number v-model:value="batchCreateForm.count" :min="1" :max="20" />
                 </n-form-item>
-                <div class="price-info-box">
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
                     <n-spin :show="priceLoading" size="small">
                         <div v-if="currentPriceCents > 0">
-                            <div class="price-row">
-                                <span>单价</span>
-                                <span>{{ (currentPriceCents / 100).toFixed(2) }}</span>
-                            </div>
-                            <div class="price-row total">
-                                <span>总价</span>
-                                <span class="price-tag">{{ (currentPriceCents * batchCreateForm.count / 100).toFixed(2) }}</span>
-                            </div>
+                            <p>单价: {{ (currentPriceCents / 100).toFixed(2) }} 元</p>
+                            <p style="font-weight: bold; color: #d03050;">总价: {{ (currentPriceCents * batchCreateForm.count / 100).toFixed(2) }} 元</p>
                         </div>
                         <div v-else><n-tag type="success">{{ t('free') }}</n-tag></div>
                     </n-spin>
                 </div>
             </n-form>
             <template #action>
-                <n-button type="success" block :loading="createLoading" :disabled="priceLoading || (currentPriceCents * batchCreateForm.count > userBalance + checkinBalance)" @click="handleBatchCreate">
+                <n-button type="success" :loading="createLoading" :disabled="priceLoading || (currentPriceCents * batchCreateForm.count > userBalance + checkinBalance)" @click="handleBatchCreate">
                     {{ t('confirm') }}
                 </n-button>
             </template>
@@ -724,7 +670,7 @@ onMounted(async () => {
                 </n-form-item>
             </n-form>
             <template #action>
-                <n-button type="warning" block :loading="transferLoading" @click="handleTransfer">{{ t('confirm') }}</n-button>
+                <n-button type="warning" :loading="transferLoading" @click="handleTransfer">{{ t('confirm') }}</n-button>
             </template>
         </n-modal>
 
@@ -735,7 +681,7 @@ onMounted(async () => {
                 </n-form-item>
             </n-form>
             <template #action>
-                <n-button type="primary" block :loading="bindLoading" @click="handleBind">{{ t('confirm') }}</n-button>
+                <n-button type="primary" :loading="bindLoading" @click="handleBind">{{ t('confirm') }}</n-button>
             </template>
         </n-modal>
 
@@ -746,145 +692,21 @@ onMounted(async () => {
                 </n-form-item>
             </n-form>
             <template #action>
-                <n-button type="primary" block :loading="remarkLoading" @click="handleSaveRemark">{{ t('confirm') }}</n-button>
+                <n-button type="primary" :loading="remarkLoading" @click="handleSaveRemark">{{ t('confirm') }}</n-button>
             </template>
         </n-modal>
     </div>
 </template>
 
 <style scoped>
-.address-management {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-/* 通用毛玻璃效果 - 复用全局或自定义 */
-.glass-panel {
-    background: rgba(255, 255, 255, 0.65);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-/* Dashboard Card */
-.dashboard-card {
-    padding: 20px;
-}
-
-.balance-text {
-    font-size: 24px;
-    font-weight: 700;
-    color: #333;
-}
-
-.checkin-area {
+.batch-action-bar {
+    background-color: rgba(230, 247, 255, 0.6);
+    border: 1px solid rgba(145, 213, 255, 0.6);
+    padding: 8px 16px;
+    border-radius: 4px;
+    margin-bottom: 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-}
-
-.checkin-text {
-    font-weight: 600;
-    color: #f0a020;
-}
-
-.checkin-btn {
-    border-radius: 8px;
-}
-
-/* Action Toolbar */
-.action-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 0 4px;
-}
-
-.main-actions {
-    display: flex;
-    gap: 12px;
-}
-
-.sub-actions {
-    display: flex;
-    gap: 8px;
-}
-
-/* Floating Batch Bar */
-.floating-batch-bar {
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-    
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 12px 24px;
-    
-    background: rgba(30, 30, 35, 0.85);
-    backdrop-filter: blur(12px);
-    border-radius: 50px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-    color: #fff;
-    min-width: 200px;
-    justify-content: space-between;
-}
-
-.batch-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.table-container {
-    overflow: hidden; /* 保证圆角 */
-}
-
-/* Modals */
-.price-info-box {
-    background: rgba(0,0,0,0.03);
-    padding: 15px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-}
-
-.price-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 5px;
-    color: #666;
-}
-
-.price-row.total {
-    margin-top: 10px;
-    padding-top: 10px;
-    border-top: 1px dashed rgba(0,0,0,0.1);
-    font-weight: bold;
-    color: #333;
-}
-
-.price-tag {
-    color: #d03050;
-    font-weight: bold;
-}
-
-/* Animation */
-.slide-up-enter-active,
-.slide-up-leave-active {
-    transition: all 0.3s ease;
-}
-
-.slide-up-enter-from,
-.slide-up-leave-to {
-    opacity: 0;
-    transform: translate(-50%, 20px);
 }
 </style>
