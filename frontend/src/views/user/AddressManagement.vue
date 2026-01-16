@@ -2,16 +2,14 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, useDialog, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip } from 'naive-ui'
+import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
-import { Copy, Key } from '@vicons/fa'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
 const router = useRouter()
 const { openSettings, jwt, userBalance, userSettings, auth, userJwt } = useGlobalState()
 const message = useMessage()
-const dialog = useDialog()
 const { toClipboard } = useClipboard()
 
 const checkinBalance = ref(0)
@@ -61,8 +59,7 @@ const { t } = useI18n({
             dailyCheckin: 'Daily Check-in',
             checkinSuccess: 'Check-in Success! Got ',
             checkinBalance: 'Check-in Bal: ',
-            mainBalance: 'Main Bal: ',
-            selected: 'Selected'
+            mainBalance: 'Main Bal: '
         },
         zh: {
             createAddress: '新建地址',
@@ -107,8 +104,7 @@ const { t } = useI18n({
             dailyCheckin: '每日签到',
             checkinSuccess: '签到成功！获得 ',
             checkinBalance: '签到余额: ',
-            mainBalance: '充值余额: ',
-            selected: '已选'
+            mainBalance: '充值余额: '
         }
     }
 })
@@ -134,9 +130,6 @@ const priceList = ref([])
 const priceLoadingState = ref(false)
 const checkinLoading = ref(false)
 
-// 多选状态
-const checkedRowKeys = ref([])
-
 const domainOptions = computed(() => {
     return (openSettings.value.domains || []).map(d => ({
         label: d.label || d.value,
@@ -151,24 +144,23 @@ const currentPrefix = computed(() => {
     return openSettings.value.prefix || '';
 })
 
-// [核心修复] 增强数据加载的健壮性
+// [修复] 数据获取逻辑，兼容多种返回格式，防止空白
 const fetchData = async () => {
     loading.value = true
     try {
         const res = await api.fetch('/user_api/bind_address')
-        console.log("Fetch Address Result:", res); // 调试日志
+        console.log("API Response:", res); // 方便调试
 
-        if (Array.isArray(res)) {
-            data.value = res;
-        } else if (res && Array.isArray(res.results)) {
+        if (res && Array.isArray(res.results)) {
             data.value = res.results;
+        } else if (Array.isArray(res)) {
+            data.value = res;
         } else {
+            console.warn("Invalid data format", res);
             data.value = [];
         }
-        // 清空选中状态
-        checkedRowKeys.value = []
     } catch (e) {
-        console.error("Fetch Address Error:", e);
+        console.error(e);
         message.error(e.message || "Fetch failed")
     } finally {
         loading.value = false
@@ -387,8 +379,8 @@ const handleSaveRemark = async () => {
     }
 }
 
+// [UI调整] 移除了多选框列、移除了行内复制按钮，将它们移入 Dropdown
 const columns = [
-    { type: 'selection' }, // [保留] 仅保留多选框
     { title: 'ID', key: 'id', width: 50 },
     { title: t('address'), key: 'name' },
     { title: t('remark'), key: 'remark', render(row) {
@@ -401,22 +393,18 @@ const columns = [
             return h(NSpace, { size: 'small' }, {
                 default: () => [
                     h(NButton, { size: 'tiny', type: 'primary', secondary: true, onClick: () => handleSwitch(row) }, { default: () => t('switch') }),
-                    h(NTooltip, null, {
-                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyEmail(row) }, { icon: () => h(NIcon, null, { default: () => h(Copy) }) }),
-                        default: () => t('copyEmail')
-                    }),
-                    h(NTooltip, null, {
-                        trigger: () => h(NButton, { size: 'tiny', secondary: true, onClick: () => handleCopyCredential(row) }, { icon: () => h(NIcon, null, { default: () => h(Key) }) }),
-                        default: () => t('copyCredential')
-                    }),
                     h(NDropdown, {
                         trigger: 'click',
                         options: [
+                            { label: t('copyEmail'), key: 'copyEmail' },     // [新增]
+                            { label: t('copyCredential'), key: 'copyJwt' },  // [回溯]
                             { label: t('editRemark'), key: 'remark' },
                             { label: t('transfer'), key: 'transfer' },
                             { label: t('delete'), key: 'delete', props: { style: 'color: red' } }
                         ],
                         onSelect: (key) => {
+                            if (key === 'copyEmail') handleCopyEmail(row)
+                            if (key === 'copyJwt') handleCopyCredential(row)
                             if (key === 'remark') openRemarkModal(row)
                             if (key === 'transfer') openTransferModal(row)
                             if (key === 'delete') { if(confirm('Confirm Delete?')) handleDelete(row.id) }
@@ -469,12 +457,7 @@ onMounted(async () => {
             <n-button @click="fetchData">刷新</n-button>
         </div>
 
-        <div v-if="checkedRowKeys.length > 0" class="batch-action-bar">
-            <span style="margin-right: 10px; font-weight: bold;">{{ t('selected') }}: {{ checkedRowKeys.length }}</span>
-        </div>
-
         <n-data-table 
-            v-model:checked-row-keys="checkedRowKeys"
             :row-key="row => row.id"
             :columns="columns" 
             :data="data" 
@@ -551,16 +534,3 @@ onMounted(async () => {
         </n-modal>
     </div>
 </template>
-
-<style scoped>
-.batch-action-bar {
-    background-color: rgba(230, 247, 255, 0.6);
-    border: 1px solid rgba(145, 213, 255, 0.6);
-    padding: 8px 16px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-</style>
