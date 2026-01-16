@@ -2,9 +2,9 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, useDialog, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip, NInputNumber } from 'naive-ui'
+import { useMessage, useDialog, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NTooltip } from 'naive-ui'
 import useClipboard from 'vue-clipboard3'
-import { Copy, Key, CheckSquare, Trash } from '@vicons/fa'
+import { Copy, Key } from '@vicons/fa'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
 
@@ -62,9 +62,7 @@ const { t } = useI18n({
             checkinSuccess: 'Check-in Success! Got ',
             checkinBalance: 'Check-in Bal: ',
             mainBalance: 'Main Bal: ',
-            batchExportSelected: 'Export Selected',
-            selected: 'Selected',
-            processing: 'Processing...'
+            selected: 'Selected'
         },
         zh: {
             createAddress: '新建地址',
@@ -110,9 +108,7 @@ const { t } = useI18n({
             checkinSuccess: '签到成功！获得 ',
             checkinBalance: '签到余额: ',
             mainBalance: '充值余额: ',
-            batchExportSelected: '导出选中',
-            selected: '已选',
-            processing: '处理中...'
+            selected: '已选'
         }
     }
 })
@@ -140,7 +136,6 @@ const checkinLoading = ref(false)
 
 // 多选状态
 const checkedRowKeys = ref([])
-const batchActionLoading = ref(false)
 
 const domainOptions = computed(() => {
     return (openSettings.value.domains || []).map(d => ({
@@ -156,25 +151,24 @@ const currentPrefix = computed(() => {
     return openSettings.value.prefix || '';
 })
 
-// [核心修复] 数据加载逻辑，增强健壮性
+// [核心修复] 增强数据加载的健壮性
 const fetchData = async () => {
     loading.value = true
     try {
         const res = await api.fetch('/user_api/bind_address')
-        // 调试日志
-        console.log('Address Data:', res);
-        
+        console.log("Fetch Address Result:", res); // 调试日志
+
         if (Array.isArray(res)) {
             data.value = res;
         } else if (res && Array.isArray(res.results)) {
             data.value = res.results;
         } else {
-            console.warn("Unknown data format, defaulting to empty array", res);
             data.value = [];
         }
+        // 清空选中状态
         checkedRowKeys.value = []
     } catch (e) {
-        console.error(e);
+        console.error("Fetch Address Error:", e);
         message.error(e.message || "Fetch failed")
     } finally {
         loading.value = false
@@ -292,43 +286,6 @@ const handleCreate = async () => {
     }
 }
 
-// 导出选中 (纯前端循环实现)
-const handleBatchExport = async () => {
-    if (checkedRowKeys.value.length === 0) return;
-    batchActionLoading.value = true;
-    try {
-        const lines = [];
-        for (const id of checkedRowKeys.value) {
-            try {
-                // 复用单条获取 JWT 的接口
-                const res = await api.fetch(`/user_api/bind_address_jwt/${id}`);
-                const row = data.value.find(item => item.id === id);
-                if (res.jwt && row) {
-                    lines.push(`${row.name}----${res.jwt}`);
-                }
-            } catch (e) {
-                console.error(`Failed to get jwt for ${id}`, e);
-            }
-        }
-        if (lines.length > 0) {
-            const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `emails_selected_${Date.now()}.txt`
-            a.click()
-            window.URL.revokeObjectURL(url)
-            message.success(t('exportSuccess'));
-        } else {
-            message.warning("No data exported");
-        }
-    } catch (e) {
-        message.error(e.message || "Export failed");
-    } finally {
-        batchActionLoading.value = false;
-    }
-}
-
 const handleSwitch = async (row) => {
     try {
         const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`);
@@ -431,7 +388,7 @@ const handleSaveRemark = async () => {
 }
 
 const columns = [
-    { type: 'selection' }, // [保留] 多选框
+    { type: 'selection' }, // [保留] 仅保留多选框
     { title: 'ID', key: 'id', width: 50 },
     { title: t('address'), key: 'name' },
     { title: t('remark'), key: 'remark', render(row) {
@@ -514,12 +471,6 @@ onMounted(async () => {
 
         <div v-if="checkedRowKeys.length > 0" class="batch-action-bar">
             <span style="margin-right: 10px; font-weight: bold;">{{ t('selected') }}: {{ checkedRowKeys.length }}</span>
-            <n-space>
-                <n-button type="info" size="small" :loading="batchActionLoading" @click="handleBatchExport">
-                    <template #icon><n-icon><CheckSquare /></n-icon></template>
-                    {{ t('batchExportSelected') }}
-                </n-button>
-            </n-space>
         </div>
 
         <n-data-table 
