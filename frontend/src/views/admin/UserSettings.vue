@@ -20,8 +20,7 @@ const { t } = useI18n({
             mailAllowList: 'Email Allowlist (One per line)',
             save: 'Save',
             saveSuccess: 'Saved successfully',
-            maxAddressCount: 'Max Address Count',
-            batchDomains: 'Allowed Domains for Batch Registration (Empty = All)',
+            maxAddressCount: 'Max Address Count'
         },
         zh: {
             title: '用户设置',
@@ -32,8 +31,7 @@ const { t } = useI18n({
             mailAllowList: '邮箱白名单 (每行一个)',
             save: '保存',
             saveSuccess: '保存成功',
-            maxAddressCount: '最大地址数量',
-            batchDomains: '允许批量注册的域名 (留空则允许所有)',
+            maxAddressCount: '最大地址数量'
         }
     }
 });
@@ -44,8 +42,7 @@ const settings = ref({
     verifyMailSender: "",
     enableMailAllowList: false,
     mailAllowList: [],
-    maxAddressCount: 5,
-    batchDomains: [] // [新增]
+    maxAddressCount: 5
 })
 
 const mailAllowListStr = computed({
@@ -53,14 +50,6 @@ const mailAllowListStr = computed({
     set: (val) => {
         settings.value.mailAllowList = val.split('\n').map(v => v.trim()).filter(v => v)
     }
-})
-
-// [新增] 获取所有可用域名选项
-const domainOptions = computed(() => {
-    return (openSettings.value.domains || []).map(d => ({
-        label: d.label || d.value,
-        value: d.value
-    }))
 })
 
 const fetchData = async () => {
@@ -106,16 +95,6 @@ onMounted(() => {
                     <n-input v-model:value="settings.verifyMailSender" placeholder="verify@example.com" />
                 </n-form-item>
                 
-                <n-form-item :label="t('batchDomains')">
-                    <n-select 
-                        v-model:value="settings.batchDomains" 
-                        multiple 
-                        filterable
-                        :options="domainOptions" 
-                        placeholder="Select domains"
-                    />
-                </n-form-item>
-
                 <n-form-item :label="t('enableMailAllowList')">
                     <n-switch v-model:value="settings.enableMailAllowList" />
                 </n-form-item>
