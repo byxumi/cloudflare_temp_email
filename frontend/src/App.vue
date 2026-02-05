@@ -1,146 +1,121 @@
 <script setup>
-import { onMounted, ref } from 'vue'
 import { NConfigProvider, NMessageProvider, NDialogProvider, NGlobalStyle, zhCN, dateZhCN, enUS, dateEnUS } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
+import { computed } from 'vue'
 import { useGlobalState } from './store'
-import { api } from './api'
 import Header from './views/Header.vue'
 import Footer from './views/Footer.vue'
 import RouterLoadingBar from './components/RouterLoadingBar.vue'
 
 const { locale } = useI18n()
-const { loading, openSettings } = useGlobalState()
+const { isDark } = useGlobalState()
 
+const nLocale = computed(() => (locale.value === 'zh' ? zhCN : enUS))
+const nDateLocale = computed(() => (locale.value === 'zh' ? dateZhCN : dateEnUS))
+
+// --- 蓝粉色主题配置 ---
 const themeOverrides = {
   common: {
-    primaryColor: '#60A5FA', // 蓝色主色调
-    primaryColorHover: '#93C5FD',
-    primaryColorPressed: '#3B82F6',
+    // 主色调：清新的蓝色
+    primaryColor: '#6CB2EB', 
+    primaryColorHover: '#4FA3E8',
+    primaryColorPressed: '#3490DC',
+    primaryColorSuppl: '#6CB2EB',
+    
+    // 辅助色/强调色：柔和的粉色 (用于 Info/Warning 等)
+    infoColor: '#F699BE',
+    infoColorHover: '#F48fb1',
+    infoColorPressed: '#F06292',
+    
     borderRadius: '12px', // 更圆润的边角
+    fontFamily: '"Nunito", "PingFang SC", "Microsoft YaHei", sans-serif'
   },
   Button: {
-    textColor: '#60A5FA',
-    border: '1px solid #60A5FA',
+    // 按钮渐变需要在组件层面做，这里定义基础色
+    borderRadiusMedium: '10px',
+    fontWeight: '600'
   },
   Card: {
     borderRadius: '16px',
-    color: 'rgba(255, 255, 255, 0.85)', // 卡片半透明
+    boxShadow: '0 8px 24px rgba(149, 157, 165, 0.1)' // 柔和阴影
   }
 }
-
-const fetchOpenSettings = async () => {
-  try {
-    const res = await api.fetch('/open_api/settings');
-    openSettings.value = res;
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-onMounted(() => {
-  fetchOpenSettings();
-})
 </script>
 
 <template>
-  <n-config-provider
-    :locale="locale === 'zh' ? zhCN : enUS"
-    :date-locale="locale === 'zh' ? dateZhCN : dateEnUS"
+  <n-config-provider 
+    :locale="nLocale" 
+    :date-locale="nDateLocale" 
     :theme-overrides="themeOverrides"
+    :theme="isDark ? null : null" 
   >
     <n-global-style />
-    <n-message-provider>
-      <n-dialog-provider>
+    <n-dialog-provider>
+      <n-message-provider>
         <RouterLoadingBar />
         <div class="app-layout">
-          <div class="background-gradient"></div>
-          
-          <div class="main-container">
-            <Header />
-            <main class="content-wrapper">
-              <router-view v-slot="{ Component }">
-                <transition name="fade-slide" mode="out-in">
-                  <component :is="Component" />
-                </transition>
-              </router-view>
-            </main>
-            <Footer />
+          <Header />
+          <div class="main-content">
+            <router-view v-slot="{ Component }">
+              <keep-alive>
+                <component :is="Component" />
+              </keep-alive>
+            </router-view>
           </div>
+          <Footer />
         </div>
-      </n-dialog-provider>
-    </n-message-provider>
+      </n-message-provider>
+    </n-dialog-provider>
   </n-config-provider>
 </template>
 
 <style>
-/* 全局重置 */
+/* 全局样式重置与背景 */
 body {
   margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #333;
-}
-
-/* 蓝粉色渐变背景 */
-.background-gradient {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
-  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); /* 蓝粉色 */
-  background-size: 400% 400%;
-  animation: gradientBG 15s ease infinite;
-}
-
-@keyframes gradientBG {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  font-family: 'Nunito', sans-serif;
+  /* 蓝粉色渐变背景 */
+  background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+  background-attachment: fixed;
+  color: #2c3e50;
+  min-height: 100vh;
 }
 
 .app-layout {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 
-.main-container {
+.main-content {
+  flex: 1;
+  padding: 20px;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 16px;
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+  box-sizing: border-box;
 }
 
-.content-wrapper {
-  flex: 1;
-  padding: 20px 0;
-  width: 100%;
-}
-
-/* 路由切换动画 */
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-/* 移动端适配 */
+/* 针对移动端的优化 */
 @media (max-width: 600px) {
-  .main-container {
-    padding: 0 10px;
+  .main-content {
+    padding: 10px;
   }
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.3);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(108, 178, 235, 0.5);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(108, 178, 235, 0.8);
 }
 </style>
