@@ -1,176 +1,325 @@
 <script setup>
-import { h, ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { NButton, NMenu, NIcon, NDropdown, NAvatar, NSpace } from 'naive-ui'
+import { ref, h, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useHead } from '@unhead/vue'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
+import { useIsMobile } from '../utils/composables'
+import {
+    DarkModeFilled, LightModeFilled, MenuFilled,
+    AdminPanelSettingsFilled
+} from '@vicons/material'
+import { GithubAlt, Language, User, Home } from '@vicons/fa'
+
 import { useGlobalState } from '../store'
-import { 
-  Home, 
-  User, 
-  SignOutAlt, 
-  Language, 
-  Github, 
-  TelegramPlane,
-  Bars // 移动端菜单图标
-} from '@vicons/fa'
+import { api } from '../api'
+import { getRouterPathWithLang } from '../utils'
 
-const router = useRouter()
+const message = useMessage()
+const notification = useNotification()
+
+const {
+    toggleDark, isDark, isTelegram, showAdminPage,
+    showAuth, auth, loading, openSettings, userSettings
+} = useGlobalState()
 const route = useRoute()
-const { t, locale } = useI18n()
-const { jwt, logout } = useGlobalState()
+const router = useRouter()
+const isMobile = useIsMobile()
 
-const activeKey = computed(() => route.path)
+const showMobileMenu = ref(false)
+const menuValue = computed(() => {
+    if (route.path.includes("user")) return "user";
+    if (route.path.includes("admin")) return "admin";
+    return "home";
+});
 
-// 导航菜单选项
+const authFunc = async () => {
+    try {
+        location.reload()
+    } catch (error) {
+        message.error(error.message || "error");
+    }
+}
+
+const changeLocale = async (lang) => {
+    if (lang == 'zh') {
+        await router.push(route.fullPath.replace('/en', ''));
+    } else {
+        await router.push(`/${lang}${route.fullPath}`);
+    }
+}
+
+const { locale, t } = useI18n({
+    messages: {
+        en: {
+            title: 'Cloudflare Temp Email',
+            dark: 'Dark',
+            light: 'Light',
+            accessHeader: 'Access Password',
+            accessTip: 'Please enter the correct access password',
+            home: 'Home',
+            menu: 'Menu',
+            user: 'User',
+            ok: 'OK',
+        },
+        zh: {
+            title: 'Cloudflare 临时邮件',
+            dark: '暗色',
+            light: '亮色',
+            accessHeader: '访问密码',
+            accessTip: '请输入站点访问密码',
+            home: '主页',
+            menu: '菜单',
+            user: '用户',
+            ok: '确定',
+        }
+    }
+});
+
+const version = import.meta.env.PACKAGE_VERSION ? `v${import.meta.env.PACKAGE_VERSION}` : "";
+
 const menuOptions = computed(() => [
-  {
-    label: () => h('span', {}, t('home')),
-    key: '/',
-    icon: () => h(NIcon, null, { default: () => h(Home) })
-  },
-  {
-    label: () => h('span', {}, jwt.value ? t('user') : t('login')),
-    key: '/user',
-    icon: () => h(NIcon, null, { default: () => h(User) })
-  }
-])
+    {
+        label: () => h(NButton,
+            {
+                text: true,
+                size: "small",
+                type: menuValue.value == "home" ? "primary" : "default",
+                style: "width: 100%",
+                onClick: async () => {
+                    await router.push(getRouterPathWithLang('/', locale.value));
+                    showMobileMenu.value = false;
+                }
+            },
+            {
+                default: () => t('home'),
+                icon: () => h(NIcon, { component: Home })
+            }),
+        key: "home"
+    },
+    {
+        label: () => h(
+            NButton,
+            {
+                text: true,
+                size: "small",
+                type: menuValue.value == "user" ? "primary" : "default",
+                style: "width: 100%",
+                onClick: async () => {
+                    await router.push(getRouterPathWithLang("/user", locale.value));
+                    showMobileMenu.value = false;
+                }
+            },
+            {
+                default: () => t('user'),
+                icon: () => h(NIcon, { component: User }),
+            }
+        ),
+        key: "user",
+        show: !isTelegram.value
+    },
+    {
+        label: () => h(
+            NButton,
+            {
+                text: true,
+                size: "small",
+                type: menuValue.value == "admin" ? "primary" : "default",
+                style: "width: 100%",
+                onClick: async () => {
+                    loading.value = true;
+                    await router.push(getRouterPathWithLang('/admin', locale.value));
+                    loading.value = false;
+                    showMobileMenu.value = false;
+                }
+            },
+            {
+                default: () => "Admin",
+                icon: () => h(NIcon, { component: AdminPanelSettingsFilled }),
+            }
+        ),
+        show: showAdminPage.value,
+        key: "admin"
+    },
+    {
+        label: () => h(
+            NButton,
+            {
+                text: true,
+                size: "small",
+                style: "width: 100%",
+                onClick: () => { toggleDark(); showMobileMenu.value = false; }
+            },
+            {
+                default: () => isDark.value ? t('light') : t('dark'),
+                icon: () => h(
+                    NIcon, { component: isDark.value ? LightModeFilled : DarkModeFilled }
+                )
+            }
+        ),
+        key: "theme"
+    },
+    {
+        label: () => h(
+            NButton,
+            {
+                text: true,
+                size: "small",
+                style: "width: 100%",
+                onClick: async () => {
+                    locale.value == 'zh' ? await changeLocale('en') : await changeLocale('zh');
+                    showMobileMenu.value = false;
+                }
+            },
+            {
+                default: () => locale.value == 'zh' ? "English" : "中文",
+                icon: () => h(
+                    NIcon, { component: Language }
+                )
+            }
+        ),
+        key: "lang"
+    },
+    {
+        label: () => h(
+            NButton,
+            {
+                text: true,
+                size: "small",
+                style: "width: 100%",
+                tag: "a",
+                target: "_blank",
+                href: "https://github.com/dreamhunter2333/cloudflare_temp_email",
+            },
+            {
+                default: () => version || "Github",
+                icon: () => h(NIcon, { component: GithubAlt })
+            }
+        ),
+        show: openSettings.value?.showGithub,
+        key: "github"
+    }
+]);
 
-const handleUpdateValue = (key) => {
-  router.push(key)
+useHead({
+    title: () => openSettings.value.title || t('title'),
+    meta: [
+        { name: "description", content: openSettings.value.description || t('title') },
+    ]
+});
+
+const logoClickCount = ref(0);
+const logoClick = async () => {
+    if (route.path.includes("admin")) {
+        logoClickCount.value = 0;
+        return;
+    }
+    if (logoClickCount.value >= 5) {
+        logoClickCount.value = 0;
+        message.info("Change to admin Page");
+        loading.value = true;
+        await router.push(getRouterPathWithLang('/admin', locale.value));
+        loading.value = false;
+    } else {
+        logoClickCount.value++;
+    }
+    if (logoClickCount.value > 0) {
+        message.info(`Click ${5 - logoClickCount.value + 1} times to enter the admin page`);
+    }
 }
 
-const changeLang = () => {
-  locale.value = locale.value === 'zh' ? 'en' : 'zh'
-}
-
-const openGithub = () => {
-  window.open('https://github.com/dreamhunter2333/cloudflare_temp_email', '_blank')
-}
+onMounted(async () => {
+    await api.getOpenSettings(message, notification);
+    // make sure user_id is fetched
+    if (!userSettings.value.user_id) await api.getUserSettings(message);
+});
 </script>
 
 <template>
-  <div class="header-glass">
-    <div class="header-content">
-      <div class="logo" @click="router.push('/')">
-        <img src="/logo.png" alt="Logo" class="logo-img" />
-        <span class="logo-text">Temp Email</span>
-      </div>
-
-      <div class="desktop-nav">
-        <n-menu 
-          mode="horizontal" 
-          :value="activeKey" 
-          :options="menuOptions" 
-          @update:value="handleUpdateValue"
-          class="nav-menu"
-        />
-        <n-space align="center" size="large">
-          <n-button quaternary circle @click="changeLang">
-            <template #icon><n-icon><Language /></n-icon></template>
-          </n-button>
-          <n-button quaternary circle @click="openGithub">
-            <template #icon><n-icon><Github /></n-icon></template>
-          </n-button>
-          <n-button v-if="jwt" type="error" size="small" ghost round @click="logout">
-            <template #icon><n-icon><SignOutAlt /></n-icon></template>
-            {{ t('logout') }}
-          </n-button>
-        </n-space>
-      </div>
-
-      <div class="mobile-nav">
-        <n-dropdown 
-          trigger="click" 
-          :options="[
-            ...menuOptions, 
-            { type: 'divider' },
-            { label: locale === 'zh' ? 'English' : '中文', key: 'lang', icon: () => h(NIcon, null, { default: () => h(Language) }) },
-            { label: 'GitHub', key: 'github', icon: () => h(NIcon, null, { default: () => h(Github) }) },
-            ...(jwt ? [{ label: t('logout'), key: 'logout', icon: () => h(NIcon, null, { default: () => h(SignOutAlt) }) }] : [])
-          ]"
-          @select="(key) => {
-            if(key === 'lang') changeLang();
-            else if(key === 'github') openGithub();
-            else if(key === 'logout') logout();
-            else router.push(key);
-          }"
-        >
-          <n-button text style="font-size: 24px;">
-            <n-icon><Bars /></n-icon>
-          </n-button>
-        </n-dropdown>
-      </div>
+    <div>
+        <n-page-header>
+            <template #title>
+                <div class="header-title">
+                    <h3>{{ openSettings.title || t('title') }}</h3>
+                    <span v-if="openSettings.frontendVersion" class="version-tag">
+                        {{ openSettings.frontendVersion }}
+                    </span>
+                </div>
+            </template>
+            <template #avatar>
+                <div @click="logoClick">
+                    <n-avatar style="margin-left: 10px;" src="/logo.png" />
+                </div>
+            </template>
+            <template #extra>
+                <n-space>
+                    <n-menu v-if="!isMobile" mode="horizontal" :options="menuOptions" responsive />
+                    <n-button v-else :text="true" @click="showMobileMenu = !showMobileMenu" style="margin-right: 10px;">
+                        <template #icon>
+                            <n-icon :component="MenuFilled" />
+                        </template>
+                        {{ t('menu') }}
+                    </n-button>
+                </n-space>
+            </template>
+        </n-page-header>
+        <n-drawer v-model:show="showMobileMenu" placement="top" style="height: 100vh;">
+            <n-drawer-content :title="t('menu')" closable>
+                <n-menu :options="menuOptions" />
+            </n-drawer-content>
+        </n-drawer>
+        <n-modal v-model:show="showAuth" :closable="false" :closeOnEsc="false" :maskClosable="false" preset="dialog"
+            :title="t('accessHeader')">
+            <p>{{ t('accessTip') }}</p>
+            <n-input v-model:value="auth" type="password" show-password-on="click" />
+            <template #action>
+                <n-button :loading="loading" @click="authFunc" type="primary">
+                    {{ t('ok') }}
+                </n-button>
+            </template>
+        </n-modal>
     </div>
-  </div>
 </template>
 
 <style scoped>
-.header-glass {
-  /* 毛玻璃效果 */
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+.n-layout-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
-.header-content {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.n-alert {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    text-align: center;
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  transition: opacity 0.3s;
-}
-.logo:hover {
-  opacity: 0.8;
+.n-card {
+    margin-top: 10px;
 }
 
-.logo-img {
-  height: 32px;
-  margin-right: 10px;
+.center {
+    display: flex;
+    text-align: left;
+    place-items: center;
+    justify-content: center;
+    margin: 20px;
 }
 
-.logo-text {
-  font-size: 1.2rem;
-  font-weight: 700;
-  background: linear-gradient(to right, #667eea, #764ba2);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+.n-form .n-button {
+    margin-top: 10px;
 }
 
-.desktop-nav {
-  display: flex;
-  align-items: center;
-  gap: 20px;
+/* [新增] 样式 */
+.header-title {
+    display: flex;
+    align-items: baseline; /* 底部对齐，让文字看起来更和谐 */
+    gap: 8px; /* 间距 */
 }
 
-.mobile-nav {
-  display: none;
-}
-
-/* 响应式 */
-@media (max-width: 768px) {
-  .desktop-nav {
-    display: none;
-  }
-  .mobile-nav {
-    display: block;
-  }
-}
-
-:deep(.n-menu-item-content-header) {
-  font-weight: 600;
+.version-tag {
+    font-size: 0.85em; /* 比标题小 */
+    opacity: 0.6; /* 颜色变浅 */
+    font-weight: normal;
+    font-family: monospace; /* 看起来更像版本号 */
 }
 </style>
