@@ -9,12 +9,14 @@ import { AdminWebhookSettings, WebhookMail, WebhookSettings, RoleAddressConfig, 
 const DEFAULT_NAME_REGEX = /[^a-z0-9]/g;
 
 // ==========================================
-// [新增] 简易内存缓存系统 (修复报错的关键)
+// 简易内存缓存系统
 // ==========================================
 const GlobalCache = new Map<string, { value: any, expiry: number }>();
 
 const setCache = (key: string, value: any, ttlSeconds: number = 60) => {
-    GlobalCache.set(key, { value, expiry: Date.now() + ttlSeconds * 1000 });
+    // 增加随机抖动，防止缓存雪崩
+    const jitter = Math.floor(Math.random() * 10); 
+    GlobalCache.set(key, { value, expiry: Date.now() + (ttlSeconds + jitter) * 1000 });
 };
 
 const getCache = (key: string) => {
@@ -237,7 +239,7 @@ const checkNameBlockList = async (
 }
 
 // ==========================================
-// [新增] 增强的清理逻辑：支持自定义天数
+// 增强的清理逻辑
 // ==========================================
 export const cleanup = async (
     c: Context<HonoCustomType>,
@@ -502,7 +504,7 @@ export const commonParseMail = async (parsedEmailContext: ParsedEmailContext): P
 }
 
 // ==========================================
-// [新增] 恢复用户角色缓存逻辑
+// 优化后的角色缓存逻辑 (不再写入 KV)
 // ==========================================
 export const commonGetUserRole = async (
     c: Context<HonoCustomType>, user_id: number
@@ -510,38 +512,28 @@ export const commonGetUserRole = async (
     const cacheKey = `ROLE:${user_id}`;
     const user_roles = getUserRoles(c);
 
-    // 1. 内存缓存
+    // 1. 内存缓存 (Hit = 0 Cost)
     let role_text = getCache(cacheKey);
     if (role_text) return user_roles.find((r) => r.role === role_text);
 
-    // 2. KV 缓存
-    if (c.env.KV) {
-        role_text = await c.env.KV.get(cacheKey);
-        if (role_text) {
-            setCache(cacheKey, role_text, 60);
-            return user_roles.find((r) => r.role === role_text);
-        }
-    }
-
-    // 3. 数据库查询
+    // 2. 数据库查询 (D1 Read is cheap)
+    // [优化] 不再尝试从 KV 读取或写入，直接查 DB
     role_text = await c.env.DB.prepare(
         `SELECT role_text FROM user_roles where user_id = ?`
     ).bind(user_id).first<string | undefined | null>("role_text");
     
-    // 写入缓存
+    // 3. 写入内存缓存
     if (role_text) {
-        setCache(cacheKey, role_text, 120);
-        if (c.env.KV) await c.env.KV.put(cacheKey, role_text, { expirationTtl: 3600 });
+        setCache(cacheKey, role_text, 120); // 缓存 2 分钟
     }
 
     return role_text ? user_roles.find((r) => r.role === role_text) : null;
 }
 
-// [关键修复] 导出清除缓存函数，修复 Admin API 报错
 export const clearUserRoleCache = async (c: Context<HonoCustomType>, user_id: number) => {
     const cacheKey = `ROLE:${user_id}`;
     GlobalCache.delete(cacheKey);
-    if (c.env.KV) await c.env.KV.delete(cacheKey);
+    // 不再需要删除 KV，因为我们不再写入
 }
 
 export const getAddressPrefix = async (c: Context<HonoCustomType>): Promise<string | undefined> => {

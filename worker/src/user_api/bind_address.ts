@@ -1,291 +1,228 @@
 import { Context } from 'hono';
-import { Jwt } from 'hono/utils/jwt'
+import { Jwt } from 'hono/utils/jwt';
+import { newAddress } from '../common';
+import { getDomainPrice } from '../billing/index';
+import { HonoCustomType } from '../types'; 
+import { CONSTANTS } from '../constants'; 
+import { getJsonSetting } from '../utils'; 
+import { UserSettings } from '../models'; 
 
-import { UserSettings, RoleAddressConfig } from "../models";
-import { getJsonSetting, jsonMessage } from "../utils" // 引入 jsonMessage
-import { CONSTANTS } from "../constants";
-import { unbindTelegramByAddress } from '../telegram_api/common';
-import i18n from '../i18n';
-import { updateAddressUpdatedAt, commonGetUserRole } from '../common';
+// 辅助函数：显式绑定地址到用户
+const explicitBindAddress = async (c: Context<HonoCustomType>, userId: number, addressName: string) => {
+    try {
+        const address = await c.env.DB.prepare(
+            `SELECT id FROM address WHERE name = ?`
+        ).bind(addressName).first<{ id: number }>();
 
-const getMaxAddressCount = async (
-    c: Context<HonoCustomType>,
-    userRole: string | null | undefined,
-    settings: UserSettings
-): Promise<number> => {
-    if (!userRole) return settings.maxAddressCount;
-    const roleConfigs = await getJsonSetting<RoleAddressConfig>(c, CONSTANTS.ROLE_ADDRESS_CONFIG_KEY);
-    if (!roleConfigs) return settings.maxAddressCount;
-    const roleMaxCount = roleConfigs[userRole]?.maxAddressCount;
-    if (typeof roleMaxCount !== 'number') return settings.maxAddressCount;
-    if (roleMaxCount <= 0) return settings.maxAddressCount;
-    return roleMaxCount;
-};
+        if (address && address.id) {
+            // 先尝试插入
+            const { success } = await c.env.DB.prepare(
+                `INSERT OR IGNORE INTO users_address(user_id, address_id) VALUES(?, ?)`
+            ).bind(userId, address.id).run();
 
-const UserBindAddressModule = {
+            // 如果插入没生效（说明已存在），则强制更新归属权（因为是刚创建的，肯定归当前用户）
+            if (!success) {
+                await c.env.DB.prepare(
+                    `UPDATE users_address SET user_id = ? WHERE address_id = ?`
+                ).bind(userId, address.id).run();
+            }
+        }
+    } catch (e) {
+        console.error(`Explicit bind failed for ${addressName}:`, e);
+    }
+}
+
+export default {
     bind: async (c: Context<HonoCustomType>) => {
-        const { user_id } = c.get("userPayload");
-        const { address_id } = c.get("jwtPayload");
-        return await UserBindAddressModule.bindByID(c, user_id, address_id)
-    },
-    bindByID: async (
-        c: Context<HonoCustomType>,
-        user_id: number | string, address_id: number | string
-    ) => {
-        if (!address_id || !user_id) {
-            return c.text("No address or user token", 400)
-        }
-        // check if address exists
-        const db_address_id = await c.env.DB.prepare(
-            `SELECT id FROM address where id = ?`
-        ).bind(address_id).first("id");
-        if (!db_address_id) {
-            return c.text("Address not found", 400)
-        }
-        // check if user exists
-        const db_user_id = await c.env.DB.prepare(
-            `SELECT id FROM users where id = ?`
-        ).bind(user_id).first("id");
-        if (!db_user_id) {
-            return c.text("User not found", 400)
+        const { user_id } = c.get('userPayload');
+        const currentUserId = Number(user_id); // 确保是数字类型
+        
+        let body: any = {};
+        try {
+            body = await c.req.json();
+        } catch (e) {
+            // Body 为空，忽略错误
         }
         
-        // 1. 检查是否已经绑定到当前用户
-        const db_user_address_id = await c.env.DB.prepare(
-            `SELECT user_id FROM users_address where user_id = ? and address_id = ?`
-        ).bind(user_id, address_id).first("user_id");
-        if (db_user_address_id) return c.json({ success: true })
-        
-        // check if binded address count
-        const value = await getJsonSetting(c, CONSTANTS.USER_SETTINGS_KEY);
-        const settings = new UserSettings(value);
-        // get user role
-        const userRole = c.get("userRolePayload");
-        const maxAddressCount = await getMaxAddressCount(c, userRole, settings);
-        if (maxAddressCount > 0) {
-            const { count } = await c.env.DB.prepare(
-                `SELECT COUNT(*) as count FROM users_address where user_id = ?`
-            ).bind(user_id).first<{ count: number }>() || { count: 0 };
-            if (count >= maxAddressCount) {
-                return c.text("Max address count reached", 400)
+        const { name, domain } = body;
+
+        // 1. 创建新邮箱模式
+        if (name && domain) {
+            const res = await newAddress(c, {
+                name, domain,
+                checkLengthByConfig: true,
+                enableCheckNameRegex: true,
+                checkAllowDomains: true,
+                addressPrefix: null,
+                userId: currentUserId
+            });
+
+            if (res.address) {
+                await explicitBindAddress(c, currentUserId, res.address);
+            }
+            return res;
+        }
+
+        // 2. 绑定已有邮箱模式 (通过 Header JWT)
+        const authHeader = c.req.header('Authorization');
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7);
+            try {
+                const payload = await Jwt.verify(token, c.env.JWT_SECRET, "HS256");
+                const addressId = Number(payload.address_id);
+                const addressName = payload.address as string;
+
+                if (!addressId) {
+                    return c.text("Invalid token payload", 400);
+                }
+
+                // 检查现有绑定
+                const existingBinding = await c.env.DB.prepare(
+                    `SELECT user_id FROM users_address WHERE address_id = ?`
+                ).bind(addressId).first<{ user_id: number }>();
+
+                if (existingBinding) {
+                    const boundUserId = Number(existingBinding.user_id);
+                    if (boundUserId === currentUserId) {
+                        return c.json({ success: true, address: addressName, message: "Already bound to you" });
+                    } else {
+                        // [关键修复]：如果已绑定给别人，但当前用户持有有效 JWT，则强制抢占/修复绑定关系
+                        console.log(`Re-binding address ${addressId} from user ${boundUserId} to ${currentUserId} using valid credential`);
+                        
+                        const { success } = await c.env.DB.prepare(
+                            `UPDATE users_address SET user_id = ? WHERE address_id = ?`
+                        ).bind(currentUserId, addressId).run();
+
+                        if (!success) return c.text("Failed to update binding", 500);
+
+                        return c.json({ 
+                            success: true, 
+                            address: addressName, 
+                            message: "Binding updated successfully" 
+                        });
+                    }
+                } else {
+                    // 没有绑定记录，直接插入
+                    const { success } = await c.env.DB.prepare(
+                        `INSERT INTO users_address(user_id, address_id) VALUES(?, ?)`
+                    ).bind(currentUserId, addressId).run();
+
+                    if (!success) return c.text("Failed to create binding", 500);
+
+                    return c.json({ 
+                        success: true, 
+                        address: addressName, 
+                        message: "Bound successfully" 
+                    });
+                }
+
+            } catch (e) {
+                console.error("Bind JWT Verify Error:", e);
+                return c.text("Invalid token or signature", 401);
             }
         }
 
-        // 强制绑定逻辑：先删除可能存在的其他绑定
-        await c.env.DB.prepare(
-            `DELETE FROM users_address WHERE address_id = ?`
-        ).bind(address_id).run();
+        return c.text("Invalid parameters or missing credentials", 400);
+    },
 
-        // bind
-        try {
-            const { success } = await c.env.DB.prepare(
-                `INSERT INTO users_address (user_id, address_id) VALUES (?, ?)`
-            ).bind(user_id, address_id).run();
-            if (!success) {
-                return c.text("Failed to bind", 500)
-            }
-        } catch (e) {
-            return c.text("Failed to bind", 500)
-        }
-        return c.json({ success: true })
-    },
-    unbind: async (c: Context<HonoCustomType>) => {
-        const { user_id } = c.get("userPayload");
-        const { address_id } = await c.req.json();
-        if (!address_id || !user_id) {
-            return c.text("Invalid address or user token", 400)
-        }
-        // check if address exists
-        const db_address_id = await c.env.DB.prepare(
-            `SELECT id FROM address where id = ?`
-        ).bind(address_id).first("id");
-        if (!db_address_id) {
-            return c.text("Address not found", 400)
-        }
-        // check if user exists
-        const db_user_id = await c.env.DB.prepare(
-            `SELECT id FROM users where id = ?`
-        ).bind(user_id).first("id");
-        if (!db_user_id) {
-            return c.text("User not found", 400)
-        }
-        try {
-            const { success } = await c.env.DB.prepare(
-                `DELETE FROM users_address where user_id = ? and address_id = ?`
-            ).bind(user_id, address_id).run();
-            if (!success) {
-                return c.text("Failed to unbind", 500)
-            }
-        } catch (e) {
-            return c.text("Failed to unbind", 500)
-        }
-        return c.json({ success: true })
-    },
     getBindedAddresses: async (c: Context<HonoCustomType>) => {
-        const { user_id } = c.get("userPayload");
-        const results = await UserBindAddressModule.getBindedAddressesById(c, user_id);
-        return c.json({
-            results: results,
-        });
+        const { user_id } = c.get('userPayload');
+        const results = await getBindedAddressesById(c, Number(user_id));
+        return c.json({ results: results || [] });
     },
-    getBindedAddressListById: async (
-        c: Context<HonoCustomType>, user_id: number | string
-    ): Promise<string[]> => {
-        const bindedAddressList = await UserBindAddressModule.getBindedAddressesById(c, user_id);
-        return bindedAddressList.map((item) => item.name);
+
+    getBindedAddressesById: async (c: Context<HonoCustomType>, user_id: number) => {
+        return await getBindedAddressesById(c, user_id);
     },
-    getBindedAddressesById: async (
-        c: Context<HonoCustomType>, user_id: number | string
-    ): Promise<{
-        id: number;
-        name: string;
-        mail_count: number;
-        send_count: number;
-        created_at: string;
-        updated_at: string;
-        remark: string; // [新增]
-    }[]> => {
-        const msgs = i18n.getMessagesbyContext(c);
-        if (!user_id) {
-            throw new Error(msgs.UserNotFoundMsg);
-        }
-        // [修改] 查询中加入 remark
-        const { results } = await c.env.DB.prepare(
-            `SELECT a.*, ua.remark,`
-            + ` (SELECT COUNT(*) FROM raw_mails WHERE address = a.name) AS mail_count,`
-            + ` (SELECT COUNT(*) FROM sendbox WHERE address = a.name) AS send_count`
-            + ` FROM address a `
-            + ` JOIN users_address ua `
-            + ` ON ua.address_id = a.id `
-            + ` WHERE ua.user_id = ?`
-            + ` ORDER BY a.id DESC`
-        ).bind(user_id).all<{
-            id: number;
-            name: string;
-            mail_count: number;
-            send_count: number;
-            created_at: string;
-            updated_at: string;
-            remark: string;
-        }>();
-        return results || [];
-    },
-    // [新增] 更新备注
-    updateAddressRemark: async (
-        c: Context<HonoCustomType>,
-        user_id: number,
-        address_id: number,
-        remark: string
-    ) => {
-        try {
-            await c.env.DB.prepare(
-                `UPDATE users_address SET remark = ? WHERE user_id = ? AND address_id = ?`
-            ).bind(remark, user_id, address_id).run();
-            return c.json({ success: true });
-        } catch (e) {
-            console.error(e);
-            return jsonMessage("Failed to update remark", 500);
-        }
-    },
+
     getBindedAddressJwt: async (c: Context<HonoCustomType>) => {
+        const { user_id } = c.get('userPayload');
         const { address_id } = c.req.param();
-        const { user_id } = c.get("userPayload");
-        if (!address_id || !user_id) {
-            return c.text("Invalid address or user token", 400)
+        const address = await c.env.DB.prepare(
+            `SELECT a.* FROM address a`
+            + ` JOIN users_address ua ON a.id = ua.address_id`
+            + ` WHERE ua.user_id = ? AND a.id = ?`
+        ).bind(user_id, address_id).first<{ id: number, name: string }>();
+        
+        if (!address) {
+            return c.text("Address not found", 404);
         }
-        const db_user_id = await c.env.DB.prepare(
-            `SELECT user_id FROM users_address WHERE address_id = ? and user_id = ?`
-        ).bind(address_id, user_id).first("user_id");
-        if (!db_user_id) {
-            return c.text("Address not binded", 400)
-        }
-        const name = await c.env.DB.prepare(
-            `SELECT name FROM address WHERE id = ? `
-        ).bind(address_id).first("name");
+        
         const jwt = await Jwt.sign({
-            address: name,
-            address_id: address_id
-        }, c.env.JWT_SECRET, "HS256")
+            address: address.name,
+            address_id: address.id
+        }, c.env.JWT_SECRET, "HS256");
+        
         return c.json({
             jwt: jwt
         })
     },
-    transferAddress: async (c: Context<HonoCustomType>) => {
-        const { user_id } = c.get("userPayload");
-        const { address_id, target_user_email } = await c.req.json();
-        const address = await c.env.DB.prepare(
-            `SELECT name FROM address where id = ?`
-        ).bind(address_id).first<string>("name");
-        if (!address) {
-            return c.text("Address not found", 400)
-        }
-        const db_user_id = await c.env.DB.prepare(
-            `SELECT id FROM users where id = ?`
-        ).bind(user_id).first("id");
-        if (!db_user_id) {
-            return c.text("User not found", 400)
-        }
-        const target_user_id = await c.env.DB.prepare(
-            `SELECT id FROM users where user_email = ?`
-        ).bind(target_user_email).first<number>("id");
-        if (!target_user_id) {
-            return c.text("Target user not found", 400)
-        }
-        const value = await getJsonSetting(c, CONSTANTS.USER_SETTINGS_KEY);
-        const settings = new UserSettings(value);
-        const userRoleObj = await commonGetUserRole(c, target_user_id);
-        const maxAddressCount = await getMaxAddressCount(c, userRoleObj?.role, settings);
-        if (maxAddressCount > 0) {
-            const { count } = await c.env.DB.prepare(
-                `SELECT COUNT(*) as count FROM users_address where user_id = ?`
-            ).bind(target_user_id).first<{ count: number }>() || { count: 0 };
-            if (count >= maxAddressCount) {
-                return c.text("Target User Max address count reached", 400)
-            }
-        }
-        const db_user_address_id = await c.env.DB.prepare(
-            `SELECT user_id FROM users_address where user_id = ? and address_id = ?`
-        ).bind(user_id, address_id).first("user_id");
-        if (!db_user_address_id) return c.text("Address not binded", 400)
+
+    unbind: async (c: Context<HonoCustomType>) => {
+        const { user_id } = c.get('userPayload');
+        const { address_id } = await c.req.json();
+        const { success } = await c.env.DB.prepare(
+            `DELETE FROM users_address WHERE user_id = ? AND address_id = ?`
+        ).bind(user_id, address_id).run();
         
-        await unbindTelegramByAddress(c, address);
-        
-        try {
-            await c.env.DB.prepare(
-                `DELETE FROM users_address where user_id = ? and address_id = ?`
-            ).bind(user_id, address_id).run();
-        } catch (e) {
-            return c.text("Failed to unbind user", 500)
-        }
-        await c.env.DB.prepare(
-            `DELETE FROM address WHERE id = ? `
-        ).bind(address_id).run();
-        
-        const { success: newAddressSuccess } = await c.env.DB.prepare(
-            `INSERT INTO address(name) VALUES(?)`
-        ).bind(address).run();
-        if (!newAddressSuccess) {
-            throw new Error("Failed to create address")
-        }
-        await updateAddressUpdatedAt(c, address);
-        const new_address_id = await c.env.DB.prepare(
-            `SELECT id FROM address WHERE name = ?`
-        ).bind(address).first<number | null | undefined>("id");
-        if (!new_address_id) {
-            throw new Error("Failed to find new address id")
-        }
-        try {
-            const { success } = await c.env.DB.prepare(
-                `INSERT INTO users_address (user_id, address_id) VALUES (?, ?)`
-            ).bind(target_user_id, new_address_id).run();
-            if (!success) {
-                return c.text("Failed to bind", 500)
-            }
-        } catch (e) {
-            return c.text("Failed to bind", 500)
+        if (!success) {
+            return c.text("Failed to unbind address", 500)
         }
         return c.json({ success: true })
+    },
+
+    transferAddress: async (c: Context<HonoCustomType>) => {
+        const { user_id } = c.get('userPayload');
+        const { address_id, target_user_email } = await c.req.json();
+        
+        if (!address_id || !target_user_email) {
+            return c.text("Invalid parameters", 400);
+        }
+        
+        const targetUser = await c.env.DB.prepare(
+            `SELECT id FROM users WHERE user_email = ?`
+        ).bind(target_user_email).first<{ id: number }>();
+        
+        if (!targetUser) {
+            return c.text("Target user not found", 404);
+        }
+        
+        const sourceAddress = await c.env.DB.prepare(
+            `SELECT id FROM users_address WHERE user_id = ? AND address_id = ?`
+        ).bind(user_id, address_id).first();
+        
+        if (!sourceAddress) {
+            return c.text("Address not belongs to you", 403);
+        }
+        
+        const { success } = await c.env.DB.prepare(
+            `UPDATE users_address SET user_id = ? WHERE address_id = ? AND user_id = ?`
+        ).bind(targetUser.id, address_id, user_id).run();
+        
+        if (!success) {
+            return c.text("Failed to transfer address", 500);
+        }
+        
+        return c.json({ success: true })
+    },
+
+    updateAddressRemark: async (c: Context<HonoCustomType>, user_id: number, address_id: number, remark: string) => {
+        const { success } = await c.env.DB.prepare(
+            `UPDATE users_address SET remark = ? WHERE user_id = ? AND address_id = ?`
+        ).bind(remark, user_id, address_id).run();
+        
+        if (!success) return c.text("Failed", 500);
+        return c.json({ success: true });
     }
 }
 
-export default UserBindAddressModule;
+// 辅助函数
+export const getBindedAddressesById = async (c: Context<HonoCustomType>, user_id: number) => {
+    const { results } = await c.env.DB.prepare(
+        `SELECT a.id, a.name, ua.remark FROM address a`
+        + ` JOIN users_address ua ON a.id = ua.address_id`
+        + ` WHERE ua.user_id = ?`
+        + ` ORDER BY ua.id DESC`
+    ).bind(user_id).all<{ id: number, name: string, remark: string }>();
+    return results || [];
+}

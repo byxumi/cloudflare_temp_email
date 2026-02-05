@@ -17,7 +17,6 @@ import db_api from './db_api'
 import ip_blacklist_settings from './ip_blacklist_settings'
 import { EmailRuleSettings, HonoCustomType } from '../models'
 import lottery_api from './lottery';
-// [关键修复] 改为命名导入 { api as billing_api }
 import { api as billing_api } from '../billing/index'; 
 
 import { 
@@ -28,10 +27,8 @@ import {
 
 export const api = new Hono<HonoCustomType>()
 
-// [保持] 在文件内部定义管理员认证中间件
 const adminAuth = async (c: Context<HonoCustomType>, next: Next) => {
     const adminPassword = getStringValue(c.env.ADMIN_PASSWORD);
-    // 如果设置了 ADMIN_PASSWORD，则必须校验 x-admin-auth 头
     if (adminPassword) {
         const auth = c.req.header("x-admin-auth");
         if (auth !== adminPassword) {
@@ -41,7 +38,6 @@ const adminAuth = async (c: Context<HonoCustomType>, next: Next) => {
     await next();
 }
 
-// 应用中间件
 api.use('/*', adminAuth);
 
 api.get('/admin/address', async (c) => {

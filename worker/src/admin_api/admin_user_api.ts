@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 
 import { CONSTANTS } from '../constants';
-import { getJsonSetting, saveSetting, checkUserPassword, getDomains, getUserRoles } from '../utils';
+import { getJsonSetting, saveSetting, checkUserPassword, getUserRoles } from '../utils';
 import { UserSettings, GeoData, UserInfo, RoleAddressConfig } from "../models";
 import { handleListQuery, clearUserRoleCache } from '../common'
 import UserBindAddressModule from '../user_api/bind_address';
@@ -9,7 +9,6 @@ import i18n from '../i18n';
 
 const toCents = (yuan: number | string) => Math.round(parseFloat(yuan.toString()) * 100);
 
-// 辅助函数：安全保存，防止 undefined 报错
 const safeSave = async (c: any, key: string, value: any) => {
     if (!key) {
         console.error("Missing key for safeSave");
@@ -50,7 +49,6 @@ export default {
     saveSetting: async (c: Context<HonoCustomType>) => {
         const body = await c.req.json();
         
-        // 1. 使用安全保存函数处理列表
         if (body.blockList) await safeSave(c, CONSTANTS.ADDRESS_BLOCK_LIST_KEY, body.blockList);
         if (body.sendBlockList) await safeSave(c, CONSTANTS.SEND_ADDRESS_BLOCK_LIST_KEY, body.sendBlockList);
         if (body.verifiedAddressList) await safeSave(c, CONSTANTS.VERIFIED_ADDRESS_LIST_KEY, body.verifiedAddressList);
@@ -58,10 +56,8 @@ export default {
         if (body.noLimitSendAddressList) await safeSave(c, CONSTANTS.NO_LIMIT_SEND_ADDRESS_LIST_KEY, body.noLimitSendAddressList);
         if (body.emailRuleSettings) await safeSave(c, CONSTANTS.EMAIL_RULE_SETTINGS_KEY, body.emailRuleSettings);
 
-        // 2. 处理 UserSettings (包含版本号)
         const oldSettings = await getJsonSetting<UserSettings>(c, CONSTANTS.USER_SETTINGS_KEY);
         
-        // [关键] 强制读取 frontendVersion，即使 body 中未显式包含其他字段
         const frontendVersion = body.frontendVersion !== undefined 
             ? body.frontendVersion 
             : (oldSettings?.frontendVersion || "");
@@ -69,10 +65,9 @@ export default {
         const newSettings = new UserSettings({
             ...oldSettings,
             ...body,
-            frontendVersion: frontendVersion // 显式赋值
+            frontendVersion: frontendVersion
         });
         
-        // 校验
         if (newSettings.enableMailVerify && !c.env.KV) {
             return c.text("Please enable KV first if you want to enable mail verify", 403)
         }
@@ -80,15 +75,14 @@ export default {
             return c.text("Please provide verifyMailSender", 400)
         }
         
-        // 保存 UserSettings
         await safeSave(c, CONSTANTS.USER_SETTINGS_KEY, newSettings);
         
         return c.json({ success: true })
     },
 
-    // ... (以下函数保持原样)
     getUsers: async (c: Context<HonoCustomType>) => {
         const { limit, offset, query } = c.req.query();
+        // [修改] 移除了 allow_batch 字段
         const sqlFields = `SELECT u.id as id, u.user_email, u.balance, u.created_at, u.updated_at,`
             + ` ur.role_text as role_text,`
             + ` (SELECT COUNT(*) FROM users_address WHERE user_id = u.id) AS address_count`

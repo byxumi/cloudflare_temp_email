@@ -16,7 +16,7 @@ const generateCode = (length = 16) => {
     return result;
 };
 
-// 内存缓存价格表 (60秒)
+// 内存缓存价格表 (60秒) - 纯内存，不写 KV
 const PriceCache = new Map<string, { data: any, expiry: number }>();
 const getPriceCache = (key: string) => {
     const item = PriceCache.get(key);
@@ -29,6 +29,23 @@ const setPriceCache = (key: string, data: any) => {
 // 清除价格缓存
 const clearPriceCache = () => {
     PriceCache.clear();
+}
+
+// 导出获取价格函数
+export const getDomainPrice = async (c: Context<HonoCustomType>, domain: string, roleText: string = 'default'): Promise<number> => {
+    // 1. 查询指定角色的价格
+    let priceRecord = await c.env.DB.prepare(`
+        SELECT price FROM domain_prices WHERE domain = ? AND role_text = ?
+    `).bind(domain, roleText).first<{ price: number }>();
+
+    // 2. 如果没找到且角色不是默认，则查询默认价格
+    if (!priceRecord && roleText !== 'default') {
+        priceRecord = await c.env.DB.prepare(`
+            SELECT price FROM domain_prices WHERE domain = ? AND role_text = 'default'
+        `).bind(domain).first<{ price: number }>();
+    }
+
+    return priceRecord ? priceRecord.price : 0;
 }
 
 const api = new Hono<HonoCustomType>();
@@ -70,7 +87,7 @@ api.get('/admin/billing/cards', async (c) => {
     );
 });
 
-// 3. [优化] 设置域名价格 (更新时清除缓存)
+// 3. 设置域名价格 (更新时清除缓存)
 api.post('/admin/billing/prices', async (c) => {
     const { domain, role_text, price } = await c.req.json();
     const priceInCents = toCents(price);
@@ -99,7 +116,7 @@ api.get('/admin/billing/prices', async (c) => {
     return await handleListQuery(c, sql, countSql, params, limit, offset);
 });
 
-// [优化] 删除单个定价 (清除缓存)
+// 删除单个定价
 api.delete('/admin/billing/prices/:id', async (c) => {
     const { id } = c.req.param();
     await c.env.DB.prepare(`DELETE FROM domain_prices WHERE id = ?`).bind(id).run();
@@ -107,7 +124,7 @@ api.delete('/admin/billing/prices/:id', async (c) => {
     return c.json({ success: true });
 });
 
-// [优化] 批量删除定价 (清除缓存)
+// 批量删除定价
 api.post('/admin/billing/prices/batch_delete', async (c) => {
     const { ids } = await c.req.json<{ ids: number[] }>();
     if (!ids || ids.length === 0) return c.text("Invalid IDs", 400);
@@ -162,37 +179,23 @@ api.get('/admin/billing/transactions', async (c) => {
 // 5. 用户查询余额
 api.get('/user_api/billing/balance', async (c) => {
     const { user_id } = c.get('userPayload');
-    // [修改] 同时查询签到余额
     const user = await c.env.DB.prepare(`SELECT balance, ifnull(checkin_balance, 0) as checkin_balance FROM users WHERE id = ?`).bind(user_id).first();
     return c.json({ 
         balance: user?.balance || 0,
-        checkin_balance: user?.checkin_balance || 0 // [新增]
+        checkin_balance: user?.checkin_balance || 0 
     });
 });
 
-// 6. [优化] 用户查询特定域名价格 (优先读缓存)
+// 6. 用户查询特定域名价格
 api.get('/user_api/billing/price', async (c) => {
     const { domain } = c.req.query();
     const { user_id } = c.get('userPayload');
     
-    // 尝试从内存缓存读取价格列表，再筛选
-    // (略微简化，这里演示针对单次查询的缓存可能较复杂，直接复用下面的列表缓存逻辑更好)
-    
-    const userRoleObj = await commonGetUserRole(c, user_id); // 这里面已经有缓存了
+    // 这里调用了 commonGetUserRole，它现在只使用 Memory+DB，不写 KV
+    const userRoleObj = await commonGetUserRole(c, user_id); 
     const roleText = userRoleObj?.role || 'default';
 
-    // 数据库查询
-    let priceRecord = await c.env.DB.prepare(`
-        SELECT price FROM domain_prices WHERE domain = ? AND role_text = ?
-    `).bind(domain, roleText).first<{ price: number }>();
-
-    if (!priceRecord && roleText !== 'default') {
-        priceRecord = await c.env.DB.prepare(`
-            SELECT price FROM domain_prices WHERE domain = ? AND role_text = 'default'
-        `).bind(domain).first<{ price: number }>();
-    }
-
-    const priceInCents = priceRecord ? priceRecord.price : 0;
+    const priceInCents = await getDomainPrice(c, domain, roleText);
     
     return c.json({ 
         domain, 
@@ -201,10 +204,10 @@ api.get('/user_api/billing/price', async (c) => {
     });
 });
 
-// 7. [优化] 用户查询所有域名价格表 (使用缓存)
+// 7. 用户查询所有域名价格表 (使用缓存)
 api.get('/user_api/billing/prices-list', async (c) => {
     const { user_id } = c.get('userPayload');
-    const userRoleObj = await commonGetUserRole(c, user_id); // 有缓存
+    const userRoleObj = await commonGetUserRole(c, user_id); 
     const roleText = userRoleObj?.role || 'default';
 
     const cacheKey = `PRICES:${roleText}`;
@@ -228,7 +231,7 @@ api.get('/user_api/billing/prices-list', async (c) => {
         price_yuan: (price / 100).toFixed(2)
     }));
 
-    setPriceCache(cacheKey, finalPrices); // 写入缓存
+    setPriceCache(cacheKey, finalPrices); // 写入内存缓存
 
     return c.json({ results: finalPrices });
 });

@@ -8,7 +8,7 @@ import oauth2 from './oauth2';
 import user_mail_api from './user_mail_api';
 import { userUseRechargeCode } from './recharge_code_api';
 import { checkin } from './checkin';
-import * as lottery from './lottery'; // [新增]
+import * as lottery from './lottery';
 
 export const api = new Hono<HonoCustomType>();
 
@@ -41,6 +41,8 @@ api.post('/user_api/update_remark', async (c) => {
     return await bind_address.updateAddressRemark(c, user_id, address_id, remark || "");
 });
 
+// [已移除] 批量操作路由
+
 // passkey api
 api.get('/user_api/passkey', passkey.getPassKeys);
 api.post('/user_api/passkey/rename', passkey.renamePassKey);
@@ -56,6 +58,6 @@ api.post('/user_api/recharge_code', userUseRechargeCode);
 // checkin
 api.post('/user_api/checkin', checkin);
 
-// [新增] lottery
+// lottery
 api.get('/user_api/lottery/status', lottery.getStatus);
 api.post('/user_api/lottery/draw', lottery.draw);

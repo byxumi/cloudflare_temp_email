@@ -133,11 +133,10 @@ export type RoleAddressConfig = {
     specificAddresses?: Record<string, RoleConfig>;
 };
 
-// [修改] 增加 emoji 字段
 export type LotteryPrize = {
     id: string;
     name: string;
-    emoji?: string; // [新增]
+    emoji?: string;
     type: 'balance' | 'checkin_balance' | 'ticket' | 'none'; 
     value: number; 
     weight: number; 
