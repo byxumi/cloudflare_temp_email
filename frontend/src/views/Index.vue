@@ -1,264 +1,145 @@
 <script setup>
-import { defineAsyncComponent, onMounted, watch, ref } from 'vue'
-import { useI18n } from 'vue-i18n'
-import { useRoute, useRouter } from 'vue-router'
-import { useMessage, NButton, NIcon, NCard, NSpace, NModal } from 'naive-ui'
-import { User } from '@vicons/fa'
-
 import { useGlobalState } from '../store'
+import { onMounted, watch, ref } from 'vue'
+import { useMessage, NGrid, NGi, NCard, NAlert, NSpin } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
+
+import AddressBar from './index/AddressBar.vue'
+import MailBox from '../components/MailBox.vue'
+import SendBox from '../components/SendBox.vue'
+import Turnstile from '../components/Turnstile.vue'
 import { api } from '../api'
-import { useIsMobile } from '../utils/composables'
-import { FullscreenExitOutlined } from '@vicons/material'
 
-import AddressBar from './index/AddressBar.vue';
-import MailBox from '../components/MailBox.vue';
-import SendBox from '../components/SendBox.vue';
-import AutoReply from './index/AutoReply.vue';
-import AccountSettings from './index/AccountSettings.vue';
-import Appearance from './common/Appearance.vue';
-import Webhook from './index/Webhook.vue';
-import Attachment from './index/Attachment.vue';
-import About from './common/About.vue';
-import SimpleIndex from './index/SimpleIndex.vue';
-import AddressManagement from './user/AddressManagement.vue'
-
-const { loading, settings, openSettings, indexTab, globalTabplacement, useSimpleIndex, userJwt, jwt } = useGlobalState()
+const { loading, settings, openSettings, showTurnstile, jwt } = useGlobalState()
 const message = useMessage()
-const route = useRoute()
-const router = useRouter()
-const isMobile = useIsMobile()
-const showLoginModal = ref(false)
-const initLoading = ref(false)
-
-const SendMail = defineAsyncComponent(() => {
-  loading.value = true;
-  return import('./index/SendMail.vue')
-    .finally(() => loading.value = false);
-});
-
 const { t } = useI18n({
   messages: {
     en: {
-      mailbox: 'Mail Box',
-      sendbox: 'Send Box',
-      sendmail: 'Send Mail',
-      auto_reply: 'Auto Reply',
-      accountSettings: 'Account Settings',
-      appearance: 'Appearance',
-      about: 'About',
-      s3Attachment: 'S3 Attachment',
-      saveToS3Success: 'save to s3 success',
-      webhookSettings: 'Webhook Settings',
-      query: 'Query',
-      enterSimpleMode: 'Simple Mode',
-      login: 'User Login',
-      loginTip: 'Please login to access your mailbox',
-      addressManagement: 'Address Management'
+      notice: 'Notice',
+      loadingSettings: 'Loading configuration...',
     },
     zh: {
-      mailbox: '收件箱',
-      sendbox: '发件箱',
-      sendmail: '发送邮件',
-      auto_reply: '自动回复',
-      accountSettings: '账户',
-      appearance: '外观',
-      about: '关于',
-      s3Attachment: 'S3附件',
-      saveToS3Success: '保存到s3成功',
-      webhookSettings: 'Webhook 设置',
-      query: '查询',
-      enterSimpleMode: '极简模式',
-      login: '用户登录',
-      loginTip: '请登录以使用邮箱服务',
-      addressManagement: '地址管理'
+      notice: '公告',
+      loadingSettings: '正在加载配置...',
     }
-  }
-});
-
-const fetchMailData = async (limit, offset) => {
-  if (mailIdQuery.value > 0) {
-    const singleMail = await api.fetch(`/api/mail/${mailIdQuery.value}`);
-    if (singleMail) return { results: [singleMail], count: 1 };
-    return { results: [], count: 0 };
-  }
-  return await api.fetch(`/api/mails?limit=${limit}&offset=${offset}`);
-};
-
-const deleteMail = async (curMailId) => {
-  await api.fetch(`/api/mails/${curMailId}`, { method: 'DELETE' });
-};
-
-const deleteSenboxMail = async (curMailId) => {
-  await api.fetch(`/api/sendbox/${curMailId}`, { method: 'DELETE' });
-};
-
-const fetchSenboxData = async (limit, offset) => {
-  return await api.fetch(`/api/sendbox?limit=${limit}&offset=${offset}`);
-};
-
-const saveToS3 = async (mail_id, filename, blob) => {
-  try {
-    const { url } = await api.fetch(`/api/attachment/put_url`, {
-      method: 'POST',
-      body: JSON.stringify({ key: `${mail_id}/${filename}` })
-    });
-    const formData = new FormData();
-    formData.append(filename, blob);
-    await fetch(url, {
-      method: 'PUT',
-      body: formData
-    });
-    message.success(t('saveToS3Success'));
-  } catch (error) {
-    console.error(error);
-    message.error(error.message || "save to s3 error");
-  }
-}
-
-const mailBoxKey = ref("")
-const mailIdQuery = ref("")
-const showMailIdQuery = ref(false)
-
-const queryMail = () => {
-  mailBoxKey.value = Date.now();
-}
-
-const checkLogin = () => {
-  if (userJwt.value) {
-    router.push('/user')
-  }
-}
-
-watch(route, () => {
-  if (!route.query.mail_id) {
-    showMailIdQuery.value = false;
-    mailIdQuery.value = "";
-    queryMail();
   }
 })
 
-onMounted(async () => {
-  if (jwt.value && !settings.value.address) {
-    initLoading.value = true;
-    try {
-      await api.getSettings();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      initLoading.value = false;
-    }
-  }
+// 控制显示发送箱还是收件箱
+const showSendBox = ref(false)
 
-  if (route.query.mail_id) {
-    showMailIdQuery.value = true;
-    mailIdQuery.value = route.query.mail_id;
-    queryMail();
-  }
+onMounted(async () => {
+  await api.getSettings()
 })
 </script>
 
 <template>
-  <div>
-    <div v-if="useSimpleIndex">
-      <SimpleIndex />
+  <div class="index-container">
+    <div v-if="openSettings.notice" class="mb-4">
+      <n-alert type="info" show-icon :title="t('notice')">
+        {{ openSettings.notice }}
+      </n-alert>
     </div>
-    <div v-else>
-      <div v-if="settings.address">
-        <AddressBar />
-        <n-tabs type="card" v-model:value="indexTab" :placement="globalTabplacement">
-          <template #prefix v-if="!isMobile">
-            <n-button @click="useSimpleIndex = true" tertiary size="small">
-              <template #icon>
-                <n-icon>
-                  <FullscreenExitOutlined />
-                </n-icon>
-              </template>
-              {{ t('enterSimpleMode') }}
-            </n-button>
-          </template>
-          <n-tab-pane name="mailbox" :tab="t('mailbox')">
-            <div v-if="showMailIdQuery" style="margin-bottom: 10px;">
-              <n-input-group>
-                <n-input v-model:value="mailIdQuery" />
-                <n-button @click="queryMail" type="primary" tertiary>
-                  {{ t('query') }}
-                </n-button>
-              </n-input-group>
-            </div>
-            <MailBox :key="mailBoxKey" :showEMailTo="false" :showReply="true" :showSaveS3="openSettings.isS3Enabled"
-              :saveToS3="saveToS3" :enableUserDeleteEmail="openSettings.enableUserDeleteEmail"
-              :fetchMailData="fetchMailData" :deleteMail="deleteMail" />
-          </n-tab-pane>
-          <n-tab-pane name="sendbox" :tab="t('sendbox')">
-            <SendBox :fetchMailData="fetchSenboxData" :enableUserDeleteEmail="openSettings.enableUserDeleteEmail"
-              :deleteMail="deleteSenboxMail" />
-          </n-tab-pane>
-          <n-tab-pane name="sendmail" :tab="t('sendmail')">
-            <SendMail />
-          </n-tab-pane>
-          <n-tab-pane name="accountSettings" :tab="t('accountSettings')">
-            <AccountSettings />
-          </n-tab-pane>
-          <n-tab-pane name="appearance" :tab="t('appearance')">
-            <Appearance :showUseSimpleIndex="true" />
-          </n-tab-pane>
-          <n-tab-pane v-if="openSettings.enableAutoReply" name="auto_reply" :tab="t('auto_reply')">
-            <AutoReply />
-          </n-tab-pane>
-          <n-tab-pane v-if="openSettings.enableWebhook" name="webhook" :tab="t('webhookSettings')">
-            <Webhook />
-          </n-tab-pane>
-          <n-tab-pane v-if="openSettings.isS3Enabled" name="s3_attachment" :tab="t('s3Attachment')">
-            <Attachment />
-          </n-tab-pane>
-          <n-tab-pane v-if="openSettings.enableIndexAbout" name="about" :tab="t('about')">
-            <About />
-          </n-tab-pane>
-        </n-tabs>
-      </div>
 
-      <div v-else-if="userJwt && !jwt" style="padding: 20px;">
-        <n-card :title="t('addressManagement')">
-          <AddressManagement />
-        </n-card>
-      </div>
+    <n-card :bordered="false" class="hero-card mb-4">
+      <AddressBar />
+    </n-card>
 
-      <div v-else class="landing-container">
-        <n-card class="login-card" :bordered="false">
-          <n-space vertical align="center" size="large">
-            <h2 style="margin-bottom: 0; color: #666;">{{ t('loginTip') }}</h2>
-            <n-button type="primary" size="large" round style="width: 200px; height: 50px; font-size: 18px;"
-              @click="router.push('/user')">
-              <template #icon>
-                <n-icon size="24">
-                  <User />
-                </n-icon>
-              </template>
-              {{ t('login') }}
-            </n-button>
-          </n-space>
+    <n-grid x-gap="16" y-gap="16" cols="1 m:24" responsive="screen">
+      
+      <n-gi span="24 m:9">
+        <div class="left-panel">
+          <n-card v-if="showTurnstile" class="mb-4 glass-card" :bordered="false">
+            <Turnstile />
+          </n-card>
+
+          <n-card 
+            :bordered="false" 
+            content-style="padding: 0;" 
+            class="mailbox-card glass-card"
+            title="Inbox"
+          >
+            <template #header-extra>
+               </template>
+            <MailBox />
+          </n-card>
+        </div>
+      </n-gi>
+
+      <n-gi span="24 m:15">
+        <div class="right-panel">
+          <n-card v-if="false" title="Send Mail" :bordered="false" class="glass-card">
+             <SendBox />
+          </n-card>
+          
+          </div>
+      </n-gi>
+    </n-grid>
+
+    <div class="main-workspace">
+        <n-card :bordered="false" class="glass-card workspace-card">
+            <MailBox />
         </n-card>
-      </div>
     </div>
-    
-    <n-modal v-model:show="showLoginModal" preset="card" style="width: 90%; max-width: 400px;" :title="t('login')">
-      <UserLogin v-if="showLoginModal" @login-success="checkLogin" />
-    </n-modal>
+
+    <div class="mt-4" v-if="!jwt">
+       </div>
   </div>
 </template>
 
 <style scoped>
-.landing-container {
+.index-container {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 60vh;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.login-card {
-  max-width: 500px;
-  width: 90%;
-  text-align: center;
-  background-color: transparent;
+/* 英雄卡片 (地址栏) - 蓝粉渐变边框效果 */
+.hero-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(108, 178, 235, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, #6CB2EB, #F699BE);
+}
+
+/* 通用毛玻璃卡片 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+}
+
+.mb-4 {
+  margin-bottom: 16px;
+}
+
+.mt-4 {
+  margin-top: 16px;
+}
+
+/* 适配 MailBox 内部样式覆盖 (如果不修改子组件，只能在这里穿透) */
+:deep(.n-list-item) {
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: background 0.2s;
+}
+:deep(.n-list-item:hover) {
+  background: rgba(108, 178, 235, 0.1);
 }
 </style>
