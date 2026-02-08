@@ -7,10 +7,10 @@ import { History, Sync, CreditCard, ShoppingCart, Gift } from '@vicons/fa'
 import { useGlobalState } from '../store'
 import { api } from '../api'
 
-// 导入 UserBar (保持同步导入以确保顶部栏优先显示)
+// 导入 UserBar
 import UserBar from './user/UserBar.vue';
 
-// [优化1] 全组件异步加载，大幅降低首屏体积
+// 全组件异步加载
 const AddressMangement = defineAsyncComponent(() => import('./user/AddressManagement.vue'));
 const UserSettingsPage = defineAsyncComponent(() => import('./user/UserSettings.vue'));
 const UserMailBox = defineAsyncComponent(() => import('./user/UserMailBox.vue'));
@@ -25,7 +25,7 @@ const redeemLoading = ref(false)
 const showTransactions = ref(false)
 const showRedeemModal = ref(false)
 const balanceLoading = ref(false)
-const dataInitLoading = ref(true) // [优化] 数据初始化加载状态
+const dataInitLoading = ref(true)
 
 // 抽奖 Tab 显示控制
 const showLotteryTab = ref(false)
@@ -73,7 +73,6 @@ const { t } = useI18n({
     }
 });
 
-// [优化2] 人性化时间问候
 const timeGreeting = computed(() => {
     const hour = new Date().getHours()
     if (hour < 12) return t('goodMorning')
@@ -122,7 +121,6 @@ const handleBuyCard = () => {
     }
 }
 
-// 检查抽奖状态
 const checkLottery = async () => {
     try {
         const res = await api.getLotteryStatus()
@@ -137,7 +135,6 @@ const checkLottery = async () => {
 onMounted(async () => {
     if (userJwt.value) {
         dataInitLoading.value = true;
-        // [优化3] 并行请求所有关键数据，显著减少等待时间
         try {
             await Promise.allSettled([
                 api.getUserSettings(message),
@@ -145,7 +142,6 @@ onMounted(async () => {
                 checkLottery()
             ]);
         } finally {
-            // 设置一个极短的延时防止闪烁
             setTimeout(() => {
                 dataInitLoading.value = false;
             }, 300)
@@ -261,15 +257,29 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* 通用毛玻璃卡片样式 - 配合 App.vue 的暗色主题修复 */
+/* [核心优化] 毛玻璃 + 描边效果 */
 .glass-panel {
-    /* 这里使用 var(--n-card-color) 或者继承 App.vue 定义的背景策略 */
-    /* 这里的样式通常由 Naive UI 的 n-card 或 App.vue 的 themeOverrides 覆盖，
-       但保留一些 padding 和 border 是好的 */
+    /* 背景色由 App.vue 主题控制，这里专注于布局和描边 */
     padding: 24px;
-    margin-bottom: 20px;
-    border-radius: 16px;
-    transition: all 0.3s ease;
+    margin-bottom: 24px;
+    border-radius: 20px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* 浅色模式下的描边 */
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+/* 深色模式下的描边适配 (如果 App.vue 的 themeOverrides 没完全覆盖) */
+:deep([data-theme='dark']) .glass-panel {
+    border: 1px solid rgba(255, 255, 255, 0.12); /* 亮白细线，增强轮廓 */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* 悬停效果 */
+.glass-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
 }
 
 .wallet-container {
@@ -286,21 +296,25 @@ onMounted(async () => {
 
 .greeting-text {
     font-size: 14px;
-    color: var(--n-text-color-3); /* 使用 Naive UI 变量 */
     opacity: 0.8;
     margin-bottom: 4px;
+    font-weight: 500;
 }
 
 .currency-symbol {
     font-size: 18px;
     margin-right: 4px;
     font-weight: 500;
+    color: var(--n-primary-color);
 }
 
 .balance-num {
     font-weight: 700;
-    font-size: 28px;
-    letter-spacing: 0.5px;
+    font-size: 32px;
+    letter-spacing: -0.5px;
+    background: linear-gradient(120deg, var(--n-text-color), var(--n-primary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 .refresh-btn {
@@ -318,7 +332,6 @@ onMounted(async () => {
     align-items: center;
 }
 
-/* 简单的淡入动画 */
 .animate-fade-in {
     animation: fadeIn 0.4s ease-out;
 }
@@ -361,7 +374,6 @@ onMounted(async () => {
     .action-wrapper .n-button {
         flex: 1;
     }
-    /* 移动端 Tab 内容区域增加 padding 以防贴边 */
     :deep(.n-tab-pane) {
         padding-top: 10px;
     }
