@@ -1,4 +1,4 @@
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
     createGlobalState, useStorage, useDark, useToggle,
     useLocalStorage, useSessionStorage
@@ -63,6 +63,32 @@ export const useGlobalState = createGlobalState(
         const showAdminAuth = ref(false);
         const auth = useStorage('auth', '');
         const adminAuth = useStorage('adminAuth', '');
+        // [新增] Admin 登录时间戳，用于 3 天强制失效检测
+        const adminLoginTime = useStorage('adminLoginTime', 0);
+
+        // [新增] 检查 Admin 是否过期 (3天 = 259200000 毫秒)
+        if (adminAuth.value) {
+            const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+            const now = Date.now();
+            // 如果没有时间戳(旧版本)或时间差超过3天，强制清除
+            if (!adminLoginTime.value || (now - adminLoginTime.value > threeDaysMs)) {
+                adminAuth.value = '';
+                adminLoginTime.value = 0;
+            }
+        }
+
+        // [新增] 监听 adminAuth 变化，登录时更新时间戳
+        watch(adminAuth, (newVal) => {
+            if (newVal) {
+                // 只有当时间戳不存在或为0时才更新，避免刷新页面重置时间
+                if (!adminLoginTime.value) {
+                    adminLoginTime.value = Date.now();
+                }
+            } else {
+                adminLoginTime.value = 0;
+            }
+        });
+
         const jwt = useStorage('jwt', '');
         const addressPassword = useSessionStorage('addressPassword', '');
         const adminTab = useSessionStorage('adminTab', "account");
@@ -72,6 +98,7 @@ export const useGlobalState = createGlobalState(
         const useIframeShowMail = useStorage('useIframeShowMail', false);
         const preferShowTextMail = useStorage('preferShowTextMail', false);
         const userJwt = useStorage('userJwt', '');
+        // [确认] 用户中心默认显示 'address_management' (地址管理)
         const userTab = useSessionStorage('userTab', 'address_management');
         const indexTab = useSessionStorage('indexTab', 'mailbox');
         const globalTabplacement = useStorage('globalTabplacement', 'top');
@@ -103,7 +130,6 @@ export const useGlobalState = createGlobalState(
             user_role: null,
         });
         
-        // [关键修复] 添加 userBalance 定义
         const userBalance = ref(0);
 
         const showAdminPage = computed(() =>
@@ -142,7 +168,7 @@ export const useGlobalState = createGlobalState(
             indexTab,
             userOpenSettings,
             userSettings,
-            userBalance, // [关键修复] 必须导出这个变量，User.vue 才能使用
+            userBalance,
             globalTabplacement,
             useSideMargin,
             useUTCDate,
