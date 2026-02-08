@@ -51,7 +51,7 @@ const themeOverrides = computed(() => {
     ? 'rgba(255, 255, 255, 0.08)'
     : 'rgba(255, 255, 255, 0.4)';
 
-  // 现代配色方案
+  // 现代配色方案 - 调整为更契合蓝粉色调的颜色，或保持原样
   const primaryColor = '#3a86ff'; // 鲜亮蓝
   const primaryColorHover = '#5c9aff';
   const primaryColorPressed = '#2a6fd9';
@@ -314,8 +314,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   
-  /* 梦幻渐变背景 - 浅色模式 */
-  background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+  /* 蓝粉色调背景 - 浅色模式 (修改部分) */
+  /* 从原本的 #e0c3fc(浅紫) -> #8ec5fc(浅蓝) 调整为更明显的蓝粉渐变 */
+  /* #8EC5FC (蓝) -> #E0C3FC (紫) -> #FF9A9E (粉) */
+  background: linear-gradient(135deg, #8EC5FC 0%, #E0C3FC 50%, #FF9A9E 100%);
   background-attachment: fixed;
   background-size: cover;
   
@@ -326,7 +328,7 @@ body {
   min-height: 100vh;
 }
 
-/* 深色模式背景 */
+/* 深色模式背景 (保持原样或微调) */
 [data-theme='dark'] body {
   background: linear-gradient(135deg, #1f1c2c 0%, #928dab 100%);
   color: #eee;
