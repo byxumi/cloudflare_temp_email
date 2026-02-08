@@ -46,12 +46,30 @@ const checkCfTurnstile = async (remove) => {
                 callback: function (token) {
                     cfToken.value = token;
                 },
+                'expired-callback': function () {
+                    cfToken.value = "";
+                },
+                'error-callback': function () {
+                    cfToken.value = "";
+                }
             }
         );
     } finally {
         turnstileLoading.value = false;
     }
 }
+
+// [新增] 暴露重置方法
+const reset = () => {
+    if (window.turnstile && cfTurnstileId.value) {
+        window.turnstile.reset(cfTurnstileId.value);
+        cfToken.value = "";
+    } else {
+        checkCfTurnstile(true);
+    }
+}
+
+defineExpose({ reset });
 
 watch(isDark, async (isDark) => {
     checkCfTurnstile(true)
