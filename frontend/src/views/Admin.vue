@@ -6,6 +6,9 @@ import { useMessage } from 'naive-ui'
 import { useGlobalState } from '../store'
 import { api } from '../api'
 
+// [核心安全修复] 引入 Turnstile
+import Turnstile from '../components/Turnstile.vue'
+
 import SenderAccess from './admin/SenderAccess.vue'
 import Statistics from "./admin/Statistics.vue"
 import SendBox from './admin/SendBox.vue';
@@ -31,12 +34,11 @@ import CardManager from './admin/CardManager.vue';
 import PricingManager from './admin/PricingManager.vue';
 import TransactionManager from './admin/TransactionManager.vue';
 import VersionSettings from './admin/VersionSettings.vue';
-// [新增] 引入抽奖设置
 import LotterySettings from './admin/LotterySettings.vue';
 
 const {
   adminAuth, showAdminAuth, adminTab, loading,
-  globalTabplacement, showAdminPage, userSettings
+  globalTabplacement, showAdminPage, userSettings, openSettings
 } = useGlobalState()
 const message = useMessage()
 
@@ -46,7 +48,14 @@ const SendMail = defineAsyncComponent(() => {
     .finally(() => loading.value = false);
 });
 
+const cfToken = ref('')
+
 const authFunc = async () => {
+  // 简单的前端防护：如果配置了Turnstile但没Token，不执行
+  if (openSettings.value.cfTurnstileSiteKey && !cfToken.value) {
+      return;
+  }
+  
   try {
     adminAuth.value = tmpAdminAuth.value;
     location.reload()
@@ -83,18 +92,18 @@ const { t } = useI18n({
       ipBlacklistSettings: 'IP Blacklist',
       appearance: 'Appearance',
       about: 'About',
-      ok: 'OK',
+      ok: 'Login',
       mailWebhook: 'Mail Webhook',
       billing: 'Billing',
       cardManager: 'Card Management',
       pricingManager: 'Pricing Management',
       transactionManager: 'Transactions',
       versionSettings: 'Version',
-      lotterySettings: 'Lottery Settings', // [新增]
+      lotterySettings: 'Lottery Settings',
     },
     zh: {
-      accessHeader: 'Admin 密码',
-      accessTip: '请输入 Admin 密码',
+      accessHeader: '管理员登录',
+      accessTip: '请输入 Admin 密码以继续',
       mails: '邮件',
       sendMail: '发送邮件',
       qucickSetup: '快速设置',
@@ -118,14 +127,14 @@ const { t } = useI18n({
       ipBlacklistSettings: 'IP 黑名单',
       appearance: '外观',
       about: '关于',
-      ok: '确定',
+      ok: '登录',
       mailWebhook: '邮件 Webhook',
       billing: '计费管理',
       cardManager: '卡密管理',
       pricingManager: '定价管理',
       transactionManager: '交易流水',
       versionSettings: '版本号',
-      lotterySettings: '抽奖设置', // [新增]
+      lotterySettings: '抽奖设置',
     }
   }
 });
@@ -141,15 +150,30 @@ onMounted(async () => {
 <template>
   <div v-if="userSettings.fetched">
     <n-modal v-model:show="showAdminPasswordModal" :closable="false" :closeOnEsc="false" :maskClosable="false"
-      preset="dialog" :title="t('accessHeader')">
-      <p>{{ t('accessTip') }}</p>
-      <n-input v-model:value="tmpAdminAuth" type="password" show-password-on="click" />
-      <template #action>
-        <n-button @click="authFunc" type="primary" :loading="loading">
-          {{ t('ok') }}
-        </n-button>
-      </template>
+      preset="card" :title="t('accessHeader')" class="login-modal">
+      <div style="text-align: center; margin-bottom: 20px;">
+          <p style="color: #666;">{{ t('accessTip') }}</p>
+      </div>
+      <n-space vertical size="large">
+          <n-input v-model:value="tmpAdminAuth" type="password" show-password-on="click" placeholder="Password" size="large" @keydown.enter="authFunc"/>
+          
+          <div v-if="openSettings.cfTurnstileSiteKey" style="display: flex; justify-content: center;">
+              <Turnstile v-model:value="cfToken" />
+          </div>
+
+          <n-button 
+            @click="authFunc" 
+            type="primary" 
+            :loading="loading" 
+            block 
+            size="large"
+            :disabled="openSettings.cfTurnstileSiteKey && !cfToken"
+          >
+            {{ t('ok') }}
+          </n-button>
+      </n-space>
     </n-modal>
+
     <n-tabs v-if="showAdminPage" type="card" v-model:value="adminTab" :placement="globalTabplacement">
       <n-tab-pane name="qucickSetup" :tab="t('qucickSetup')">
         <n-tabs type="bar" justify-content="center" animated>
@@ -279,5 +303,11 @@ onMounted(async () => {
 .n-pagination {
   margin-top: 10px;
   margin-bottom: 10px;
+}
+
+.login-modal {
+    width: 90%; 
+    max-width: 400px;
+    border-radius: 16px;
 }
 </style>
