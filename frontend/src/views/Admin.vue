@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n'
 import { useMessage, NButton, NIcon } from 'naive-ui'
-import { LogOutOutline } from '@vicons/ionicons5'
+import { SignOutAlt } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -50,7 +50,6 @@ const SendMail = defineAsyncComponent(() => {
 });
 
 const cfToken = ref('')
-// [新增] 引用 Turnstile 组件
 const turnstileRef = ref(null)
 
 const authFunc = async () => {
@@ -67,7 +66,6 @@ const authFunc = async () => {
     location.reload();
   } catch (error) {
     message.error(error.message || "Authentication failed");
-    // [修复] 登录失败（如密码错误）时，重置 Turnstile，防止 Token 复用导致 500
     if (turnstileRef.value) {
         turnstileRef.value.reset();
     }
@@ -197,7 +195,7 @@ onMounted(async () => {
 
     <div v-if="showAdminPage" class="admin-header-actions">
         <n-button type="error" size="small" secondary @click="logout">
-            <template #icon><n-icon><LogOutOutline /></n-icon></template>
+            <template #icon><n-icon><SignOutAlt /></n-icon></template>
             {{ t('logout') }}
         </n-button>
     </div>
