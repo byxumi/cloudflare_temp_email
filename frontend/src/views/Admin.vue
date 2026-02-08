@@ -1,8 +1,8 @@
 <script setup>
 import { computed, onMounted, ref, defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NIcon } from 'naive-ui' // [新增] NButton, NIcon
-import { LogOutOutline } from '@vicons/ionicons5' // [新增] 图标
+import { useMessage, NButton, NIcon } from 'naive-ui'
+import { LogOutOutline } from '@vicons/ionicons5'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -39,7 +39,7 @@ import LotterySettings from './admin/LotterySettings.vue';
 const {
   adminAuth, showAdminAuth, adminTab, loading,
   globalTabplacement, showAdminPage, userSettings, openSettings,
-  adminLoginTime // [新增] 引用时间戳
+  adminLoginTime
 } = useGlobalState()
 const message = useMessage()
 
@@ -50,6 +50,8 @@ const SendMail = defineAsyncComponent(() => {
 });
 
 const cfToken = ref('')
+// [新增] 引用 Turnstile 组件
+const turnstileRef = ref(null)
 
 const authFunc = async () => {
   if (openSettings.value.cfTurnstileSiteKey && !cfToken.value) {
@@ -61,16 +63,20 @@ const authFunc = async () => {
   try {
     await api.adminLogin(tmpAdminAuth.value, cfToken.value || "");
     adminAuth.value = tmpAdminAuth.value;
-    adminLoginTime.value = Date.now(); // [新增] 更新登录时间
+    adminLoginTime.value = Date.now();
     location.reload();
   } catch (error) {
     message.error(error.message || "Authentication failed");
+    // [修复] 登录失败（如密码错误）时，重置 Turnstile，防止 Token 复用导致 500
+    if (turnstileRef.value) {
+        turnstileRef.value.reset();
+    }
+    cfToken.value = "";
   } finally {
     loading.value = false;
   }
 }
 
-// [新增] 退出登录函数
 const logout = () => {
     adminAuth.value = '';
     adminLoginTime.value = 0;
@@ -106,7 +112,7 @@ const { t } = useI18n({
       appearance: 'Appearance',
       about: 'About',
       ok: 'Login',
-      logout: 'Logout', // [新增]
+      logout: 'Logout',
       mailWebhook: 'Mail Webhook',
       billing: 'Billing',
       cardManager: 'Card Management',
@@ -142,7 +148,7 @@ const { t } = useI18n({
       appearance: '外观',
       about: '关于',
       ok: '登录',
-      logout: '退出登录', // [新增]
+      logout: '退出登录',
       mailWebhook: '邮件 Webhook',
       billing: '计费管理',
       cardManager: '卡密管理',
@@ -173,7 +179,7 @@ onMounted(async () => {
           <n-input v-model:value="tmpAdminAuth" type="password" show-password-on="click" placeholder="Password" size="large" @keydown.enter="authFunc"/>
           
           <div v-if="openSettings.cfTurnstileSiteKey" style="display: flex; justify-content: center;">
-              <Turnstile v-model:value="cfToken" />
+              <Turnstile ref="turnstileRef" v-model:value="cfToken" />
           </div>
 
           <n-button 
@@ -333,7 +339,6 @@ onMounted(async () => {
     border-radius: 16px;
 }
 
-/* [新增] 退出按钮样式 */
 .admin-header-actions {
     position: absolute;
     top: 5px;
