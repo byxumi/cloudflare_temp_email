@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n'
 import { useMessage, NButton, NIcon } from 'naive-ui'
-import { SignOutAlt } from '@vicons/fa'
+import { SignOutAlt } from '@vicons/fa' // 使用已安装的图标库
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -50,6 +50,7 @@ const SendMail = defineAsyncComponent(() => {
 });
 
 const cfToken = ref('')
+// [新增] Turnstile 组件引用
 const turnstileRef = ref(null)
 
 const authFunc = async () => {
@@ -60,12 +61,16 @@ const authFunc = async () => {
   
   loading.value = true;
   try {
+    // 验证逻辑
     await api.adminLogin(tmpAdminAuth.value, cfToken.value || "");
     adminAuth.value = tmpAdminAuth.value;
     adminLoginTime.value = Date.now();
     location.reload();
   } catch (error) {
+    // 显示后端返回的具体错误消息
     message.error(error.message || "Authentication failed");
+    
+    // [关键修复] 失败后重置人机验证，防止 Token 重复使用
     if (turnstileRef.value) {
         turnstileRef.value.reset();
     }
