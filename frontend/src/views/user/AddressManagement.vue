@@ -2,7 +2,10 @@
 import { ref, onMounted, computed, watch, h } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable } from 'naive-ui'
+import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NInputGroup, NInputGroupLabel, NCard, NStatistic, NNumberAnimation } from 'naive-ui'
+import { 
+    TrashAlt, ExchangeAlt, Copy, Edit, EllipsisH, Plus, List, Link, Sync, Random 
+} from '@vicons/fa' // 引入图标
 import useClipboard from 'vue-clipboard3'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -24,25 +27,26 @@ const { t } = useI18n({
             delete: 'Delete',
             cancel: 'Cancel',
             confirm: 'Confirm',
-            selectDomain: 'Select Domain',
+            selectDomain: 'Domain',
             prefix: 'Prefix',
             domain: 'Domain',
             price: 'Price',
             free: 'Free',
-            currentPrice: 'Current Price: ',
-            balance: 'Your Balance: ',
-            insufficientBalance: 'Insufficient balance',
-            confirmPurchase: 'Confirm Purchase',
+            currentPrice: 'Cost',
+            balance: 'Wallet Balance',
+            remaining: 'Remaining',
+            insufficientBalance: 'Insufficient Balance',
+            confirmPurchase: 'Pay & Create',
             createSuccess: 'Created Successfully',
             unbindSuccess: 'Unbind Successfully',
             switch: 'Switch',
-            copyCredential: 'Copy Credential',
+            copyCredential: 'Copy JWT',
             copyEmail: 'Copy Email',
             transfer: 'Transfer',
             transferTitle: 'Transfer Address',
             targetEmail: 'Target User Email',
             transferSuccess: 'Transferred Successfully',
-            bindTitle: 'Bind Existing Address',
+            bindTitle: 'Bind Address',
             jwtPlaceholder: 'Paste Address JWT Credential',
             bindSuccess: 'Bound Successfully',
             switched: 'Switched to ',
@@ -50,16 +54,16 @@ const { t } = useI18n({
             more: 'More',
             random: 'Random', 
             bindFailed: 'Bind failed',
-            viewPrices: 'View Prices',
-            priceList: 'Domain Price List',
+            viewPrices: 'Prices',
+            priceList: 'Price List',
             currency: 'CNY',
             remark: 'Remark',
-            editRemark: 'Edit Remark',
+            editRemark: 'Remark',
             remarkPlaceholder: 'Enter remark',
-            dailyCheckin: 'Daily Check-in',
+            dailyCheckin: 'Check-in',
             checkinSuccess: 'Check-in Success! Got ',
-            checkinBalance: 'Check-in Bal: ',
-            mainBalance: 'Main Bal: '
+            checkinBalance: 'Bonus: ',
+            mainBalance: 'Main: '
         },
         zh: {
             createAddress: '新建地址',
@@ -70,14 +74,15 @@ const { t } = useI18n({
             cancel: '取消',
             confirm: '确定',
             selectDomain: '选择域名',
-            prefix: '前缀',
-            domain: '域名',
+            prefix: '前缀名',
+            domain: '选择域名',
             price: '价格',
             free: '免费',
-            currentPrice: '当前价格：',
-            balance: '您的余额：',
+            currentPrice: '本次扣费',
+            balance: '当前余额',
+            remaining: '预计剩余',
             insufficientBalance: '余额不足',
-            confirmPurchase: '确认购买',
+            confirmPurchase: '支付并创建',
             createSuccess: '创建成功',
             unbindSuccess: '解绑成功',
             switch: '切换',
@@ -95,7 +100,7 @@ const { t } = useI18n({
             more: '更多',
             random: '随机',
             bindFailed: '绑定失败',
-            viewPrices: '查看价格',
+            viewPrices: '价格表',
             priceList: '域名价格表',
             currency: '元',
             remark: '备注',
@@ -103,8 +108,8 @@ const { t } = useI18n({
             remarkPlaceholder: '请输入备注',
             dailyCheckin: '每日签到',
             checkinSuccess: '签到成功！获得 ',
-            checkinBalance: '签到余额: ',
-            mainBalance: '充值余额: '
+            checkinBalance: '赠送: ',
+            mainBalance: '充值: '
         }
     }
 })
@@ -144,23 +149,22 @@ const currentPrefix = computed(() => {
     return openSettings.value.prefix || '';
 })
 
-// [修复] 数据获取逻辑，兼容多种返回格式，防止空白
+// 计算剩余余额
+const totalBalance = computed(() => userBalance.value + checkinBalance.value);
+const remainingBalance = computed(() => totalBalance.value - currentPriceCents.value);
+
 const fetchData = async () => {
     loading.value = true
     try {
         const res = await api.fetch('/user_api/bind_address')
-        console.log("API Response:", res); // 方便调试
-
         if (res && Array.isArray(res.results)) {
             data.value = res.results;
         } else if (Array.isArray(res)) {
             data.value = res;
         } else {
-            console.warn("Invalid data format", res);
             data.value = [];
         }
     } catch (e) {
-        console.error(e);
         message.error(e.message || "Fetch failed")
     } finally {
         loading.value = false
@@ -247,8 +251,7 @@ const handleCreate = async () => {
     if (!createForm.value.name) generateRandom();
     if (!createForm.value.domain) return
     
-    const totalBal = userBalance.value + checkinBalance.value
-    if (currentPriceCents.value > totalBal) {
+    if (currentPriceCents.value > totalBalance.value) {
         message.error(t('insufficientBalance'))
         return
     }
@@ -260,7 +263,6 @@ const handleCreate = async () => {
                 jwt.value = res.jwt;
                 await api.getSettings(); 
             }
-
             message.success(t('createSuccess'))
             showCreateModal.value = false
             fetchData()
@@ -268,11 +270,7 @@ const handleCreate = async () => {
             router.push('/') 
         }
     } catch (e) {
-        if (e.message && e.message.includes('402')) {
-            message.error(t('insufficientBalance'))
-        } else {
-            message.error(e.message || 'Error')
-        }
+        message.error(e.message || 'Error')
     } finally {
         createLoading.value = false
     }
@@ -309,7 +307,7 @@ const handleCopyEmail = async (row) => {
         await toClipboard(row.name);
         message.success(t('copied'));
     } catch (e) {
-        message.error(e.message || "Copy failed");
+        message.error(e.message);
     }
 }
 
@@ -324,83 +322,43 @@ const handleBind = async () => {
         const cleanJwt = bindForm.value.jwt.trim();
         const apiBase = import.meta.env.VITE_API_BASE || "";
         const url = `${apiBase}/user_api/bind_address`;
-        const headers = {
-            'Authorization': `Bearer ${cleanJwt}`,
-            'x-user-token': userJwt.value,
-            'Content-Type': 'application/json'
-        };
-        if (auth.value) {
-            headers['x-custom-auth'] = auth.value;
-        }
-
-        const rawRes = await fetch(url, {
-            method: 'POST',
-            headers: headers
-        });
-        
-        if (rawRes.ok) {
-            message.success(t('bindSuccess'));
-            showBindModal.value = false;
-            bindForm.value.jwt = '';
-            fetchData();
-        } else {
-            const txt = await rawRes.text();
-            try {
-                const json = JSON.parse(txt);
-                throw new Error(json.error || json.message || txt);
-            } catch (e) {
-                throw new Error(txt || t('bindFailed'));
-            }
-        }
-    } catch (e) {
-        console.error(e);
-        message.error(e.message || t('bindFailed'));
-    } finally {
-        bindLoading.value = false;
-    }
+        const headers = { 'Authorization': `Bearer ${cleanJwt}`, 'x-user-token': userJwt.value, 'Content-Type': 'application/json' };
+        if (auth.value) headers['x-custom-auth'] = auth.value;
+        const rawRes = await fetch(url, { method: 'POST', headers: headers });
+        if (rawRes.ok) { message.success(t('bindSuccess')); showBindModal.value = false; bindForm.value.jwt = ''; fetchData(); } 
+        else { throw new Error(t('bindFailed')); }
+    } catch (e) { message.error(e.message || t('bindFailed')); } finally { bindLoading.value = false; }
 }
 
-const openRemarkModal = (row) => {
-    remarkForm.value = { addressId: row.id, remark: row.remark || '' }
-    showRemarkModal.value = true
-}
+const openRemarkModal = (row) => { remarkForm.value = { addressId: row.id, remark: row.remark || '' }; showRemarkModal.value = true }
+const handleSaveRemark = async () => { remarkLoading.value = true; try { await api.updateAddressRemark(remarkForm.value.addressId, remarkForm.value.remark); message.success('Success'); showRemarkModal.value = false; fetchData() } catch (e) { message.error(e.message) } finally { remarkLoading.value = false } }
 
-const handleSaveRemark = async () => {
-    remarkLoading.value = true
-    try {
-        await api.updateAddressRemark(remarkForm.value.addressId, remarkForm.value.remark)
-        message.success('Success')
-        showRemarkModal.value = false
-        fetchData()
-    } catch (e) {
-        message.error(e.message)
-    } finally {
-        remarkLoading.value = false
-    }
-}
-
-// [UI调整] 移除了多选框列、移除了行内复制按钮，将它们移入 Dropdown
 const columns = [
-    { title: 'ID', key: 'id', width: 50 },
-    { title: t('address'), key: 'name' },
+    { title: 'ID', key: 'id', width: 60, align: 'center' },
+    { title: t('address'), key: 'name', minWidth: 150 },
     { title: t('remark'), key: 'remark', render(row) {
-        return row.remark ? h(NTag, { type: 'info', size: 'small', bordered: false }, { default: () => row.remark }) : '-'
+        return row.remark ? h(NTag, { type: 'info', size: 'small', bordered: false, round: true }, { default: () => row.remark }) : ''
     }},
     { 
         title: t('actions'), 
         key: 'actions',
+        width: 150,
+        align: 'right',
         render(row) {
-            return h(NSpace, { size: 'small' }, {
+            return h(NSpace, { justify: 'end' }, {
                 default: () => [
-                    h(NButton, { size: 'tiny', type: 'primary', secondary: true, onClick: () => handleSwitch(row) }, { default: () => t('switch') }),
+                    h(NButton, { size: 'tiny', type: 'primary', secondary: true, round: true, onClick: () => handleSwitch(row) }, { 
+                        icon: () => h(NIcon, null, { default: () => h(ExchangeAlt) }),
+                        default: () => t('switch') 
+                    }),
                     h(NDropdown, {
                         trigger: 'click',
                         options: [
-                            { label: t('copyEmail'), key: 'copyEmail' },     // [新增]
-                            { label: t('copyCredential'), key: 'copyJwt' },  // [回溯]
-                            { label: t('editRemark'), key: 'remark' },
-                            { label: t('transfer'), key: 'transfer' },
-                            { label: t('delete'), key: 'delete', props: { style: 'color: red' } }
+                            { label: t('copyEmail'), key: 'copyEmail', icon: () => h(NIcon, null, { default: () => h(Copy) }) },
+                            { label: t('copyCredential'), key: 'copyJwt', icon: () => h(NIcon, null, { default: () => h(Link) }) },
+                            { label: t('editRemark'), key: 'remark', icon: () => h(NIcon, null, { default: () => h(Edit) }) },
+                            { label: t('transfer'), key: 'transfer', icon: () => h(NIcon, null, { default: () => h(ExchangeAlt) }) },
+                            { label: t('delete'), key: 'delete', props: { style: 'color: #d03050' }, icon: () => h(NIcon, null, { default: () => h(TrashAlt) }) }
                         ],
                         onSelect: (key) => {
                             if (key === 'copyEmail') handleCopyEmail(row)
@@ -409,7 +367,7 @@ const columns = [
                             if (key === 'transfer') openTransferModal(row)
                             if (key === 'delete') { if(confirm('Confirm Delete?')) handleDelete(row.id) }
                         }
-                    }, { default: () => h(NButton, { size: 'tiny' }, { default: () => t('more') }) })
+                    }, { default: () => h(NButton, { size: 'tiny', circle: true, quaternary: true }, { icon: () => h(NIcon, null, { default: () => h(EllipsisH) }) }) })
                 ]
             })
         }
@@ -418,119 +376,283 @@ const columns = [
 
 const priceColumns = [
     { title: t('domain'), key: 'domain' },
-    { 
-        title: t('price'), 
-        key: 'price_yuan',
-        render(row) {
-            if (row.price === 0) {
-                return h(NTag, { type: 'success', size: 'small', bordered: false }, { default: () => t('free') })
-            }
-            return `${row.price_yuan} ${t('currency')}`
-        }
-    }
+    { title: t('price'), key: 'price_yuan', render(row) { return row.price === 0 ? h(NTag, { type: 'success', size: 'small' }, { default: () => t('free') }) : `¥ ${row.price_yuan}` } }
 ]
 
 onMounted(async () => {
-    if (useGlobalState().userJwt.value) {
-        await api.getUserSettings(message);
-    }
+    if (useGlobalState().userJwt.value) { await api.getUserSettings(message); }
     await Promise.all([fetchData(), refreshBalance()]);
 })
 </script>
 
 <template>
-    <div>
-        <div style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
-            <n-button type="warning" size="small" :loading="checkinLoading" @click="handleCheckin">
-                📅 {{ t('dailyCheckin') }}
-            </n-button>
-            <div style="font-size: 0.9em;">
-                <span style="margin-right: 15px;">{{ t('mainBalance') }} <b>{{ (userBalance/100).toFixed(2) }}</b></span>
-                <span style="color: #d03050;">{{ t('checkinBalance') }} <b>{{ (checkinBalance/100).toFixed(2) }}</b></span>
+    <div class="address-mgmt-container">
+        <div class="toolbar glass-panel-sm">
+            <div class="toolbar-left">
+                <n-button type="primary" color="#3a86ff" @click="openCreateModal">
+                    <template #icon><n-icon><Plus /></n-icon></template>
+                    {{ t('createAddress') }}
+                </n-button>
+                <n-button secondary @click="openPriceModal">
+                    <template #icon><n-icon><List /></n-icon></template>
+                    {{ t('viewPrices') }}
+                </n-button>
+                <n-button secondary @click="showBindModal = true">
+                    <template #icon><n-icon><Link /></n-icon></template>
+                    {{ t('bindExisting') }}
+                </n-button>
+            </div>
+            
+            <div class="toolbar-right">
+                <div class="balance-info">
+                    <n-button text size="small" :loading="checkinLoading" @click="handleCheckin" class="checkin-btn">
+                        <template #icon><n-icon color="#f0a020"><mr /></n-icon></template>
+                        📅 {{ t('dailyCheckin') }}
+                    </n-button>
+                    <div class="balance-detail">
+                        <span>{{ t('mainBalance') }} <span class="num">{{ (userBalance/100).toFixed(2) }}</span></span>
+                        <span class="divider">|</span>
+                        <span>{{ t('checkinBalance') }} <span class="num free">{{ (checkinBalance/100).toFixed(2) }}</span></span>
+                    </div>
+                </div>
+                <n-button circle secondary size="small" @click="fetchData">
+                    <template #icon><n-icon><Sync /></n-icon></template>
+                </n-button>
             </div>
         </div>
 
-        <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <n-button type="primary" @click="openCreateModal">{{ t('createAddress') }}</n-button>
-            <n-button type="info" secondary @click="openPriceModal">{{ t('viewPrices') }}</n-button>
-            <n-button @click="showBindModal = true">{{ t('bindExisting') }}</n-button>
-            <n-button @click="fetchData">刷新</n-button>
+        <div class="glass-container">
+            <n-data-table 
+                :row-key="row => row.id"
+                :columns="columns" 
+                :data="data" 
+                :loading="loading" 
+                :bordered="false"
+                :single-line="false"
+                class="address-table"
+            />
         </div>
 
-        <n-data-table 
-            :row-key="row => row.id"
-            :columns="columns" 
-            :data="data" 
-            :loading="loading" 
-            :bordered="false" 
-        />
-
-        <n-modal v-model:show="showCreateModal" preset="card" :title="t('createAddress')" style="width: 90%; max-width: 500px">
-            <n-form>
+        <n-modal v-model:show="showCreateModal" preset="card" :title="t('createAddress')" class="custom-modal">
+            <n-form size="large">
                 <n-form-item :label="t('prefix')">
                     <n-input-group>
-                        <n-input-group-label v-if="currentPrefix">{{ currentPrefix }}</n-input-group-label>
-                        <n-input v-model:value="createForm.name" placeholder="e.g. boss" />
-                        <n-button @click="generateRandom">{{ t('random') }}</n-button>
+                        <n-input-group-label v-if="currentPrefix" class="prefix-label">{{ currentPrefix }}</n-input-group-label>
+                        <n-input v-model:value="createForm.name" placeholder="boss" />
+                        <n-button @click="generateRandom" secondary>
+                            <template #icon><n-icon><Random /></n-icon></template>
+                        </n-button>
                     </n-input-group>
                 </n-form-item>
-                <n-form-item :label="t('domain')" required>
+                <n-form-item :label="t('domain')">
                     <n-select v-model:value="createForm.domain" :options="domainOptions" />
                 </n-form-item>
-                <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+
+                <div class="price-receipt" v-if="createForm.domain">
                     <n-spin :show="priceLoading" size="small">
-                        <div v-if="currentPriceCents > 0">
-                            <p>{{ t('currentPrice') }} <span style="color: #d03050; font-weight: bold;">{{ (currentPriceCents / 100).toFixed(2) }} 元</span></p>
-                            <p style="font-size: 0.9em; color: #666;">
-                                {{ t('balance') }} {{ ((userBalance + checkinBalance) / 100).toFixed(2) }} 元
-                            </p>
+                        <div class="receipt-row">
+                            <span class="label">{{ t('balance') }}</span>
+                            <span class="value">¥ {{ (totalBalance / 100).toFixed(2) }}</span>
                         </div>
-                        <div v-else><n-tag type="success">{{ t('free') }}</n-tag></div>
+                        <div class="receipt-row highlight">
+                            <span class="label">{{ t('currentPrice') }}</span>
+                            <span class="value cost">- ¥ {{ (currentPriceCents / 100).toFixed(2) }}</span>
+                        </div>
+                        <div class="receipt-divider"></div>
+                        <div class="receipt-row total">
+                            <span class="label">{{ t('remaining') }}</span>
+                            <span class="value" :class="{'insufficient': remainingBalance < 0}">
+                                ¥ {{ (remainingBalance / 100).toFixed(2) }}
+                            </span>
+                        </div>
+                        <div v-if="remainingBalance < 0" class="error-tip">
+                            {{ t('insufficientBalance') }}
+                        </div>
                     </n-spin>
                 </div>
             </n-form>
             <template #action>
-                <n-button type="primary" :loading="createLoading" :disabled="priceLoading || (currentPriceCents > userBalance + checkinBalance)" @click="handleCreate">
+                <n-button type="primary" block size="large" :loading="createLoading" :disabled="priceLoading || remainingBalance < 0" @click="handleCreate">
                     {{ currentPriceCents > 0 ? t('confirmPurchase') : t('confirm') }}
                 </n-button>
             </template>
         </n-modal>
 
-        <n-modal v-model:show="showPriceModal" preset="card" :title="t('priceList')" style="width: 90%; max-width: 600px">
-            <n-data-table :columns="priceColumns" :data="priceList" :loading="priceLoadingState" :max-height="400" />
+        <n-modal v-model:show="showPriceModal" preset="card" :title="t('priceList')" class="custom-modal-lg">
+            <n-data-table :columns="priceColumns" :data="priceList" :loading="priceLoadingState" :max-height="400" :bordered="false"/>
         </n-modal>
 
-        <n-modal v-model:show="showTransferModal" preset="card" :title="t('transferTitle')" style="width: 90%; max-width: 400px">
-            <n-form>
-                <n-form-item :label="t('targetEmail')" required>
+        <n-modal v-model:show="showTransferModal" preset="card" :title="t('transferTitle')" class="custom-modal">
+            <n-form size="large">
+                <n-form-item :label="t('targetEmail')">
                     <n-input v-model:value="transferForm.targetEmail" placeholder="user@example.com" />
                 </n-form-item>
             </n-form>
             <template #action>
-                <n-button type="warning" :loading="transferLoading" @click="handleTransfer">{{ t('confirm') }}</n-button>
+                <n-button type="warning" block size="large" :loading="transferLoading" @click="handleTransfer">{{ t('confirm') }}</n-button>
             </template>
         </n-modal>
 
-        <n-modal v-model:show="showBindModal" preset="card" :title="t('bindTitle')" style="width: 90%; max-width: 400px">
-            <n-form>
-                <n-form-item label="JWT" required>
-                    <n-input v-model:value="bindForm.jwt" type="textarea" :placeholder="t('jwtPlaceholder')" />
+        <n-modal v-model:show="showBindModal" preset="card" :title="t('bindTitle')" class="custom-modal">
+            <n-form size="large">
+                <n-form-item label="JWT">
+                    <n-input v-model:value="bindForm.jwt" type="textarea" :placeholder="t('jwtPlaceholder')" :autosize="{ minRows: 3 }"/>
                 </n-form-item>
             </n-form>
             <template #action>
-                <n-button type="primary" :loading="bindLoading" @click="handleBind">{{ t('confirm') }}</n-button>
+                <n-button type="primary" block size="large" :loading="bindLoading" @click="handleBind">{{ t('confirm') }}</n-button>
             </template>
         </n-modal>
 
-        <n-modal v-model:show="showRemarkModal" preset="card" :title="t('editRemark')" style="width: 90%; max-width: 400px">
-            <n-form>
+        <n-modal v-model:show="showRemarkModal" preset="card" :title="t('editRemark')" class="custom-modal">
+            <n-form size="large">
                 <n-form-item :label="t('remark')">
                     <n-input v-model:value="remarkForm.remark" :placeholder="t('remarkPlaceholder')" />
                 </n-form-item>
             </n-form>
             <template #action>
-                <n-button type="primary" :loading="remarkLoading" @click="handleSaveRemark">{{ t('confirm') }}</n-button>
+                <n-button type="primary" block size="large" :loading="remarkLoading" @click="handleSaveRemark">{{ t('confirm') }}</n-button>
             </template>
         </n-modal>
     </div>
 </template>
+
+<style scoped>
+/* 顶部工具栏玻璃效果 */
+.glass-panel-sm {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+:deep([data-theme='dark']) .glass-panel-sm {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toolbar-left, .toolbar-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* 余额信息样式优化 */
+.balance-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 0.9em;
+    background: rgba(0,0,0,0.03);
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+:deep([data-theme='dark']) .balance-info {
+    background: rgba(255,255,255,0.08);
+}
+.balance-detail {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: var(--n-text-color-2);
+}
+.balance-detail .num {
+    font-weight: 700;
+    color: var(--n-text-color-1);
+}
+.balance-detail .num.free {
+    color: #06d6a0; /* 赠送余额绿色显示 */
+}
+.divider {
+    opacity: 0.3;
+}
+
+/* 表格容器描边玻璃 */
+.glass-container {
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(10px);
+}
+:deep([data-theme='dark']) .glass-container {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+/* 弹窗收银台样式 */
+.price-receipt {
+    background: var(--n-card-color);
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+:deep([data-theme='dark']) .price-receipt {
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+}
+
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+.receipt-row.highlight .value.cost {
+    color: #ef476f;
+    font-weight: bold;
+}
+.receipt-divider {
+    height: 1px;
+    background: rgba(0,0,0,0.1);
+    margin: 8px 0;
+    border-style: dashed;
+}
+:deep([data-theme='dark']) .receipt-divider {
+    background: rgba(255,255,255,0.1);
+}
+.receipt-row.total {
+    font-weight: bold;
+    font-size: 16px;
+    margin-top: 4px;
+}
+.receipt-row.total .value {
+    color: #06d6a0;
+}
+.receipt-row.total .value.insufficient {
+    color: #ef476f;
+}
+.error-tip {
+    color: #ef476f;
+    font-size: 12px;
+    text-align: right;
+    margin-top: 4px;
+}
+
+.custom-modal { width: 90%; max-width: 440px; }
+.custom-modal-lg { width: 90%; max-width: 600px; }
+
+@media (max-width: 600px) {
+    .glass-panel-sm {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .toolbar-left, .toolbar-right {
+        justify-content: space-between;
+        width: 100%;
+    }
+    .balance-info {
+        flex: 1;
+        justify-content: space-between;
+    }
+}
+</style>
