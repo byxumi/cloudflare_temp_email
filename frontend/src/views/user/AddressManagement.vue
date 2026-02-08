@@ -4,8 +4,8 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useMessage, NButton, NTag, NDropdown, NSpace, NModal, NForm, NFormItem, NInput, NSelect, NSpin, NDataTable, NIcon, NInputGroup, NInputGroupLabel, NCard, NStatistic, NNumberAnimation } from 'naive-ui'
 import { 
-    TrashAlt, ExchangeAlt, Copy, Edit, EllipsisH, Plus, List, Link, Sync, Random 
-} from '@vicons/fa' // 引入图标
+    TrashAlt, ExchangeAlt, Copy, Edit, EllipsisH, Plus, List, Link, Sync, Random, CheckCircle 
+} from '@vicons/fa' 
 import useClipboard from 'vue-clipboard3'
 import { useGlobalState } from '../../store'
 import { api } from '../../api'
@@ -21,7 +21,7 @@ const { t } = useI18n({
     messages: {
         en: {
             createAddress: 'New Address',
-            bindExisting: 'Bind Existing',
+            bindExisting: 'Bind',
             address: 'Address',
             actions: 'Actions',
             delete: 'Delete',
@@ -33,37 +33,37 @@ const { t } = useI18n({
             price: 'Price',
             free: 'Free',
             currentPrice: 'Cost',
-            balance: 'Wallet Balance',
+            balance: 'Balance',
             remaining: 'Remaining',
             insufficientBalance: 'Insufficient Balance',
             confirmPurchase: 'Pay & Create',
-            createSuccess: 'Created Successfully',
-            unbindSuccess: 'Unbind Successfully',
+            createSuccess: 'Success',
+            unbindSuccess: 'Unbound',
             switch: 'Switch',
-            copyCredential: 'Copy JWT',
-            copyEmail: 'Copy Email',
+            copyCredential: 'JWT',
+            copyEmail: 'Email',
             transfer: 'Transfer',
             transferTitle: 'Transfer Address',
-            targetEmail: 'Target User Email',
-            transferSuccess: 'Transferred Successfully',
+            targetEmail: 'Target Email',
+            transferSuccess: 'Success',
             bindTitle: 'Bind Address',
-            jwtPlaceholder: 'Paste Address JWT Credential',
-            bindSuccess: 'Bound Successfully',
-            switched: 'Switched to ',
+            jwtPlaceholder: 'Address JWT',
+            bindSuccess: 'Success',
+            switched: 'Active: ',
             copied: 'Copied',
             more: 'More',
             random: 'Random', 
-            bindFailed: 'Bind failed',
+            bindFailed: 'Failed',
             viewPrices: 'Prices',
             priceList: 'Price List',
             currency: 'CNY',
             remark: 'Remark',
-            editRemark: 'Remark',
-            remarkPlaceholder: 'Enter remark',
+            editRemark: 'Edit Note',
+            remarkPlaceholder: 'Note...',
             dailyCheckin: 'Check-in',
-            checkinSuccess: 'Check-in Success! Got ',
-            checkinBalance: 'Bonus: ',
-            mainBalance: 'Main: '
+            checkinSuccess: 'Success! +',
+            checkinBalance: 'Bonus',
+            mainBalance: 'Main'
         },
         zh: {
             createAddress: '新建地址',
@@ -108,8 +108,8 @@ const { t } = useI18n({
             remarkPlaceholder: '请输入备注',
             dailyCheckin: '每日签到',
             checkinSuccess: '签到成功！获得 ',
-            checkinBalance: '赠送: ',
-            mainBalance: '充值: '
+            checkinBalance: '赠送',
+            mainBalance: '充值'
         }
     }
 })
@@ -149,7 +149,6 @@ const currentPrefix = computed(() => {
     return openSettings.value.prefix || '';
 })
 
-// 计算剩余余额
 const totalBalance = computed(() => userBalance.value + checkinBalance.value);
 const remainingBalance = computed(() => totalBalance.value - currentPriceCents.value);
 
@@ -203,7 +202,6 @@ const openPriceModal = async () => {
     try {
         const res = await api.getUserDomainPrices();
         const pricesMap = new Map((res.results || []).map(p => [p.domain, p]));
-        
         priceList.value = domainOptions.value.map(opt => {
             const domain = opt.value;
             const priceData = pricesMap.get(domain);
@@ -250,7 +248,6 @@ const openCreateModal = async () => {
 const handleCreate = async () => {
     if (!createForm.value.name) generateRandom();
     if (!createForm.value.domain) return
-    
     if (currentPriceCents.value > totalBalance.value) {
         message.error(t('insufficientBalance'))
         return
@@ -293,22 +290,12 @@ const handleSwitch = async (row) => {
 const handleCopyCredential = async (row) => { 
     try { 
         const res = await api.fetch(`/user_api/bind_address_jwt/${row.id}`); 
-        if (res.jwt) { 
-            await toClipboard(res.jwt); 
-            message.success(t('copied')) 
-        } 
-    } catch (e) { 
-        message.error(e.message) 
-    } 
+        if (res.jwt) { await toClipboard(res.jwt); message.success(t('copied')) } 
+    } catch (e) { message.error(e.message) } 
 }
 
 const handleCopyEmail = async (row) => {
-    try {
-        await toClipboard(row.name);
-        message.success(t('copied'));
-    } catch (e) {
-        message.error(e.message);
-    }
+    try { await toClipboard(row.name); message.success(t('copied')); } catch (e) { message.error(e.message); }
 }
 
 const openTransferModal = (row) => { transferForm.value = { addressId: row.id, targetEmail: '' }; showTransferModal.value = true }
@@ -348,7 +335,7 @@ const columns = [
             return h(NSpace, { justify: 'end' }, {
                 default: () => [
                     h(NButton, { size: 'tiny', type: 'primary', secondary: true, round: true, onClick: () => handleSwitch(row) }, { 
-                        icon: () => h(NIcon, null, { default: () => h(ExchangeAlt) }),
+                        icon: () => h(NIcon, null, { default: () => h(CheckCircle) }),
                         default: () => t('switch') 
                     }),
                     h(NDropdown, {
@@ -566,9 +553,10 @@ onMounted(async () => {
 .balance-detail .num {
     font-weight: 700;
     color: var(--n-text-color-1);
+    font-variant-numeric: tabular-nums; /* 数字等宽 */
 }
 .balance-detail .num.free {
-    color: #06d6a0; /* 赠送余额绿色显示 */
+    color: #06d6a0;
 }
 .divider {
     opacity: 0.3;
