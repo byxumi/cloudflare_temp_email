@@ -34,7 +34,8 @@ const showSplash = ref(true)
 const themeOverrides = computed(() => {
   // 定义基础透明度和颜色变量
   const isDarkTheme = isDark.value;
-  const alpha = isDarkTheme ? 0.6 : 0.7; // 基础透明度
+  // 稍微降低透明度，让蓝粉色背景更透出来
+  const alpha = isDarkTheme ? 0.6 : 0.65; 
   
   // 玻璃背景色
   const glassBg = isDarkTheme 
@@ -46,18 +47,18 @@ const themeOverrides = computed(() => {
     ? `rgba(50, 50, 55, ${alpha + 0.1})` 
     : `rgba(255, 255, 255, ${alpha + 0.15})`;
 
-  // 玻璃边框颜色（精细描边）
+  // 玻璃边框颜色（精细描边，增强质感）
   const glassBorder = isDarkTheme
     ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(255, 255, 255, 0.4)';
+    : 'rgba(255, 255, 255, 0.45)';
 
-  // 现代配色方案 - 调整为更契合蓝粉色调的颜色，或保持原样
-  const primaryColor = '#3a86ff'; // 鲜亮蓝
+  // 现代配色方案 - 保持鲜亮蓝作为主色，与蓝粉背景呼应
+  const primaryColor = '#3a86ff'; 
   const primaryColorHover = '#5c9aff';
   const primaryColorPressed = '#2a6fd9';
-  const successColor = '#06d6a0'; // 清新绿
-  const warningColor = '#ffd166'; // 柔和黄
-  const errorColor = '#ef476f';   // 现代红
+  const successColor = '#06d6a0'; 
+  const warningColor = '#ffd166'; 
+  const errorColor = '#ef476f';   
 
   const transparent = 'transparent';
 
@@ -70,14 +71,14 @@ const themeOverrides = computed(() => {
       warningColor: warningColor,
       errorColor: errorColor,
       
-      borderRadius: '16px', // 全局大圆角
+      borderRadius: '16px', // 保持大圆角
       borderRadiusSmall: '10px',
       fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
       
       // 让基础组件背景透明，透出全局背景
       bodyColor: transparent,
       cardColor: glassBg,
-      modalColor: isDarkTheme ? 'rgba(35, 35, 40, 0.85)' : 'rgba(255, 255, 255, 0.85)', // 弹窗稍微不透明一点
+      modalColor: isDarkTheme ? 'rgba(35, 35, 40, 0.85)' : 'rgba(255, 255, 255, 0.85)',
       popoverColor: glassBg,
       tableColor: transparent,
       tableHeaderColor: isDarkTheme ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.4)', 
@@ -92,10 +93,10 @@ const themeOverrides = computed(() => {
       borderRadius: '20px',
       color: glassBg,
       borderColor: glassBorder,
-      // 柔和的阴影
+      // 优化阴影：更柔和的彩色阴影，匹配梦幻风格
       boxShadow: isDarkTheme 
         ? '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05)' 
-        : '0 8px 32px rgba(31, 38, 135, 0.07), inset 0 0 0 1px rgba(255, 255, 255, 0.3)'
+        : '0 8px 32px rgba(31, 38, 135, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.3)'
     },
     Modal: {
       color: isDarkTheme ? 'rgba(30, 30, 35, 0.8)' : 'rgba(255, 255, 255, 0.8)',
@@ -117,10 +118,9 @@ const themeOverrides = computed(() => {
     },
     Input: {
       color: isDarkTheme ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.4)',
-      colorFocus: isDarkTheme ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.7)',
+      colorFocus: isDarkTheme ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.6)',
       border: `1px solid ${glassBorder}`,
       borderRadius: '12px',
-      // 输入框内文字颜色
       textColor: isDarkTheme ? '#eee' : '#333',
     },
     Select: {
@@ -152,7 +152,7 @@ const themeOverrides = computed(() => {
     },
     Tabs: {
       tabBorderRadius: '12px',
-      panePadding: '20px 0 0 0', // 调整 Tab 内容的间距
+      panePadding: '20px 0 0 0',
       tabColor: transparent,
       tabBorderColor: transparent
     },
@@ -160,7 +160,6 @@ const themeOverrides = computed(() => {
       fontWeight: '600',
       borderRadiusMedium: '12px',
       borderRadiusLarge: '14px',
-      // 按钮阴影
       boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)',
       boxShadowHover: '0 6px 16px rgba(0, 0, 0, 0.12)',
       boxShadowPressed: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
@@ -314,9 +313,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   
-  /* 蓝粉色调背景 - 浅色模式 (修改部分) */
-  /* 从原本的 #e0c3fc(浅紫) -> #8ec5fc(浅蓝) 调整为更明显的蓝粉渐变 */
-  /* #8EC5FC (蓝) -> #E0C3FC (紫) -> #FF9A9E (粉) */
+  /* [美化重点] 蓝粉色调背景 - 浅色模式 */
+  /* 从左上到右下：清新的蓝色 -> 柔和的紫色 -> 温暖的粉色 */
   background: linear-gradient(135deg, #8EC5FC 0%, #E0C3FC 50%, #FF9A9E 100%);
   background-attachment: fixed;
   background-size: cover;
@@ -328,9 +326,10 @@ body {
   min-height: 100vh;
 }
 
-/* 深色模式背景 (保持原样或微调) */
+/* 深色模式背景 (保持原有或微调以适配蓝粉基调) */
 [data-theme='dark'] body {
-  background: linear-gradient(135deg, #1f1c2c 0%, #928dab 100%);
+  /* 深色模式下也可以保留一点点蓝紫色的感觉 */
+  background: linear-gradient(135deg, #1f1c2c 0%, #4a4663 100%);
   color: #eee;
 }
 
@@ -342,7 +341,8 @@ body {
   width: 100%;
   height: 100%;
   z-index: 9999;
-  background: rgba(255, 255, 255, 0.4);
+  /* 增加透明度，让开屏时也能隐约看到背景 */
+  background: rgba(255, 255, 255, 0.3);
   backdrop-filter: blur(40px) saturate(160%);
   -webkit-backdrop-filter: blur(40px) saturate(160%);
   display: flex;
@@ -455,7 +455,7 @@ body {
 
 /* Tab 按钮样式重写，使其更现代 */
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
-  background-color: rgba(255, 255, 255, 0.3) !important;
+  background-color: rgba(255, 255, 255, 0.25) !important; /* 增加透明度 */
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   border-bottom: none !important;
   margin-right: 6px !important;
@@ -465,11 +465,11 @@ body {
   opacity: 0.8;
 }
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab:hover {
-  background-color: rgba(255, 255, 255, 0.5) !important;
+  background-color: rgba(255, 255, 255, 0.45) !important;
   opacity: 1;
 }
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
-  background-color: rgba(255, 255, 255, 0.85) !important;
+  background-color: rgba(255, 255, 255, 0.75) !important; /* 激活时更亮 */
   box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
   font-weight: 600;
   opacity: 1;
@@ -570,7 +570,7 @@ body {
   padding: 12px 24px;
   border-radius: 20px;
   /* 头部毛玻璃 */
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.6); /* 稍微增加透明度 */
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -605,7 +605,7 @@ body {
   margin-bottom: 20px;
   padding: 10px 24px;
   /* 底部悬浮毛玻璃 */
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.35); /* 稍微增加透明度 */
   backdrop-filter: blur(12px) saturate(120%);
   -webkit-backdrop-filter: blur(12px) saturate(120%);
   border-radius: 16px;
@@ -621,7 +621,7 @@ body {
 }
 
 .floating-footer-wrapper:hover {
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.55);
   transform: translateY(-2px);
 }
 
