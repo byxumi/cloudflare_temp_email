@@ -32,27 +32,29 @@ const showSplash = ref(true)
 
 // [UI 美化] 全局主题覆盖配置
 const themeOverrides = computed(() => {
-  // 定义基础透明度和颜色变量
   const isDarkTheme = isDark.value;
   
-  // 暗色模式下，卡片背景需要更深一点，防止看起来“灰蒙蒙”的
-  // 浅色模式保持通透
-  const alpha = isDarkTheme ? 0.70 : 0.65; 
+  // === 关键修改：去除毛玻璃后，背景需要更“实” ===
+  // 浅色模式：纯白或极高不透明度白色，保证清新整洁
+  // 深色模式：深灰黑色，保证与多彩背景的隔离感
   
-  // 玻璃背景色
-  const glassBg = isDarkTheme 
-    ? `rgba(18, 18, 23, ${alpha})`   // [优化] 暗色模式用接近黑色的深蓝灰，更有质感
-    : `rgba(255, 255, 255, ${alpha})`;
+  const baseBgColor = isDarkTheme ? '#1e1e24' : '#ffffff';
   
-  // 悬停态玻璃背景
-  const glassBgHover = isDarkTheme 
-    ? `rgba(30, 30, 35, ${alpha + 0.1})` 
-    : `rgba(255, 255, 255, ${alpha + 0.15})`;
+  // 容器背景色 (Card, Modal 等)
+  // 如果想要一点点透出的感觉，可以给极高的 alpha (如 0.95)，否则建议 1.0
+  const containerBg = isDarkTheme 
+    ? 'rgba(30, 30, 36, 0.96)'  // 深色模式卡片背景
+    : 'rgba(255, 255, 255, 0.95)'; // 浅色模式卡片背景
+    
+  // 悬停态背景
+  const containerBgHover = isDarkTheme 
+    ? '#25252b' 
+    : '#f9f9f9';
 
-  // 玻璃边框颜色（精细描边）
-  const glassBorder = isDarkTheme
-    ? 'rgba(255, 255, 255, 0.12)' // [优化] 暗色模式边框稍微亮一点点，增强轮廓
-    : 'rgba(255, 255, 255, 0.45)';
+  // 边框颜色
+  const borderColor = isDarkTheme
+    ? 'rgba(255, 255, 255, 0.08)' // 深色模式微弱边框
+    : 'rgba(0, 0, 0, 0.06)';      // 浅色模式微弱边框
 
   // 现代配色方案
   const primaryColor = '#3a86ff'; 
@@ -73,18 +75,18 @@ const themeOverrides = computed(() => {
       warningColor: warningColor,
       errorColor: errorColor,
       
-      borderRadius: '16px', 
-      borderRadiusSmall: '10px',
+      borderRadius: '12px', // 稍微减小一点圆角，显得更干练（可选）
+      borderRadiusSmall: '8px',
       fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
       
       bodyColor: transparent,
-      cardColor: glassBg,
-      // 弹窗在暗色模式下要更深不透明一些，保证内容突出
-      modalColor: isDarkTheme ? 'rgba(25, 25, 30, 0.9)' : 'rgba(255, 255, 255, 0.85)',
-      popoverColor: glassBg,
+      cardColor: containerBg,
+      modalColor: isDarkTheme ? '#2a2a30' : '#ffffff', // 弹窗建议纯色，防止叠加太乱
+      popoverColor: isDarkTheme ? '#2a2a30' : '#ffffff',
       tableColor: transparent,
-      tableHeaderColor: isDarkTheme ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.4)', 
-      inputColor: isDarkTheme ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
+      // 表头颜色
+      tableHeaderColor: isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : '#f7f9fc', 
+      inputColor: isDarkTheme ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.03)',
     },
     LoadingBar: {
       colorLoading: primaryColor,
@@ -92,61 +94,60 @@ const themeOverrides = computed(() => {
       height: '3px'
     },
     Card: {
-      borderRadius: '20px',
-      color: glassBg,
-      borderColor: glassBorder,
-      // [优化] 暗色模式阴影加重，增加层次感
+      borderRadius: '16px',
+      color: containerBg,
+      borderColor: borderColor,
+      // 实体卡片阴影
       boxShadow: isDarkTheme 
-        ? '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.08)' 
-        : '0 8px 32px rgba(31, 38, 135, 0.08), inset 0 0 0 1px rgba(255, 255, 255, 0.3)'
+        ? '0 4px 12px rgba(0, 0, 0, 0.4)' 
+        : '0 4px 12px rgba(0, 0, 0, 0.03), 0 1px 2px rgba(0, 0, 0, 0.02)'
     },
     Modal: {
-      color: isDarkTheme ? 'rgba(30, 30, 35, 0.9)' : 'rgba(255, 255, 255, 0.8)',
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-      borderColor: glassBorder,
-      borderRadius: '24px'
+      color: isDarkTheme ? '#2a2a30' : '#ffffff',
+      boxShadow: '0 10px 30px rgba(0, 0, 0, 0.25)',
+      borderColor: borderColor,
+      borderRadius: '20px'
     },
     Dialog: {
-      color: glassBg,
-      borderRadius: '20px',
-      borderColor: glassBorder
+      color: isDarkTheme ? '#2a2a30' : '#ffffff',
+      borderRadius: '16px',
+      borderColor: borderColor
     },
     DataTable: {
-      thColor: isDarkTheme ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.4)',
+      thColor: isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : '#f7f9fc',
       tdColor: transparent,
-      tdColorHover: isDarkTheme ? 'rgba(255, 255, 255, 0.06)' : 'rgba(255, 255, 255, 0.5)',
-      borderColor: glassBorder,
+      tdColorHover: isDarkTheme ? 'rgba(255, 255, 255, 0.04)' : '#f0f5ff',
+      borderColor: borderColor,
       borderRadius: '12px'
     },
     Input: {
-      color: isDarkTheme ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
-      colorFocus: isDarkTheme ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.6)',
-      border: `1px solid ${glassBorder}`,
-      borderRadius: '12px',
-      // 暗色模式文字更白一点，提升对比度
-      textColor: isDarkTheme ? '#f0f0f0' : '#333',
+      color: isDarkTheme ? '#151518' : '#ffffff', // 输入框背景更深/更亮
+      colorFocus: isDarkTheme ? '#151518' : '#ffffff',
+      border: `1px solid ${borderColor}`,
+      borderRadius: '10px',
+      textColor: isDarkTheme ? '#e0e0e0' : '#333',
     },
     Select: {
       peers: {
         InternalSelection: {
-          color: isDarkTheme ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
-          border: `1px solid ${glassBorder}`,
-          borderRadius: '12px',
-          textColor: isDarkTheme ? '#f0f0f0' : '#333',
+          color: isDarkTheme ? '#151518' : '#ffffff',
+          border: `1px solid ${borderColor}`,
+          borderRadius: '10px',
+          textColor: isDarkTheme ? '#e0e0e0' : '#333',
         },
         InternalSelectMenu: {
-          color: isDarkTheme ? 'rgba(30, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.9)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          optionColorHover: glassBgHover,
+          color: isDarkTheme ? '#2a2a30' : '#ffffff',
+          boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)',
+          optionColorHover: isDarkTheme ? '#3e3e45' : '#f0f5ff',
           padding: '6px',
-          borderRadius: '16px'
+          borderRadius: '12px'
         }
       }
     },
     Dropdown: {
-      color: isDarkTheme ? 'rgba(30, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.9)',
-      optionColorHover: glassBgHover,
-      borderRadius: '16px'
+      color: isDarkTheme ? '#2a2a30' : '#ffffff',
+      optionColorHover: isDarkTheme ? '#3e3e45' : '#f0f5ff',
+      borderRadius: '12px'
     },
     Layout: {
       color: transparent,
@@ -155,17 +156,18 @@ const themeOverrides = computed(() => {
       siderColor: transparent
     },
     Tabs: {
-      tabBorderRadius: '12px',
+      tabBorderRadius: '10px',
       panePadding: '20px 0 0 0',
       tabColor: transparent,
       tabBorderColor: transparent
     },
     Button: {
       fontWeight: '600',
-      borderRadiusMedium: '12px',
-      borderRadiusLarge: '14px',
-      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)',
-      boxShadowHover: '0 6px 16px rgba(0, 0, 0, 0.12)',
+      borderRadiusMedium: '10px',
+      borderRadiusLarge: '12px',
+      // 按钮阴影
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+      boxShadowHover: '0 4px 10px rgba(0, 0, 0, 0.1)',
       boxShadowPressed: 'inset 0 2px 4px rgba(0, 0, 0, 0.1)'
     },
     Statistic: {
@@ -173,9 +175,9 @@ const themeOverrides = computed(() => {
     },
     Pagination: {
       itemColor: transparent,
-      itemColorHover: glassBgHover,
-      itemColorActive: glassBgHover,
-      itemBorder: `1px solid ${glassBorder}`,
+      itemColorHover: isDarkTheme ? '#3e3e45' : '#f0f5ff',
+      itemColorActive: isDarkTheme ? '#3e3e45' : '#f0f5ff',
+      itemBorder: `1px solid ${borderColor}`,
       itemBorderRadius: '8px'
     }
   }
@@ -317,7 +319,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   
-  /* 蓝粉色调背景 - 浅色模式 */
+  /* 蓝粉渐变背景 - 浅色模式 */
   background: linear-gradient(135deg, #8EC5FC 0%, #E0C3FC 50%, #FF9A9E 100%);
   background-attachment: fixed;
   background-size: cover;
@@ -329,12 +331,10 @@ body {
   min-height: 100vh;
 }
 
-/* [重点优化] 深色模式背景 */
-/* 使用深邃的午夜蓝紫渐变，代替灰暗的普通深色 */
+/* 深色模式背景 - 优化后的午夜渐变 */
 [data-theme='dark'] body {
-  /* Dark Blue -> Deep Purple -> Dark Plum */
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #2e1065 100%);
-  color: #f0f0f0;
+  background: linear-gradient(135deg, #121216 0%, #1a1a24 50%, #251e36 100%);
+  color: #e0e0e0;
 }
 
 /* === 开屏动画样式 === */
@@ -345,16 +345,14 @@ body {
   width: 100%;
   height: 100%;
   z-index: 9999;
-  /* 增加透明度，让开屏时也能隐约看到背景 */
-  background: rgba(255, 255, 255, 0.3);
-  backdrop-filter: blur(40px) saturate(160%);
-  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  /* 去除毛玻璃，改为高不透明度背景 */
+  background: rgba(255, 255, 255, 0.95);
   display: flex;
   justify-content: center;
   align-items: center;
 }
 [data-theme='dark'] .splash-screen {
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(20, 20, 25, 0.95);
 }
 .splash-content {
   display: flex;
@@ -403,7 +401,6 @@ body {
 }
 .splash-leave-to {
   opacity: 0;
-  backdrop-filter: blur(0px);
   transform: scale(1.1);
 }
 
@@ -435,46 +432,36 @@ body {
   margin-right: 10px;
 }
 
-/* === 全局组件深度样式优化 === */
-
-/* 强制开启毛玻璃特效 */
-.n-card, 
-.n-modal, 
-.n-drawer, 
-.n-dialog,
-.n-popover,
-.n-dropdown-menu,
-.n-select-menu,
-.glass-panel {
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
+/* === 全局组件样式优化 (已移除 backdrop-filter) === */
 
 /* 卡片悬停微动效 */
 .n-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 16px 40px -12px rgba(31, 38, 135, 0.15) !important;
+  /* 悬停时加深阴影 */
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08) !important;
+}
+[data-theme='dark'] .n-card:hover {
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* [优化] Tab 按钮样式 - 暗色模式适配 */
+/* Tab 按钮样式 - 无毛玻璃版 */
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
-  background-color: rgba(255, 255, 255, 0.25) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
   border-bottom: none !important;
   margin-right: 6px !important;
-  border-radius: 12px 12px 0 0 !important;
+  border-radius: 10px 10px 0 0 !important;
   transition: all 0.3s ease !important;
   font-weight: 500;
-  opacity: 0.8;
+  opacity: 0.9;
 }
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab:hover {
-  background-color: rgba(255, 255, 255, 0.45) !important;
+  background-color: #ffffff !important;
   opacity: 1;
 }
 .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
-  background-color: rgba(255, 255, 255, 0.75) !important; 
-  box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+  background-color: #ffffff !important;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.02);
   font-weight: 600;
   opacity: 1;
   color: #3a86ff !important;
@@ -482,15 +469,16 @@ body {
 
 /* 深色模式下的 Tab */
 [data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
-  background-color: rgba(0, 0, 0, 0.3) !important; /* 加深背景 */
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: #202025 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   color: #aaa;
 }
 [data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab:hover {
-  background-color: rgba(0, 0, 0, 0.5) !important;
+  background-color: #2a2a30 !important;
+  color: #ddd;
 }
 [data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
-  background-color: rgba(50, 50, 60, 0.8) !important; /* 激活态亮一点 */
+  background-color: #303036 !important;
   color: #fff !important;
   border-bottom: none !important;
 }
@@ -511,7 +499,7 @@ body {
   box-shadow: 0 0 0 3px rgba(58, 134, 255, 0.2);
 }
 
-/* 去除部分组件的默认背景，防止遮挡毛玻璃 */
+/* 去除部分组件的默认背景 */
 .n-data-table, .n-data-table .n-data-table-th, .n-data-table .n-data-table-td,
 .n-list, .n-list .n-list-item,
 .n-layout, .n-layout-header, .n-layout-footer, .n-layout-sider {
@@ -526,23 +514,20 @@ body {
   position: relative;
 }
 
-/* 背景覆盖层 - 用于调节背景亮度和纹理 */
+/* 背景覆盖层 (可保留用于微调全局色调，也可移除) */
 .bg-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(255, 255, 255, 0.5) 0px, transparent 50%),
-    radial-gradient(at 90% 100%, rgba(255, 255, 255, 0.5) 0px, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
 
+/* 深色模式下，如果不想要太花的背景，可以用这个层压暗 */
 :deep(.n-config-provider--theme-dark) .bg-overlay {
-  background-image: none;
-  background-color: rgba(0, 0, 0, 0.2); /* 稍微压暗深色背景，减少过曝感 */
+  background-color: rgba(0, 0, 0, 0.2); 
 }
 
 .main-grid {
@@ -577,22 +562,19 @@ body {
   margin: 0 0 24px 0;
   padding: 12px 24px;
   border-radius: 20px;
-  /* 头部毛玻璃 */
-  background: rgba(255, 255, 255, 0.6); 
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+  /* 头部背景：高不透明度 */
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   transition: all 0.3s ease;
   max-width: 100%;
   box-sizing: border-box;
 }
 
 :deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
-  /* [优化] 头部在暗色下更深，与背景区分 */
-  background: rgba(30, 30, 35, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  background: rgba(30, 30, 36, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .app-header {
@@ -613,13 +595,11 @@ body {
   margin-top: auto;
   margin-bottom: 20px;
   padding: 10px 24px;
-  /* 底部悬浮毛玻璃 */
-  background: rgba(255, 255, 255, 0.35); 
-  backdrop-filter: blur(12px) saturate(120%);
-  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  /* 底部背景：高不透明度 */
+  background: rgba(255, 255, 255, 0.9);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   text-align: center;
   align-self: center;
   width: fit-content;
@@ -630,13 +610,17 @@ body {
 }
 
 .floating-footer-wrapper:hover {
-  background: rgba(255, 255, 255, 0.55);
+  background: #ffffff;
   transform: translateY(-2px);
 }
 
 :deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
-  background: rgba(30, 30, 35, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 30, 36, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:deep(.n-config-provider--theme-dark) .floating-footer-wrapper:hover {
+  background: #25252b;
 }
 
 .app-footer {
