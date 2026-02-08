@@ -1,12 +1,12 @@
 <script setup>
 import { computed, onMounted, ref, defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n'
-import { useMessage } from 'naive-ui'
+import { useMessage, NButton, NIcon } from 'naive-ui' // [新增] NButton, NIcon
+import { LogOutOutline } from '@vicons/ionicons5' // [新增] 图标
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
 
-// [核心安全修复] 引入 Turnstile
 import Turnstile from '../components/Turnstile.vue'
 
 import SenderAccess from './admin/SenderAccess.vue'
@@ -38,7 +38,8 @@ import LotterySettings from './admin/LotterySettings.vue';
 
 const {
   adminAuth, showAdminAuth, adminTab, loading,
-  globalTabplacement, showAdminPage, userSettings, openSettings
+  globalTabplacement, showAdminPage, userSettings, openSettings,
+  adminLoginTime // [新增] 引用时间戳
 } = useGlobalState()
 const message = useMessage()
 
@@ -51,7 +52,6 @@ const SendMail = defineAsyncComponent(() => {
 const cfToken = ref('')
 
 const authFunc = async () => {
-  // [安全] 前端检查：若配置了 CF，必须先完成验证
   if (openSettings.value.cfTurnstileSiteKey && !cfToken.value) {
       message.error("Please complete the captcha verification");
       return;
@@ -59,19 +59,22 @@ const authFunc = async () => {
   
   loading.value = true;
   try {
-    // [安全] 必须通过后端验证接口
-    // 即使未配置 Turnstile，也建议走后端验证密码，比纯前端存储更安全（防止仅前端泄露）
-    // 后端会验证 password 和 cf_token (若需)
     await api.adminLogin(tmpAdminAuth.value, cfToken.value || "");
-
-    // 验证通过，保存凭证
     adminAuth.value = tmpAdminAuth.value;
+    adminLoginTime.value = Date.now(); // [新增] 更新登录时间
     location.reload();
   } catch (error) {
     message.error(error.message || "Authentication failed");
   } finally {
     loading.value = false;
   }
+}
+
+// [新增] 退出登录函数
+const logout = () => {
+    adminAuth.value = '';
+    adminLoginTime.value = 0;
+    location.reload();
 }
 
 const { t } = useI18n({
@@ -103,6 +106,7 @@ const { t } = useI18n({
       appearance: 'Appearance',
       about: 'About',
       ok: 'Login',
+      logout: 'Logout', // [新增]
       mailWebhook: 'Mail Webhook',
       billing: 'Billing',
       cardManager: 'Card Management',
@@ -138,6 +142,7 @@ const { t } = useI18n({
       appearance: '外观',
       about: '关于',
       ok: '登录',
+      logout: '退出登录', // [新增]
       mailWebhook: '邮件 Webhook',
       billing: '计费管理',
       cardManager: '卡密管理',
@@ -183,6 +188,13 @@ onMounted(async () => {
           </n-button>
       </n-space>
     </n-modal>
+
+    <div v-if="showAdminPage" class="admin-header-actions">
+        <n-button type="error" size="small" secondary @click="logout">
+            <template #icon><n-icon><LogOutOutline /></n-icon></template>
+            {{ t('logout') }}
+        </n-button>
+    </div>
 
     <n-tabs v-if="showAdminPage" type="card" v-model:value="adminTab" :placement="globalTabplacement">
       <n-tab-pane name="qucickSetup" :tab="t('qucickSetup')">
@@ -319,5 +331,13 @@ onMounted(async () => {
     width: 90%; 
     max-width: 400px;
     border-radius: 16px;
+}
+
+/* [新增] 退出按钮样式 */
+.admin-header-actions {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    z-index: 100;
 }
 </style>
