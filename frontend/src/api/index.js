@@ -15,7 +15,7 @@ const {
 
 const instance = axios.create({
     baseURL: API_BASE,
-    timeout: 60000, // 批量操作可能耗时较长，增加超时时间
+    timeout: 60000,
     validateStatus: (status) => status >= 200 && status <= 500
 });
 
@@ -209,10 +209,11 @@ export const api = {
     bindUserAddress,
 
     // --- 管理员登录 ---
-    adminLogin: async (password, cf_token) => {
+    // [修改] 移除 cf_token 参数
+    adminLogin: async (password) => {
         return await apiFetch('/admin/login', {
             method: 'POST',
-            body: JSON.stringify({ password, cf_token })
+            body: JSON.stringify({ password })
         });
     },
 
