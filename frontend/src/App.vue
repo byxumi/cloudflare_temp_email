@@ -30,31 +30,36 @@ const gridMaxCols = computed(() => showAd.value ? 8 : 12);
 
 const showSplash = ref(true)
 
-// [UI 深度美化] 全局主题覆盖配置
+// [UI 深度定制] 全局主题覆盖配置
 const themeOverrides = computed(() => {
   const isDarkTheme = isDark.value;
   
-  // === 核心配色逻辑 ===
-  // 浅色模式：高透白玻璃 (0.65)
-  // 深色模式：深邃黑透玻璃 (0.6) - 关键点：不能太黑，要透出背景的紫色
-  const glassAlpha = isDarkTheme ? 0.6 : 0.65;
+  // === 核心配色调整 ===
+  // 浅色模式：保持高透白玻璃
+  // 暗色模式：关键修改 -> 使用黑色基调的半透明，而非灰色，这样看起来更通透深邃
+  const glassAlpha = isDarkTheme ? 0.4 : 0.65; 
   
-  // 卡片背景色
+  // 容器背景色
   const cardBg = isDarkTheme 
-    ? `rgba(20, 20, 25, ${glassAlpha})` 
-    : `rgba(255, 255, 255, ${glassAlpha})`;
-    
-  // 悬停加深
+    ? `rgba(0, 0, 0, ${glassAlpha})`  // 暗色模式：黑透
+    : `rgba(255, 255, 255, ${glassAlpha})`; // 浅色模式：白透
+
+  // 悬停态背景 (稍微亮一点/白一点)
   const cardBgHover = isDarkTheme 
-    ? `rgba(30, 30, 35, ${glassAlpha + 0.1})` 
+    ? `rgba(0, 0, 0, ${glassAlpha + 0.15})` 
     : `rgba(255, 255, 255, ${glassAlpha + 0.15})`;
 
-  // 边框高光：暗色模式下需要明显的白色微光边框来勾勒轮廓
+  // 弹窗背景 (需要比卡片更实一点，防止重叠太乱)
+  const modalBg = isDarkTheme 
+    ? `rgba(18, 18, 18, 0.75)`
+    : `rgba(255, 255, 255, 0.8)`;
+
+  // 边框颜色：暗色模式下用微弱的白光描边
   const borderColor = isDarkTheme
-    ? 'rgba(255, 255, 255, 0.12)' 
+    ? 'rgba(255, 255, 255, 0.08)' 
     : 'rgba(255, 255, 255, 0.5)';
 
-  // 品牌色 - 保持鲜亮
+  // 品牌色
   const primaryColor = '#3a86ff'; 
   const primaryColorHover = '#5c9aff';
   const primaryColorPressed = '#2a6fd9';
@@ -77,18 +82,23 @@ const themeOverrides = computed(() => {
       borderRadiusSmall: '10px',
       fontFamily: '"Inter", "PingFang SC", "Helvetica Neue", Helvetica, Arial, sans-serif',
       
-      // 让基础组件背景透明，依赖 CSS 的 backdrop-filter 产生模糊
+      // 让 Naive UI 基础背景透明，依赖 CSS backdrop-filter
       bodyColor: transparent,
       cardColor: cardBg,
-      // 弹窗稍微实一点，防止层级混乱
-      modalColor: isDarkTheme ? 'rgba(25, 25, 30, 0.8)' : 'rgba(255, 255, 255, 0.85)',
-      popoverColor: cardBg,
+      modalColor: modalBg,
+      popoverColor: modalBg,
       
+      // 表格头和行
       tableColor: transparent,
-      tableHeaderColor: isDarkTheme ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.4)', 
-      inputColor: isDarkTheme ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
+      tableHeaderColor: isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.4)', 
       
-      textColorBase: isDarkTheme ? '#f2f2f2' : '#333',
+      // 输入框背景：暗色下给一点点黑，浅色下给一点点白
+      inputColor: isDarkTheme ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.4)',
+      
+      // 文字颜色：暗色模式下使用纯白或接近纯白
+      textColorBase: isDarkTheme ? '#f5f5f5' : '#333',
+      textColor1: isDarkTheme ? '#f5f5f5' : '#333',
+      textColor2: isDarkTheme ? '#d1d1d1' : '#666',
     },
     LoadingBar: {
       colorLoading: primaryColor,
@@ -99,32 +109,32 @@ const themeOverrides = computed(() => {
       borderRadius: '20px',
       color: cardBg,
       borderColor: borderColor,
-      // 玻璃质感阴影：暗色模式下增加一点辉光
+      // 阴影：暗色模式下加重黑色阴影，增加立体感
       boxShadow: isDarkTheme 
-        ? '0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.05)' 
+        ? '0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.05)' 
         : '0 8px 32px rgba(31, 38, 135, 0.07), inset 0 0 0 1px rgba(255, 255, 255, 0.4)'
     },
     Modal: {
-      color: isDarkTheme ? 'rgba(30, 30, 35, 0.85)' : 'rgba(255, 255, 255, 0.85)',
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+      color: modalBg,
+      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
       borderColor: borderColor,
       borderRadius: '24px'
     },
     Dialog: {
-      color: cardBg,
+      color: modalBg,
       borderRadius: '20px',
       borderColor: borderColor
     },
     DataTable: {
-      thColor: isDarkTheme ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.4)',
+      thColor: isDarkTheme ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.4)',
       tdColor: transparent,
-      tdColorHover: isDarkTheme ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.5)',
+      tdColorHover: isDarkTheme ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.5)',
       borderColor: borderColor,
       borderRadius: '12px'
     },
     Input: {
-      color: isDarkTheme ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
-      colorFocus: isDarkTheme ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.6)',
+      color: isDarkTheme ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.4)',
+      colorFocus: isDarkTheme ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.6)',
       border: `1px solid ${borderColor}`,
       borderRadius: '12px',
       textColor: isDarkTheme ? '#fff' : '#333',
@@ -132,14 +142,14 @@ const themeOverrides = computed(() => {
     Select: {
       peers: {
         InternalSelection: {
-          color: isDarkTheme ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.4)',
+          color: isDarkTheme ? 'rgba(0, 0, 0, 0.25)' : 'rgba(255, 255, 255, 0.4)',
           border: `1px solid ${borderColor}`,
           borderRadius: '12px',
           textColor: isDarkTheme ? '#fff' : '#333',
         },
         InternalSelectMenu: {
-          color: isDarkTheme ? 'rgba(30, 30, 35, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+          color: modalBg,
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
           optionColorHover: isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
           padding: '6px',
           borderRadius: '16px'
@@ -147,7 +157,7 @@ const themeOverrides = computed(() => {
       }
     },
     Dropdown: {
-      color: isDarkTheme ? 'rgba(30, 30, 35, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+      color: modalBg,
       optionColorHover: isDarkTheme ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
       borderRadius: '16px'
     },
@@ -320,8 +330,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   
-  /* 浅色模式：保留您喜欢的清新蓝粉渐变 */
-  /* Blue -> Purple -> Pink */
+  /* [浅色模式] 保持您喜欢的蓝粉渐变 */
   background: linear-gradient(135deg, #8EC5FC 0%, #E0C3FC 50%, #FF9A9E 100%);
   background-attachment: fixed;
   background-size: cover;
@@ -333,13 +342,12 @@ body {
   min-height: 100vh;
 }
 
-/* [核心修改] 深色模式背景 - 还原经典毛玻璃深色背景 */
-/* 使用深紫蓝渐变，类似 mailjwt.xumicloud.top 的质感 */
-/* 这种颜色在毛玻璃下效果最佳 */
+/* [深色模式] 核心修改：使用示例网站风格的深邃渐变背景 */
+/* 这种“午夜渐变”配合黑透玻璃卡片，效果最佳 */
 [data-theme='dark'] body {
-  /* Midnight Blue -> Deep Purple -> Dark Indigo */
+  /* Dark Blue -> Deep Purple -> Dark Night */
   background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-  color: #f2f2f2;
+  color: #f5f5f5;
 }
 
 /* === 开屏动画样式 === */
@@ -350,7 +358,6 @@ body {
   width: 100%;
   height: 100%;
   z-index: 9999;
-  /* 恢复毛玻璃开屏 */
   background: rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(40px) saturate(160%);
   -webkit-backdrop-filter: blur(40px) saturate(160%);
@@ -359,7 +366,8 @@ body {
   align-items: center;
 }
 [data-theme='dark'] .splash-screen {
-  background: rgba(15, 12, 41, 0.6); /* 匹配深色背景色调 */
+  /* 匹配深色背景的开屏颜色 */
+  background: rgba(15, 12, 41, 0.6); 
 }
 .splash-content {
   display: flex;
@@ -440,9 +448,9 @@ body {
   margin-right: 10px;
 }
 
-/* === 全局组件深度样式优化 - Glassmorphism 回归 === */
+/* === 全局组件深度样式优化 - 毛玻璃特效 === */
 
-/* 强制开启毛玻璃特效 - 核心 */
+/* 强制开启毛玻璃特效 */
 .n-card, 
 .n-modal, 
 .n-drawer, 
@@ -451,7 +459,6 @@ body {
 .n-dropdown-menu,
 .n-select-menu,
 .glass-panel {
-  /* 增加 saturate 提升背景透视的鲜艳度，这才是“好看”的关键 */
   backdrop-filter: blur(20px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -464,7 +471,7 @@ body {
 }
 [data-theme='dark'] .n-card:hover {
   /* 暗色模式下，悬停阴影更深 */
-  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.7) !important;
 }
 
 /* Tab 按钮样式 - 半透明玻璃风格 */
@@ -492,16 +499,16 @@ body {
 
 /* 深色模式下的 Tab */
 [data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab {
-  background-color: rgba(0, 0, 0, 0.2) !important;
+  background-color: rgba(0, 0, 0, 0.3) !important; /* 更黑的底色 */
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   color: #ccc;
 }
 [data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab:hover {
-  background-color: rgba(0, 0, 0, 0.4) !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
   color: #fff;
 }
 [data-theme='dark'] .n-tabs .n-tabs-nav.n-tabs-nav--card-type .n-tabs-tab.n-tabs-tab--active {
-  background-color: rgba(50, 50, 60, 0.6) !important;
+  background-color: rgba(0, 0, 0, 0.7) !important;
   color: #fff !important;
   border-bottom: none !important;
 }
@@ -552,8 +559,8 @@ body {
 }
 
 :deep(.n-config-provider--theme-dark) .bg-overlay {
-  /* 深色模式下，去除白光，改为微弱的紫光增强氛围 */
-  background-image: radial-gradient(at 80% 0%, rgba(120, 119, 198, 0.15) 0px, transparent 50%);
+  /* 深色模式下，只保留微弱的星光感，整体保持深邃 */
+  background-image: radial-gradient(at 80% 0%, rgba(120, 119, 198, 0.1) 0px, transparent 50%);
   background-color: rgba(0, 0, 0, 0.2); 
 }
 
@@ -601,7 +608,8 @@ body {
 }
 
 :deep(.n-config-provider--theme-dark) .sticky-header-wrapper {
-  background: rgba(30, 30, 35, 0.6);
+  /* 头部使用黑色半透明 */
+  background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
@@ -646,7 +654,7 @@ body {
 }
 
 :deep(.n-config-provider--theme-dark) .floating-footer-wrapper {
-  background: rgba(30, 30, 35, 0.4);
+  background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
