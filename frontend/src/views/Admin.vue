@@ -51,16 +51,26 @@ const SendMail = defineAsyncComponent(() => {
 const cfToken = ref('')
 
 const authFunc = async () => {
-  // 简单的前端防护：如果配置了Turnstile但没Token，不执行
+  // [安全] 前端检查：若配置了 CF，必须先完成验证
   if (openSettings.value.cfTurnstileSiteKey && !cfToken.value) {
+      message.error("Please complete the captcha verification");
       return;
   }
   
+  loading.value = true;
   try {
+    // [安全] 必须通过后端验证接口
+    // 即使未配置 Turnstile，也建议走后端验证密码，比纯前端存储更安全（防止仅前端泄露）
+    // 后端会验证 password 和 cf_token (若需)
+    await api.adminLogin(tmpAdminAuth.value, cfToken.value || "");
+
+    // 验证通过，保存凭证
     adminAuth.value = tmpAdminAuth.value;
-    location.reload()
+    location.reload();
   } catch (error) {
-    message.error(error.message || "error");
+    message.error(error.message || "Authentication failed");
+  } finally {
+    loading.value = false;
   }
 }
 
