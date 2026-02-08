@@ -230,11 +230,11 @@ onMounted(async () => {
 
             <div class="glass-panel animate-fade-in-up content-panel">
                 <n-tabs type="line" animated :placement="globalTabplacement" class="compact-tabs">
-                    <n-tab-pane name="user_mail_box_tab" :tab="t('user_mail_box_tab')" display-directive="show:lazy">
-                        <UserMailBox />
-                    </n-tab-pane>
                     <n-tab-pane name="address_management" :tab="t('address_management')" display-directive="show:lazy">
                         <AddressMangement />
+                    </n-tab-pane>
+                    <n-tab-pane name="user_mail_box_tab" :tab="t('user_mail_box_tab')" display-directive="show:lazy">
+                        <UserMailBox />
                     </n-tab-pane>
                     <n-tab-pane v-if="showLotteryTab" name="lottery" :tab="t('lottery')" display-directive="show:lazy">
                         <template #tab>
@@ -419,7 +419,7 @@ onMounted(async () => {
     min-height: 500px;
 }
 
-/* [核心修改] 缩小 Tab 字体，更加精致 */
+/* Tab 字体优化 */
 .compact-tabs :deep(.n-tabs-tab) {
     font-size: 15px !important;
     padding: 12px 16px !important;
