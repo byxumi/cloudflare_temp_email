@@ -37,20 +37,20 @@ const apiFetch = async (path, options = {}) => {
                 'Content-Type': 'application/json',
             },
         });
-        if (response.status === 401 && path.startsWith("/admin")) {
+        if (response.status === 401 && path.startsWith("/admin") && path !== "/admin/login") {
             showAdminAuth.value = true;
         }
         if (response.status === 401 && openSettings.value.auth) {
             showAuth.value = true;
         }
         if (response.status >= 300) {
-            throw new Error(`[${response.status}]: ${response.data}` || "error");
+            throw new Error(response.data?.message || `[${response.status}]: ${JSON.stringify(response.data)}` || "error");
         }
         const data = response.data;
         return data;
     } catch (error) {
         if (error.response) {
-            throw new Error(`Code ${error.response.status}: ${error.response.data}` || "error");
+            throw new Error(error.response.data?.message || `Code ${error.response.status}: ${JSON.stringify(error.response.data)}` || "error");
         }
         throw error;
     } finally {
@@ -208,6 +208,14 @@ export const api = {
     adminDeleteAddress,
     bindUserAddress,
 
+    // --- 管理员登录 ---
+    adminLogin: async (password, cf_token) => {
+        return await apiFetch('/admin/login', {
+            method: 'POST',
+            body: JSON.stringify({ password, cf_token })
+        });
+    },
+
     // --- 计费系统 API ---
     getUserBalance: async () => {
         try {
@@ -240,14 +248,12 @@ export const api = {
             body: JSON.stringify({ name, domain })
         });
     },
-    // [新增] 批量购买
     batchBuyAddress: async (domain, count) => {
         return await apiFetch('/user_api/batch_buy_address', {
             method: 'POST',
             body: JSON.stringify({ domain, count })
         });
     },
-    // [新增] 批量导出
     exportAddresses: async () => {
         return await apiFetch('/user_api/export_addresses');
     },
@@ -350,7 +356,6 @@ export const api = {
             body: JSON.stringify({ amount })
         });
     },
-    // [新增] 管理员切换用户批量导出权限
     adminToggleBatchAccess: async (user_id, allow) => {
         return await apiFetch(`/admin/users/${user_id}/batch_access`, {
             method: 'POST',
