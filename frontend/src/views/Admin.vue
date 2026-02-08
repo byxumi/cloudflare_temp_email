@@ -2,12 +2,13 @@
 import { computed, onMounted, ref, defineAsyncComponent } from 'vue';
 import { useI18n } from 'vue-i18n'
 import { useMessage, NButton, NIcon } from 'naive-ui'
-import { SignOutAlt } from '@vicons/fa' // 使用已安装的图标库
+import { SignOutAlt } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
 
-import Turnstile from '../components/Turnstile.vue'
+// [修改] 移除 Turnstile 组件引用
+// import Turnstile from '../components/Turnstile.vue'
 
 import SenderAccess from './admin/SenderAccess.vue'
 import Statistics from "./admin/Statistics.vue"
@@ -49,32 +50,23 @@ const SendMail = defineAsyncComponent(() => {
     .finally(() => loading.value = false);
 });
 
-const cfToken = ref('')
-// [新增] Turnstile 组件引用
-const turnstileRef = ref(null)
+// [修改] 移除 cfToken 变量
+// const cfToken = ref('')
+// const turnstileRef = ref(null)
 
 const authFunc = async () => {
-  if (openSettings.value.cfTurnstileSiteKey && !cfToken.value) {
-      message.error("Please complete the captcha verification");
-      return;
-  }
+  // [修改] 移除前端验证码检查
   
   loading.value = true;
   try {
-    // 验证逻辑
-    await api.adminLogin(tmpAdminAuth.value, cfToken.value || "");
+    // [修改] 移除 cfToken 参数
+    await api.adminLogin(tmpAdminAuth.value);
     adminAuth.value = tmpAdminAuth.value;
     adminLoginTime.value = Date.now();
     location.reload();
   } catch (error) {
-    // 显示后端返回的具体错误消息
     message.error(error.message || "Authentication failed");
-    
-    // [关键修复] 失败后重置人机验证，防止 Token 重复使用
-    if (turnstileRef.value) {
-        turnstileRef.value.reset();
-    }
-    cfToken.value = "";
+    // [修改] 移除 reset 逻辑
   } finally {
     loading.value = false;
   }
@@ -181,17 +173,12 @@ onMounted(async () => {
       <n-space vertical size="large">
           <n-input v-model:value="tmpAdminAuth" type="password" show-password-on="click" placeholder="Password" size="large" @keydown.enter="authFunc"/>
           
-          <div v-if="openSettings.cfTurnstileSiteKey" style="display: flex; justify-content: center;">
-              <Turnstile ref="turnstileRef" v-model:value="cfToken" />
-          </div>
-
           <n-button 
             @click="authFunc" 
             type="primary" 
             :loading="loading" 
             block 
             size="large"
-            :disabled="openSettings.cfTurnstileSiteKey && !cfToken"
           >
             {{ t('ok') }}
           </n-button>
