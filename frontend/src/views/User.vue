@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, defineAsyncComponent, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useMessage, NIcon, NModal, NInput, NButton, NSpace, NTabs, NTabPane, NStatistic, NSkeleton, NGrid, NGridItem } from 'naive-ui'
-import { History, Sync, CreditCard, ShoppingCart, Gift } from '@vicons/fa'
+import { useMessage, NIcon, NModal, NInput, NButton, NSpace, NTabs, NTabPane, NStatistic, NSkeleton, NGrid, NGridItem, NNumberAnimation } from 'naive-ui'
+import { History, Sync, CreditCard, ShoppingCart, Gift, User, Wallet } from '@vicons/fa' // 增加图标
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -37,11 +37,11 @@ const { t } = useI18n({
             user_mail_box_tab: 'Inbox',
             user_settings: 'Settings',
             wallet: 'Wallet',
-            balance: 'Balance',
-            redeem: 'Redeem',
-            redeemPlaceholder: 'Card Code',
+            balance: 'Total Balance',
+            redeem: 'Deposit',
+            redeemPlaceholder: 'Enter Card Code',
             redeemSuccess: 'Redeem Success',
-            viewBills: 'Bills',
+            viewBills: 'History',
             myBills: 'Transactions',
             refreshBalance: 'Refresh',
             buyCard: 'Buy Card',
@@ -56,11 +56,11 @@ const { t } = useI18n({
             user_mail_box_tab: '收件箱',
             user_settings: '用户设置',
             wallet: '钱包',
-            balance: '账户余额',
-            redeem: '卡密充值',
+            balance: '账户总余额',
+            redeem: '充值',
             redeemPlaceholder: '请输入充值卡密',
             redeemSuccess: '充值成功',
-            viewBills: '查看账单',
+            viewBills: '账单记录',
             myBills: '我的账单',
             refreshBalance: '刷新',
             buyCard: '购买卡密',
@@ -153,63 +153,84 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div>
+    <div class="user-center-wrapper">
         <UserBar />
         
         <div v-if="userJwt">
-            <div v-if="dataInitLoading" class="glass-panel wallet-container">
-                <div class="balance-wrapper">
-                    <n-skeleton text style="width: 60px; margin-bottom: 8px;" />
-                    <n-skeleton text style="width: 120px; height: 32px;" />
-                </div>
-                <div class="action-wrapper">
-                    <n-space>
-                        <n-skeleton width="90px" height="34px" round />
-                        <n-skeleton width="90px" height="34px" round />
-                        <n-skeleton width="90px" height="34px" round />
-                    </n-space>
-                </div>
-            </div>
-
-            <div v-else class="glass-panel wallet-container animate-fade-in">
-                <div class="balance-wrapper">
-                    <div class="greeting-text">
-                        {{ timeGreeting }}, {{ userSettings.user_email?.split('@')[0] || t('welcomeBack') }}
+            <div v-if="dataInitLoading" class="glass-panel wallet-card">
+                <n-space justify="space-between" align="center" style="width: 100%">
+                    <div class="balance-skeleton">
+                        <n-skeleton text style="width: 100px; margin-bottom: 10px;" />
+                        <n-skeleton text style="width: 180px; height: 40px;" />
                     </div>
-                    <n-statistic :label="t('balance')">
-                        <template #prefix>
-                            <span class="currency-symbol">¥</span>
-                        </template>
-                        <template #suffix>
-                            <n-button text class="refresh-btn" @click="refreshBalance" :loading="balanceLoading">
-                                <template #icon><n-icon><Sync /></n-icon></template>
-                            </n-button>
-                        </template>
-                        <span class="balance-num">{{ (userBalance / 100).toFixed(2) }}</span>
-                    </n-statistic>
-                </div>
-                <div class="action-wrapper">
                     <n-space>
-                        <n-button type="primary" secondary strong @click="showRedeemModal = true">
-                            <template #icon><n-icon><CreditCard /></n-icon></template>
-                            {{ t('redeem') }}
-                        </n-button>
-                        
-                        <n-button type="warning" secondary strong @click="handleBuyCard">
-                            <template #icon><n-icon><ShoppingCart /></n-icon></template>
-                            {{ t('buyCard') }}
-                        </n-button>
-
-                        <n-button secondary @click="showTransactions = true">
-                            <template #icon><n-icon><History /></n-icon></template>
-                            {{ t('viewBills') }}
-                        </n-button>
+                        <n-skeleton height="40px" width="100px" style="border-radius: 8px" />
+                        <n-skeleton height="40px" width="100px" style="border-radius: 8px" />
                     </n-space>
+                </n-space>
+            </div>
+
+            <div v-else class="glass-panel wallet-card animate-fade-in">
+                <div class="card-bg-glow"></div>
+                
+                <div class="wallet-content">
+                    <div class="balance-section">
+                        <div class="greeting-row">
+                            <n-icon class="greeting-icon"><User /></n-icon>
+                            <span class="greeting-text">
+                                {{ timeGreeting }}, 
+                                <span class="username">{{ userSettings.user_email?.split('@')[0] || t('welcomeBack') }}</span>
+                            </span>
+                        </div>
+                        
+                        <div class="balance-display">
+                            <div class="label">
+                                <n-icon><Wallet /></n-icon> {{ t('balance') }}
+                            </div>
+                            <div class="number-row">
+                                <span class="currency">¥</span>
+                                <n-number-animation 
+                                    ref="numberAnimation"
+                                    :from="0" 
+                                    :to="userBalance / 100" 
+                                    :precision="2" 
+                                    show-separator
+                                    class="balance-num"
+                                />
+                                <n-button text class="refresh-btn" @click="refreshBalance" :loading="balanceLoading">
+                                    <template #icon><n-icon><Sync /></n-icon></template>
+                                </n-button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="action-section">
+                        <n-grid :x-gap="12" :y-gap="12" :cols="3" responsive="screen" item-responsive>
+                            <n-grid-item span="3 400:1">
+                                <n-button type="primary" block strong class="action-btn" @click="showRedeemModal = true">
+                                    <template #icon><n-icon><CreditCard /></n-icon></template>
+                                    {{ t('redeem') }}
+                                </n-button>
+                            </n-grid-item>
+                            <n-grid-item span="3 400:1">
+                                <n-button type="warning" secondary block strong class="action-btn" @click="handleBuyCard">
+                                    <template #icon><n-icon><ShoppingCart /></n-icon></template>
+                                    {{ t('buyCard') }}
+                                </n-button>
+                            </n-grid-item>
+                            <n-grid-item span="3 400:1">
+                                <n-button secondary block strong class="action-btn" @click="showTransactions = true">
+                                    <template #icon><n-icon><History /></n-icon></template>
+                                    {{ t('viewBills') }}
+                                </n-button>
+                            </n-grid-item>
+                        </n-grid>
+                    </div>
                 </div>
             </div>
 
-            <div class="glass-panel animate-fade-in-up">
-                <n-tabs type="line" animated :placement="globalTabplacement" v-model:value="userTab">
+            <div class="glass-panel animate-fade-in-up content-panel">
+                <n-tabs type="line" animated :placement="globalTabplacement" v-model:value="userTab" size="large">
                     <n-tab-pane name="user_mail_box_tab" :tab="t('user_mail_box_tab')" display-directive="show:lazy">
                         <UserMailBox />
                     </n-tab-pane>
@@ -218,9 +239,9 @@ onMounted(async () => {
                     </n-tab-pane>
                     <n-tab-pane v-if="showLotteryTab" name="lottery" :tab="t('lottery')" display-directive="show:lazy">
                         <template #tab>
-                            <n-space :size="4" align="center">
-                                <n-icon color="#f0a020"><Gift /></n-icon>
-                                {{ t('lottery') }}
+                            <n-space :size="6" align="center" style="color: #f0a020;">
+                                <n-icon><Gift /></n-icon>
+                                <span>{{ t('lottery') }}</span>
                             </n-space>
                         </template>
                         <Lottery />
@@ -233,21 +254,23 @@ onMounted(async () => {
         </div>
 
         <n-modal v-model:show="showRedeemModal" preset="card" :title="t('redeem')" class="custom-modal">
-            <n-space vertical size="large">
-                <n-input 
-                    v-model:value="redeemCode" 
-                    :placeholder="t('redeemPlaceholder')" 
-                    @keydown.enter="handleRedeem" 
-                    size="large"
-                >
-                    <template #prefix>
-                        <n-icon><CreditCard /></n-icon>
-                    </template>
-                </n-input>
-                <n-button type="primary" block size="large" @click="handleRedeem" :loading="redeemLoading">
-                    {{ t('redeem') }}
-                </n-button>
-            </n-space>
+            <div class="modal-content">
+                <div class="modal-icon-header">
+                    <n-icon size="40" color="#3a86ff"><CreditCard /></n-icon>
+                </div>
+                <n-space vertical size="large">
+                    <n-input 
+                        v-model:value="redeemCode" 
+                        :placeholder="t('redeemPlaceholder')" 
+                        @keydown.enter="handleRedeem" 
+                        size="large"
+                        class="fancy-input"
+                    />
+                    <n-button type="primary" block size="large" @click="handleRedeem" :loading="redeemLoading" class="fancy-btn">
+                        {{ t('redeem') }}
+                    </n-button>
+                </n-space>
+            </div>
         </n-modal>
 
         <n-modal v-model:show="showTransactions" preset="card" :title="t('myBills')" class="custom-modal-lg">
@@ -257,86 +280,163 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* [核心优化] 毛玻璃 + 描边效果 */
+/* 全局容器微调 */
+.user-center-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* === 毛玻璃面板通用样式 === */
 .glass-panel {
-    /* 背景色由 App.vue 主题控制，这里专注于布局和描边 */
-    padding: 24px;
-    margin-bottom: 24px;
-    border-radius: 20px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    
-    /* 浅色模式下的描边 */
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    background: var(--n-card-color); /* 依赖 App.vue 的主题色 */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* 深色模式下的描边适配 (如果 App.vue 的 themeOverrides 没完全覆盖) */
+/* 深色模式下的面板边框调整 */
 :deep([data-theme='dark']) .glass-panel {
-    border: 1px solid rgba(255, 255, 255, 0.12); /* 亮白细线，增强轮廓 */
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
-/* 悬停效果 */
-.glass-panel:hover {
+/* === 钱包卡片专属样式 === */
+.wallet-card {
+    padding: 0; /* 内部布局自己控制 padding */
+    margin-bottom: 24px;
+    /* 给予一个微弱的渐变底色，突出钱包区域 */
+    background: linear-gradient(145deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 100%);
+}
+:deep([data-theme='dark']) .wallet-card {
+    background: linear-gradient(145deg, rgba(30,30,35,0.7) 0%, rgba(20,20,25,0.4) 100%);
+}
+
+.wallet-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
 }
 
-.wallet-container {
+/* 背景光晕装饰 */
+.card-bg-glow {
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(58, 134, 255, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+}
+:deep([data-theme='dark']) .card-bg-glow {
+    background: radial-gradient(circle, rgba(58, 134, 255, 0.15) 0%, transparent 70%);
+}
+
+.wallet-content {
+    position: relative;
+    z-index: 1;
+    padding: 32px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
+    gap: 24px;
     flex-wrap: wrap;
-    gap: 20px;
 }
 
-.balance-wrapper {
-    min-width: 200px;
+.balance-section {
+    flex: 1;
+    min-width: 280px;
 }
 
-.greeting-text {
+.greeting-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    color: var(--n-text-color-3);
+    margin-bottom: 16px;
+}
+.username {
+    font-weight: 600;
+    color: var(--n-text-color-1);
+}
+
+.balance-display .label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 14px;
-    opacity: 0.8;
+    color: var(--n-text-color-2);
     margin-bottom: 4px;
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
-.currency-symbol {
-    font-size: 18px;
+.number-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.currency {
+    font-size: 24px;
+    font-weight: 400;
+    color: var(--n-text-color-2);
     margin-right: 4px;
-    font-weight: 500;
-    color: var(--n-primary-color);
 }
 
+/* [修复] 余额字体：使用等宽数字，清晰实色，移除渐变 */
 .balance-num {
+    font-family: 'Inter', 'Roboto Mono', monospace; /* 优先使用无衬线或等宽 */
     font-weight: 700;
-    font-size: 32px;
-    letter-spacing: -0.5px;
-    background: linear-gradient(120deg, var(--n-text-color), var(--n-primary-color));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    font-size: 42px;
+    line-height: 1;
+    letter-spacing: -1px;
+    color: var(--n-text-color-1); /* 实色，保证清晰度 */
+    font-variant-numeric: tabular-nums; /* 数字等宽，防止跳动 */
 }
 
+/* 刷新按钮 */
 .refresh-btn {
+    opacity: 0.5;
+    transition: all 0.3s;
     margin-left: 8px;
-    vertical-align: sub;
-    opacity: 0.7;
-    transition: opacity 0.2s;
 }
 .refresh-btn:hover {
     opacity: 1;
+    transform: rotate(180deg);
 }
 
-.action-wrapper {
-    display: flex;
-    align-items: center;
+/* 操作区域 */
+.action-section {
+    width: 400px;
+    max-width: 100%;
 }
 
+.action-btn {
+    height: 44px;
+    font-size: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* Tab 区域 */
+.content-panel {
+    padding: 24px;
+    min-height: 500px;
+}
+
+/* 动画 */
 .animate-fade-in {
-    animation: fadeIn 0.4s ease-out;
+    animation: fadeIn 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .animate-fade-in-up {
-    animation: fadeInUp 0.5s ease-out;
+    animation: fadeInUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 @keyframes fadeIn {
@@ -344,38 +444,48 @@ onMounted(async () => {
     to { opacity: 1; }
 }
 @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* 弹窗美化 */
 .custom-modal {
     width: 90%; 
     max-width: 400px;
+    border-radius: 20px;
+    overflow: hidden;
 }
 .custom-modal-lg {
     width: 95%; 
-    max-width: 800px;
+    max-width: 900px;
+    border-radius: 20px;
+}
+.modal-content {
+    padding: 10px 0;
+}
+.modal-icon-header {
+    text-align: center;
+    margin-bottom: 20px;
+    opacity: 0.9;
 }
 
-@media (max-width: 600px) {
-    .wallet-container {
+/* 移动端适配 */
+@media (max-width: 768px) {
+    .wallet-content {
         flex-direction: column;
         align-items: flex-start;
-        padding: 20px;
+        padding: 24px;
     }
-    .action-wrapper {
+    .action-section {
         width: 100%;
         margin-top: 10px;
     }
-    .action-wrapper .n-space {
-        width: 100%;
-        justify-content: space-between;
+    .balance-num {
+        font-size: 36px;
     }
-    .action-wrapper .n-button {
-        flex: 1;
-    }
-    :deep(.n-tab-pane) {
-        padding-top: 10px;
+    /* 移动端 Tab 内容边距调整 */
+    :deep(.n-tabs .n-tab-pane) {
+        padding-top: 16px;
     }
 }
 </style>
