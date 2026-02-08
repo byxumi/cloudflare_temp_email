@@ -2,7 +2,7 @@
 import { ref, onMounted, defineAsyncComponent, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMessage, NIcon, NModal, NInput, NButton, NSpace, NTabs, NTabPane, NStatistic, NSkeleton, NGrid, NGridItem, NNumberAnimation } from 'naive-ui'
-import { History, Sync, CreditCard, ShoppingCart, Gift, User, Wallet } from '@vicons/fa' // 增加图标
+import { History, Sync, CreditCard, ShoppingCart, Gift, User, Wallet } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
@@ -172,7 +172,6 @@ onMounted(async () => {
 
             <div v-else class="glass-panel wallet-card animate-fade-in">
                 <div class="card-bg-glow"></div>
-                
                 <div class="wallet-content">
                     <div class="balance-section">
                         <div class="greeting-row">
@@ -230,7 +229,7 @@ onMounted(async () => {
             </div>
 
             <div class="glass-panel animate-fade-in-up content-panel">
-                <n-tabs type="line" animated :placement="globalTabplacement" v-model:value="userTab" size="large">
+                <n-tabs type="line" animated :placement="globalTabplacement" class="compact-tabs">
                     <n-tab-pane name="user_mail_box_tab" :tab="t('user_mail_box_tab')" display-directive="show:lazy">
                         <UserMailBox />
                     </n-tab-pane>
@@ -264,9 +263,8 @@ onMounted(async () => {
                         :placeholder="t('redeemPlaceholder')" 
                         @keydown.enter="handleRedeem" 
                         size="large"
-                        class="fancy-input"
                     />
-                    <n-button type="primary" block size="large" @click="handleRedeem" :loading="redeemLoading" class="fancy-btn">
+                    <n-button type="primary" block size="large" @click="handleRedeem" :loading="redeemLoading">
                         {{ t('redeem') }}
                     </n-button>
                 </n-space>
@@ -280,15 +278,13 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* 全局容器微调 */
 .user-center-wrapper {
     max-width: 1200px;
     margin: 0 auto;
 }
 
-/* === 毛玻璃面板通用样式 === */
 .glass-panel {
-    background: var(--n-card-color); /* 依赖 App.vue 的主题色 */
+    background: var(--n-card-color);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-radius: 24px;
@@ -299,17 +295,14 @@ onMounted(async () => {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* 深色模式下的面板边框调整 */
 :deep([data-theme='dark']) .glass-panel {
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
-/* === 钱包卡片专属样式 === */
 .wallet-card {
-    padding: 0; /* 内部布局自己控制 padding */
+    padding: 0;
     margin-bottom: 24px;
-    /* 给予一个微弱的渐变底色，突出钱包区域 */
     background: linear-gradient(145deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.3) 100%);
 }
 :deep([data-theme='dark']) .wallet-card {
@@ -321,7 +314,6 @@ onMounted(async () => {
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
 }
 
-/* 背景光晕装饰 */
 .card-bg-glow {
     position: absolute;
     top: -50%;
@@ -390,18 +382,16 @@ onMounted(async () => {
     margin-right: 4px;
 }
 
-/* [修复] 余额字体：使用等宽数字，清晰实色，移除渐变 */
 .balance-num {
-    font-family: 'Inter', 'Roboto Mono', monospace; /* 优先使用无衬线或等宽 */
+    font-family: 'Inter', 'Roboto Mono', monospace;
     font-weight: 700;
     font-size: 42px;
     line-height: 1;
     letter-spacing: -1px;
-    color: var(--n-text-color-1); /* 实色，保证清晰度 */
-    font-variant-numeric: tabular-nums; /* 数字等宽，防止跳动 */
+    color: var(--n-text-color-1);
+    font-variant-numeric: tabular-nums;
 }
 
-/* 刷新按钮 */
 .refresh-btn {
     opacity: 0.5;
     transition: all 0.3s;
@@ -412,7 +402,6 @@ onMounted(async () => {
     transform: rotate(180deg);
 }
 
-/* 操作区域 */
 .action-section {
     width: 400px;
     max-width: 100%;
@@ -425,10 +414,19 @@ onMounted(async () => {
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 }
 
-/* Tab 区域 */
 .content-panel {
     padding: 24px;
     min-height: 500px;
+}
+
+/* [核心修改] 缩小 Tab 字体，更加精致 */
+.compact-tabs :deep(.n-tabs-tab) {
+    font-size: 15px !important;
+    padding: 12px 16px !important;
+}
+.compact-tabs :deep(.n-tabs-tab--active) {
+    font-weight: 700 !important;
+    font-size: 15px !important;
 }
 
 /* 动画 */
@@ -448,7 +446,6 @@ onMounted(async () => {
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* 弹窗美化 */
 .custom-modal {
     width: 90%; 
     max-width: 400px;
@@ -469,7 +466,6 @@ onMounted(async () => {
     opacity: 0.9;
 }
 
-/* 移动端适配 */
 @media (max-width: 768px) {
     .wallet-content {
         flex-direction: column;
@@ -483,7 +479,6 @@ onMounted(async () => {
     .balance-num {
         font-size: 36px;
     }
-    /* 移动端 Tab 内容边距调整 */
     :deep(.n-tabs .n-tab-pane) {
         padding-top: 16px;
     }
