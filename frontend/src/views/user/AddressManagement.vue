@@ -321,7 +321,7 @@ const openRemarkModal = (row) => { remarkForm.value = { addressId: row.id, remar
 const handleSaveRemark = async () => { remarkLoading.value = true; try { await api.updateAddressRemark(remarkForm.value.addressId, remarkForm.value.remark); message.success('Success'); showRemarkModal.value = false; fetchData() } catch (e) { message.error(e.message) } finally { remarkLoading.value = false } }
 
 const columns = [
-    { title: 'ID', key: 'id', width: 60, align: 'center' },
+    { title: 'ID', key: 'id', width: 50, align: 'center' },
     { title: t('address'), key: 'name', minWidth: 150 },
     { title: t('remark'), key: 'remark', render(row) {
         return row.remark ? h(NTag, { type: 'info', size: 'small', bordered: false, round: true }, { default: () => row.remark }) : ''
@@ -329,7 +329,7 @@ const columns = [
     { 
         title: t('actions'), 
         key: 'actions',
-        width: 150,
+        width: 140,
         align: 'right',
         render(row) {
             return h(NSpace, { justify: 'end' }, {
@@ -416,6 +416,7 @@ onMounted(async () => {
                 :loading="loading" 
                 :bordered="false"
                 :single-line="false"
+                size="small" 
                 class="address-table"
             />
         </div>
@@ -553,7 +554,7 @@ onMounted(async () => {
 .balance-detail .num {
     font-weight: 700;
     color: var(--n-text-color-1);
-    font-variant-numeric: tabular-nums; /* 数字等宽 */
+    font-variant-numeric: tabular-nums;
 }
 .balance-detail .num.free {
     color: #06d6a0;
@@ -573,6 +574,14 @@ onMounted(async () => {
 :deep([data-theme='dark']) .glass-container {
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(0, 0, 0, 0.3);
+}
+
+/* [核心修改] 表格字体缩小 */
+.address-table {
+    font-size: 13px;
+}
+:deep(.n-data-table-td) {
+    padding: 8px 12px !important;
 }
 
 /* 弹窗收银台样式 */
