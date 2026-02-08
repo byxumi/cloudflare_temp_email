@@ -63,24 +63,22 @@ export const useGlobalState = createGlobalState(
         const showAdminAuth = ref(false);
         const auth = useStorage('auth', '');
         const adminAuth = useStorage('adminAuth', '');
-        // [新增] Admin 登录时间戳，用于 3 天强制失效检测
+        // Admin 登录时间戳，用于 3 天强制失效检测
         const adminLoginTime = useStorage('adminLoginTime', 0);
 
-        // [新增] 检查 Admin 是否过期 (3天 = 259200000 毫秒)
+        // 检查 Admin 是否过期 (3天 = 259200000 毫秒)
         if (adminAuth.value) {
             const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
             const now = Date.now();
-            // 如果没有时间戳(旧版本)或时间差超过3天，强制清除
             if (!adminLoginTime.value || (now - adminLoginTime.value > threeDaysMs)) {
                 adminAuth.value = '';
                 adminLoginTime.value = 0;
             }
         }
 
-        // [新增] 监听 adminAuth 变化，登录时更新时间戳
+        // 监听 adminAuth 变化，登录时更新时间戳
         watch(adminAuth, (newVal) => {
             if (newVal) {
-                // 只有当时间戳不存在或为0时才更新，避免刷新页面重置时间
                 if (!adminLoginTime.value) {
                     adminLoginTime.value = Date.now();
                 }
@@ -98,8 +96,10 @@ export const useGlobalState = createGlobalState(
         const useIframeShowMail = useStorage('useIframeShowMail', false);
         const preferShowTextMail = useStorage('preferShowTextMail', false);
         const userJwt = useStorage('userJwt', '');
-        // [确认] 用户中心默认显示 'address_management' (地址管理)
-        const userTab = useSessionStorage('userTab', 'address_management');
+        
+        // [修复] 将默认 Tab 改回 'user_mail_box_tab' (收件箱)
+        const userTab = useSessionStorage('userTab', 'user_mail_box_tab');
+        
         const indexTab = useSessionStorage('indexTab', 'mailbox');
         const globalTabplacement = useStorage('globalTabplacement', 'top');
         const useSideMargin = useStorage('useSideMargin', true);
