@@ -9,13 +9,11 @@ import { api } from '../api'
 
 import UserBar from './user/UserBar.vue';
 
-// 全组件异步加载
 const AddressMangement = defineAsyncComponent(() => import('./user/AddressManagement.vue'));
 const UserSettingsPage = defineAsyncComponent(() => import('./user/UserSettings.vue'));
 const UserMailBox = defineAsyncComponent(() => import('./user/UserMailBox.vue'));
 const UserTransactions = defineAsyncComponent(() => import('./user/UserTransactions.vue'));
 const Lottery = defineAsyncComponent(() => import('./user/Lottery.vue'))
-// [新增] 引入 Affiliate 组件
 const Affiliate = defineAsyncComponent(() => import('./user/Affiliate.vue'))
 
 const { userTab, globalTabplacement, userSettings, userBalance, openSettings, userJwt } = useGlobalState()
@@ -46,7 +44,7 @@ const { t } = useI18n({
             refreshBalance: 'Refresh',
             buyCard: 'Buy Card',
             lottery: 'Lottery',
-            affiliate: 'Affiliate', // [新增]
+            affiliate: 'Affiliate',
             goodMorning: 'Good Morning',
             goodAfternoon: 'Good Afternoon',
             goodEvening: 'Good Evening',
@@ -66,7 +64,7 @@ const { t } = useI18n({
             refreshBalance: '刷新',
             buyCard: '购买卡密',
             lottery: '幸运抽奖',
-            affiliate: '邀请返利', // [新增]
+            affiliate: '邀请返利', // [新增翻译]
             goodMorning: '早上好',
             goodAfternoon: '下午好',
             goodEvening: '晚上好',
