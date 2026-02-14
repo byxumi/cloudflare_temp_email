@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, h } from 'vue'
-import { useMessage, NCard, NForm, NFormItem, NInputNumber, NSwitch, NButton, NDataTable, NTag, NSpace, NTabs, NTabPane, NPopconfirm } from 'naive-ui'
+import { useMessage, NCard, NForm, NFormItem, NInput, NInputNumber, NSwitch, NButton, NDataTable, NTag, NSpace, NTabs, NTabPane, NPopconfirm, NModal } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 import { api } from '../../api'
 
@@ -31,7 +31,15 @@ const { t } = useI18n({
             confirmReject: 'Confirm Reject?',
             successApproved: 'Approved',
             successRejected: 'Rejected',
-            failed: 'Operation Failed'
+            failed: 'Operation Failed',
+            invitationList: 'Invitation List',
+            invitationCode: 'Invite Code',
+            invitedCount: 'Invited Count',
+            affBalance: 'AFF Balance',
+            viewDetails: 'Details',
+            inviteesOf: 'Invitees of',
+            searchPlaceholder: 'Search Email or Code',
+            registerTime: 'Register Time'
         },
         zh: {
             title: '邀请返利设置',
@@ -57,44 +65,62 @@ const { t } = useI18n({
             confirmReject: '确认拒绝该提现申请？',
             successApproved: '已批准',
             successRejected: '已拒绝',
-            failed: '操作失败'
+            failed: '操作失败',
+            invitationList: '邀请关系管理',
+            invitationCode: '邀请码',
+            invitedCount: '邀请人数',
+            affBalance: '返利余额 (分)',
+            viewDetails: '详情',
+            inviteesOf: '受邀者列表 - ',
+            searchPlaceholder: '搜索邮箱或邀请码',
+            registerTime: '注册时间'
         }
     }
 })
 
-const settings = ref({
-    enabled: true,
-    rate: 10,
-    minWithdraw: 100
-})
-const loading = ref(false)
+// Settings
+const settings = ref({ enabled: true, rate: 10, minWithdraw: 100 })
+const settingsLoading = ref(false)
+
+// Withdrawals
 const withdrawals = ref([])
 const withdrawalLoading = ref(false)
 
+// Inviters
+const inviters = ref([])
+const invitersLoading = ref(false)
+const searchQuery = ref('')
+
+// Invitees Modal
+const showInviteesModal = ref(false)
+const currentInviterEmail = ref('')
+const invitees = ref([])
+const inviteesLoading = ref(false)
+
+// --- Settings ---
 const fetchSettings = async () => {
-    loading.value = true
     try {
         const res = await api.adminGetAffSettings()
         settings.value = res
-    } catch(e) { message.error("Failed to load settings") }
-    finally { loading.value = false }
+    } catch(e) { /* ignore */ }
 }
 
 const saveSettings = async () => {
-    loading.value = true
+    settingsLoading.value = true
     try {
         await api.adminSaveAffSettings(settings.value)
         message.success(t('saved'))
     } catch(e) { message.error(t('failed')) }
-    finally { loading.value = false }
+    finally { settingsLoading.value = false }
 }
 
+// --- Withdrawals ---
 const fetchWithdrawals = async (status = '') => {
     withdrawalLoading.value = true
     try {
         const res = await api.adminGetAffWithdrawals(status)
         withdrawals.value = res
-    } catch(e) { message.error("Failed to load withdrawals") }
+    } catch(e) { message.error(t('failed')) }
     finally { withdrawalLoading.value = false }
 }
 
@@ -114,7 +140,7 @@ const handleReject = async (id) => {
     } catch(e) { message.error(t('failed')) }
 }
 
-const columns = [
+const withdrawColumns = [
     { title: t('id'), key: 'id', width: 60 },
     { title: t('userEmail'), key: 'user_email' },
     { title: t('amount'), key: 'amount', render(row) { return (row.amount/100).toFixed(2) } },
@@ -139,9 +165,49 @@ const columns = [
     }}
 ]
 
+// --- Inviters ---
+const fetchInviters = async () => {
+    invitersLoading.value = true
+    try {
+        const res = await api.adminGetAffInviters(20, 0, searchQuery.value)
+        inviters.value = res
+    } catch(e) { message.error(t('failed')) }
+    finally { invitersLoading.value = false }
+}
+
+const openInviteesModal = async (row) => {
+    currentInviterEmail.value = row.user_email
+    showInviteesModal.value = true
+    inviteesLoading.value = true
+    invitees.value = []
+    try {
+        const res = await api.adminGetAffInvitees(row.id)
+        invitees.value = res
+    } catch(e) { message.error(t('failed')) }
+    finally { inviteesLoading.value = false }
+}
+
+const inviterColumns = [
+    { title: 'ID', key: 'id', width: 60 },
+    { title: t('userEmail'), key: 'user_email' },
+    { title: t('invitationCode'), key: 'invitation_code', render(row) { return h(NTag, { bordered: false }, { default: () => row.invitation_code }) } },
+    { title: t('invitedCount'), key: 'invite_count' },
+    { title: t('affBalance'), key: 'aff_balance' },
+    { title: t('actions'), key: 'actions', render(row) {
+        return h(NButton, { size: 'small', onClick: () => openInviteesModal(row) }, { default: () => t('viewDetails') })
+    }}
+]
+
+const inviteeColumns = [
+    { title: 'ID', key: 'id', width: 60 },
+    { title: t('userEmail'), key: 'user_email' },
+    { title: t('registerTime'), key: 'created_at' }
+]
+
 onMounted(() => {
     fetchSettings()
     fetchWithdrawals()
+    fetchInviters()
 })
 </script>
 
@@ -159,19 +225,33 @@ onMounted(() => {
                     <n-input-number v-model:value="settings.minWithdraw" :min="0" />
                 </n-form-item>
                 <n-form-item>
-                    <n-button type="primary" @click="saveSettings" :loading="loading">{{ t('save') }}</n-button>
+                    <n-button type="primary" @click="saveSettings" :loading="settingsLoading">{{ t('save') }}</n-button>
                 </n-form-item>
             </n-form>
         </n-card>
 
-        <n-card :title="t('withdrawRequests')">
-            <n-tabs type="line" @update:value="fetchWithdrawals">
-                <n-tab-pane name="" :tab="t('all')" />
-                <n-tab-pane name="pending" :tab="t('pending')" />
-                <n-tab-pane name="approved" :tab="t('approved')" />
-                <n-tab-pane name="rejected" :tab="t('rejected')" />
-            </n-tabs>
-            <n-data-table :columns="columns" :data="withdrawals" :loading="withdrawalLoading" />
-        </n-card>
+        <n-tabs type="card" animated>
+            <n-tab-pane name="withdrawals" :tab="t('withdrawRequests')">
+                <n-tabs type="line" @update:value="fetchWithdrawals">
+                    <n-tab-pane name="" :tab="t('all')" />
+                    <n-tab-pane name="pending" :tab="t('pending')" />
+                    <n-tab-pane name="approved" :tab="t('approved')" />
+                    <n-tab-pane name="rejected" :tab="t('rejected')" />
+                </n-tabs>
+                <n-data-table :columns="withdrawColumns" :data="withdrawals" :loading="withdrawalLoading" />
+            </n-tab-pane>
+            
+            <n-tab-pane name="invitation" :tab="t('invitationList')">
+                <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+                    <n-input v-model:value="searchQuery" :placeholder="t('searchPlaceholder')" @keydown.enter="fetchInviters" />
+                    <n-button type="primary" @click="fetchInviters">{{ t('actions') }}</n-button>
+                </div>
+                <n-data-table :columns="inviterColumns" :data="inviters" :loading="invitersLoading" />
+            </n-tab-pane>
+        </n-tabs>
+
+        <n-modal v-model:show="showInviteesModal" preset="card" :title="t('inviteesOf') + currentInviterEmail" style="width: 600px">
+            <n-data-table :columns="inviteeColumns" :data="invitees" :loading="inviteesLoading" :max-height="400" />
+        </n-modal>
     </div>
 </template>
