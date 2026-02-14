@@ -1,5 +1,5 @@
 <script setup>
-import { useMessage } from 'naive-ui'
+import { useMessage, NInput, NButton, NForm, NFormItem, NTabs, NTabPane, NAlert, NInputGroup } from 'naive-ui'
 import { onMounted, ref } from "vue";
 import { useI18n } from 'vue-i18n'
 import { KeyFilled } from '@vicons/material'
@@ -38,6 +38,9 @@ const { t } = useI18n({
             pleaseLogin: 'Please login',
             loginWithPasskey: 'Passkey',
             loginWith: '{provider}',
+            invitationCode: 'Invitation Code',
+            optional: '(Optional)',
+            enterInvitationCode: 'Enter Invitation Code'
         },
         zh: {
             login: '登录',
@@ -45,270 +48,237 @@ const { t } = useI18n({
             email: '邮箱',
             password: '密码',
             verifyCode: '验证码',
-            sendVerificationCode: '获取验证码',
-            verifyCodeSent: '已发送',
+            verifyCodeSent: '验证码已发送',
             waitforVerifyCode: '{timeout}秒后重试',
+            sendVerificationCode: '获取验证码',
             forgotPassword: '忘记密码?',
-            cannotForgotPassword: '未开启邮箱验证或注册功能，无法重置密码。',
+            cannotForgotPassword: '重置密码功能已禁用，请联系管理员。',
             resetPassword: '重置密码',
             pleaseInput: '请输入邮箱和密码',
             pleaseInputEmail: '请输入邮箱',
             pleaseInputCode: '请输入验证码',
             pleaseCompleteTurnstile: '请完成人机验证',
             pleaseLogin: '请登录',
-            loginWithPasskey: 'Passkey 登录',
+            loginWithPasskey: '通行密钥登录',
             loginWith: '{provider} 登录',
+            invitationCode: '邀请码',
+            optional: '(可选)',
+            enterInvitationCode: '请输入邀请码'
         }
     }
 });
 
-const tabValue = ref("signin");
-const showModal = ref(false);
-const user = ref({
-    email: "",
-    password: "",
-    code: ""
+const isLogin = ref(true);
+const authForm = ref({
+    email: '',
+    password: '',
+    code: '',
+    invitation_code: '' // [新增]
 });
-const cfToken = ref("")
+const cfToken = ref('');
+const loading = ref(false);
+const sendCodeLoading = ref(false);
+const sendCodeTimeout = ref(0);
+const showForgotPassword = ref(false);
 
-const emailLogin = async () => {
-    if (!user.value.email || !user.value.password) {
+const login = async () => {
+    if (!authForm.value.email || !authForm.value.password) {
         message.error(t('pleaseInput'));
         return;
     }
+    loading.value = true;
     try {
-        const res = await api.fetch(`/user_api/login`, {
-            method: "POST",
-            body: JSON.stringify({
-                email: user.value.email,
-                password: await hashPassword(user.value.password)
-            })
+        const res = await api.fetch("/user_api/login", {
+            method: 'POST',
+            body: JSON.stringify(authForm.value),
         });
         userJwt.value = res.jwt;
-        location.reload();
+        await api.getUserSettings(message);
     } catch (error) {
-        message.error(error.message || "login failed");
+        message.error(error.message || "error");
+    } finally {
+        loading.value = false;
     }
 };
 
-const verifyCodeExpire = ref(0);
-const verifyCodeTimeout = ref(0);
-
-const getVerifyCodeTimeout = () => {
-    if (!verifyCodeExpire.value || verifyCodeExpire.value < new Date().getTime()) return 0;
-    return Math.round((verifyCodeExpire.value - new Date().getTime()) / 1000);
-};
-
-const sendVerificationCode = async () => {
-    if (!user.value.email) {
-        message.error(t('pleaseInputEmail'));
-        return;
-    }
-    if (openSettings.value.cfTurnstileSiteKey && !cfToken.value && userOpenSettings.value.enableMailVerify) {
-        message.error(t('pleaseCompleteTurnstile'));
-        return;
-    }
-    try {
-        const res = await api.fetch(`/user_api/verify_code`, {
-            method: "POST",
-            body: JSON.stringify({
-                email: user.value.email,
-                cf_token: cfToken.value
-            })
-        });
-        if (res && res.expirationTtl) {
-            message.success(t('verifyCodeSent', { timeout: res.expirationTtl }));
-            verifyCodeExpire.value = new Date().getTime() + res.expirationTtl * 1000;
-            const intervalId = setInterval(() => {
-                verifyCodeTimeout.value = getVerifyCodeTimeout();
-                if (verifyCodeTimeout.value <= 0) {
-                    clearInterval(intervalId);
-                    verifyCodeTimeout.value = 0;
-                }
-            }, 1000);
-        }
-    } catch (error) {
-        message.error(error.message || "send verification code failed");
-    }
-};
-
-const emailSignup = async () => {
-    if (!user.value.email || !user.value.password) {
+const register = async () => {
+    if (!authForm.value.email || !authForm.value.password) {
         message.error(t('pleaseInput'));
         return;
     }
-    if (!user.value.code && userOpenSettings.value.enableMailVerify) {
+    if (userOpenSettings.value.enableMailVerify && !authForm.value.code) {
         message.error(t('pleaseInputCode'));
         return;
     }
+    if (openSettings.value.cfTurnstileSiteKey && !cfToken.value) {
+        message.error(t('pleaseCompleteTurnstile'));
+        return;
+    }
+    loading.value = true;
     try {
-        const res = await api.fetch(`/user_api/register`, {
-            method: "POST",
+        await api.fetch("/user_api/register", {
+            method: 'POST',
             body: JSON.stringify({
-                email: user.value.email,
-                password: await hashPassword(user.value.password),
-                code: user.value.code
+                email: authForm.value.email,
+                password: authForm.value.password,
+                code: authForm.value.code,
+                invitation_code: authForm.value.invitation_code // [新增]
             }),
-            message: message
         });
-        if (res) {
-            tabValue.value = "signin";
-            message.success(t('pleaseLogin'));
-        }
-        showModal.value = false;
+        message.success(t('pleaseLogin'));
+        isLogin.value = true;
     } catch (error) {
-        message.error(error.message || "register failed");
+        message.error(error.message || "error");
+    } finally {
+        loading.value = false;
+    }
+};
+
+const sendCode = async () => {
+    if (!authForm.value.email) {
+        message.error(t('pleaseInputEmail'));
+        return;
+    }
+    if (openSettings.value.cfTurnstileSiteKey && !cfToken.value) {
+        message.error(t('pleaseCompleteTurnstile'));
+        return;
+    }
+    sendCodeLoading.value = true;
+    try {
+        const res = await api.fetch("/user_api/verify_code", {
+            method: 'POST',
+            body: JSON.stringify({
+                email: authForm.value.email,
+                cf_token: cfToken.value,
+            }),
+        });
+        message.success(t('verifyCodeSent'));
+        sendCodeTimeout.value = res.timeout || 60;
+        const timer = setInterval(() => {
+            sendCodeTimeout.value--;
+            if (sendCodeTimeout.value <= 0) {
+                clearInterval(timer);
+            }
+        }, 1000);
+    } catch (error) {
+        message.error(error.message || "error");
+    } finally {
+        sendCodeLoading.value = false;
     }
 };
 
 const passkeyLogin = async () => {
+    loading.value = true;
     try {
-        const options = await api.fetch(`/user_api/passkey/authenticate_request`, {
+        const res = await api.fetch('/user_api/passkey/authenticate_options', {
             method: 'POST',
             body: JSON.stringify({
-                domain: location.hostname,
+                domain: window.location.hostname
             })
-        })
-        const credential = await startAuthentication(options)
-
-        const res = await api.fetch(`/user_api/passkey/authenticate_response`, {
+        });
+        const credential = await startAuthentication(res);
+        const verifyRes = await api.fetch('/user_api/passkey/authenticate_verification', {
             method: 'POST',
             body: JSON.stringify({
-                origin: location.origin,
-                domain: location.hostname,
+                domain: window.location.hostname,
                 credential
             })
-        })
-        userJwt.value = res.jwt;
-        location.reload();
-    } catch (e) {
-        console.error(e)
-        message.error(e.message)
+        });
+        userJwt.value = verifyRes.jwt;
+        await api.getUserSettings(message);
+    } catch (error) {
+        message.error(error.message || "error");
+    } finally {
+        loading.value = false;
     }
-};
+}
 
 const oauth2Login = async (clientID) => {
     try {
+        const state = Math.random().toString(36).substring(7);
+        const res = await api.fetch(`/user_api/oauth2/login_url?clientID=${clientID}&state=${state}`);
         userOauth2SessionClientID.value = clientID;
-        userOauth2SessionState.value = Math.random().toString(36).substring(2);
-        const res = await api.fetch(`/user_api/oauth2/login_url?clientID=${clientID}&state=${userOauth2SessionState.value}`);
-        location.href = res.url;
+        userOauth2SessionState.value = state;
+        window.location.href = res.url;
     } catch (error) {
-        message.error(error.message || "login failed");
+        message.error(error.message || "error");
     }
-};
+}
 
-onMounted(async () => {
-});
 </script>
 
 <template>
     <div class="login-container">
-        <n-tabs v-model:value="tabValue" size="large" v-if="userOpenSettings.fetched" justify-content="space-evenly" animated>
-            <n-tab-pane name="signin" :tab="t('login')">
+        <n-tabs v-model:value="isLogin" justify-content="space-evenly" animated>
+            <n-tab-pane :name="true" :tab="t('login')">
                 <div class="form-wrapper">
-                    <n-form size="large" label-placement="top" :show-feedback="false">
-                        <n-form-item-row :label="t('email')" path="email">
-                            <n-input v-model:value="user.email" placeholder="name@example.com" />
-                        </n-form-item-row>
-                        
+                    <n-form>
+                        <n-form-item :label="t('email')">
+                            <n-input v-model:value="authForm.email" placeholder="email@example.com" />
+                        </n-form-item>
+                        <n-form-item :label="t('password')">
+                            <n-input type="password" show-password-on="click" v-model:value="authForm.password" @keyup.enter="login" />
+                        </n-form-item>
+                        <n-button type="primary" block @click="login" :loading="loading" class="submit-btn">
+                            {{ t('login') }}
+                        </n-button>
                         <div class="spacer"></div>
-                        
-                        <n-form-item-row :label="t('password')" path="password">
-                            <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="" @keydown.enter="emailLogin" />
-                        </n-form-item-row>
+                        <n-button text class="action-btn" @click="showForgotPassword = true">
+                            {{ t('forgotPassword') }}
+                        </n-button>
                     </n-form>
-
-                    <div class="spacer-large"></div>
-
-                    <n-button @click="emailLogin" type="primary" block size="large" class="submit-btn">
-                        {{ t('login') }}
-                    </n-button>
-
-                    <n-button @click="showModal = true" secondary type="warning" block size="large" class="action-btn">
-                        {{ t('forgotPassword') }}
-                    </n-button>
-
-                    <div v-if="userOpenSettings.oauth2ClientIDs && userOpenSettings.oauth2ClientIDs.length > 0 || true" class="divider">
-                        <span>OR</span>
-                    </div>
-
-                    <n-space vertical :size="12" style="width: 100%">
-                        <n-button @click="passkeyLogin" block secondary>
-                            <template #icon><n-icon :component="KeyFilled" /></template>
-                            {{ t('loginWithPasskey') }}
-                        </n-button>
-                        <n-button v-for="item in userOpenSettings.oauth2ClientIDs" :key="item.clientID" 
-                            @click="oauth2Login(item.clientID)" block secondary>
-                            {{ t('loginWith', { provider: item.name }) }}
-                        </n-button>
-                    </n-space>
                 </div>
             </n-tab-pane>
-            
-            <n-tab-pane v-if="userOpenSettings.enable" name="signup" :tab="t('register')">
+            <n-tab-pane :name="false" :tab="t('register')">
                 <div class="form-wrapper">
-                    <n-form size="large" label-placement="top" :show-feedback="false">
-                        <n-form-item-row :label="t('email')">
-                            <n-input v-model:value="user.email" placeholder="name@example.com" />
-                        </n-form-item-row>
-                        
-                        <div class="spacer"></div>
-                        
-                        <n-form-item-row :label="t('password')">
-                            <n-input v-model:value="user.password" type="password" show-password-on="click" />
-                        </n-form-item-row>
-                        
-                        <div class="spacer"></div>
-                        
-                        <Turnstile v-if="userOpenSettings.enableMailVerify" v-model:value="cfToken" />
-                        
-                        <n-form-item-row v-if="userOpenSettings.enableMailVerify" :label="t('verifyCode')">
-                            <n-input-group class="verify-group">
-                                <n-input v-model:value="user.code" placeholder="123456" class="verify-input" />
-                                <n-button @click="sendVerificationCode" :disabled="verifyCodeTimeout > 0" ghost class="verify-btn">
-                                    {{ verifyCodeTimeout > 0 ? t('waitforVerifyCode', { timeout: verifyCodeTimeout }) : t('sendVerificationCode') }}
+                    <n-form>
+                        <n-form-item :label="t('email')">
+                            <n-input v-model:value="authForm.email" placeholder="email@example.com" />
+                        </n-form-item>
+                        <n-form-item :label="t('password')">
+                            <n-input type="password" show-password-on="click" v-model:value="authForm.password" />
+                        </n-form-item>
+                        <n-form-item v-if="userOpenSettings.enableMailVerify" :label="t('verifyCode')">
+                            <n-input-group>
+                                <n-input v-model:value="authForm.code" placeholder="123456" />
+                                <n-button :disabled="!authForm.email || sendCodeTimeout > 0" :loading="sendCodeLoading" @click="sendCode">
+                                    {{ sendCodeTimeout > 0 ? t('waitforVerifyCode', { timeout: sendCodeTimeout }) : t('sendVerificationCode') }}
                                 </n-button>
                             </n-input-group>
-                        </n-form-item-row>
+                        </n-form-item>
+                        
+                        <n-form-item :label="`${t('invitationCode')} ${t('optional')}`">
+                            <n-input v-model:value="authForm.invitation_code" :placeholder="t('enterInvitationCode')" />
+                        </n-form-item>
+
+                        <div class="spacer"></div>
+                        <Turnstile v-model:value="cfToken" />
+                        <div class="spacer"></div>
+                        <n-button type="primary" block @click="register" :loading="loading" class="submit-btn">
+                            {{ t('register') }}
+                        </n-button>
                     </n-form>
-                    
-                    <div class="spacer-large"></div>
-                    
-                    <n-button @click="emailSignup" type="primary" block size="large" class="submit-btn">
-                        {{ t('register') }}
-                    </n-button>
                 </div>
             </n-tab-pane>
         </n-tabs>
 
-        <n-modal v-model:show="showModal" preset="card" :title="t('forgotPassword')" style="width: 90%; max-width: 450px;">
-            <div class="form-wrapper" style="padding: 0;">
-                <div v-if="userOpenSettings.enable && userOpenSettings.enableMailVerify">
-                    <n-form size="large" label-placement="top">
-                        <n-form-item-row :label="t('email')">
-                            <n-input v-model:value="user.email" />
-                        </n-form-item-row>
-                        <n-form-item-row :label="t('password')">
-                            <n-input v-model:value="user.password" type="password" show-password-on="click" placeholder="New Password" />
-                        </n-form-item-row>
-                        <Turnstile v-model:value="cfToken" />
-                        
-                        <n-form-item-row :label="t('verifyCode')">
-                            <n-input-group class="verify-group">
-                                <n-input v-model:value="user.code" class="verify-input" />
-                                <n-button @click="sendVerificationCode" :disabled="verifyCodeTimeout > 0" ghost class="verify-btn">
-                                    {{ verifyCodeTimeout > 0 ? t('waitforVerifyCode', { timeout: verifyCodeTimeout }) : t('sendVerificationCode') }}
-                                </n-button>
-                            </n-input-group>
-                        </n-form-item-row>
-                    </n-form>
-                    <div class="spacer-large"></div>
-                    <n-button @click="emailSignup" type="primary" block size="large" class="submit-btn">
-                        {{ t('resetPassword') }}
-                    </n-button>
-                </div>
-                <n-alert v-else type="warning" :show-icon="false">
+        <div class="form-wrapper" v-if="userOpenSettings.enable">
+            <div class="spacer-large"></div>
+            <n-button block secondary @click="passkeyLogin" :loading="loading">
+                <template #icon><n-icon><KeyFilled /></n-icon></template>
+                {{ t('loginWithPasskey') }}
+            </n-button>
+            <div class="spacer"></div>
+            <div v-for="client in userOpenSettings.oauth2ClientIDs" :key="client.clientID">
+                <n-button block secondary @click="oauth2Login(client.clientID)" style="margin-bottom: 12px;">
+                    {{ t('loginWith', { provider: client.name }) }}
+                </n-button>
+            </div>
+        </div>
+
+        <n-modal v-model:show="showForgotPassword" preset="dialog" :title="t('resetPassword')">
+            <div>
+                <n-alert type="warning" :show-icon="false" :bordered="false">
                     {{ t('cannotForgotPassword') }}
                 </n-alert>
             </div>
@@ -323,10 +293,6 @@ onMounted(async () => {
     text-align: left; 
 }
 
-/* [核心修复] 
-   1. 清除 Tab Pane 默认可能的内边距影响
-   2. 手动控制左右 padding
-*/
 :deep(.n-tab-pane) {
     padding: 0 !important;
     margin-top: 0 !important;
@@ -336,17 +302,14 @@ onMounted(async () => {
 }
 
 .form-wrapper {
-    /* [关键] 电脑端增加 padding 缩短输入框 */
     padding: 10px 30px; 
     width: 100%;
     box-sizing: border-box;
-    
     max-height: 70vh;
     overflow-y: auto;
     overflow-x: hidden;
 }
 
-/* [关键] 移动端适配：减少 padding，防止挤压 */
 @media (max-width: 600px) {
     .form-wrapper {
         padding: 10px 5px;
@@ -367,47 +330,5 @@ onMounted(async () => {
 
 .action-btn {
     margin-top: 12px;
-}
-
-.divider {
-    display: flex;
-    align-items: center;
-    text-align: center;
-    color: #999;
-    font-size: 12px;
-    margin: 20px 0;
-}
-
-.divider::before,
-.divider::after {
-    content: '';
-    flex: 1;
-    border-bottom: 1px solid #eee;
-}
-
-.divider::before {
-    margin-right: 10px;
-}
-
-.divider::after {
-    margin-left: 10px;
-}
-
-:deep(.n-input) {
-    width: 100%;
-}
-
-.verify-group {
-    display: flex;
-    width: 100%;
-}
-
-.verify-input {
-    flex: 1;        
-    min-width: 0;  
-}
-
-.verify-btn {
-    flex-shrink: 0; 
 }
 </style>
