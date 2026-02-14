@@ -73,7 +73,7 @@ const authForm = ref({
     email: '',
     password: '',
     code: '',
-    invitation_code: '' // [新增]
+    invitation_code: ''
 });
 const cfToken = ref('');
 const loading = ref(false);
@@ -90,7 +90,11 @@ const login = async () => {
     try {
         const res = await api.fetch("/user_api/login", {
             method: 'POST',
-            body: JSON.stringify(authForm.value),
+            body: JSON.stringify({
+                email: authForm.value.email,
+                // [修复] 使用 hashPassword 加密密码
+                password: await hashPassword(authForm.value.password)
+            }),
         });
         userJwt.value = res.jwt;
         await api.getUserSettings(message);
@@ -120,9 +124,10 @@ const register = async () => {
             method: 'POST',
             body: JSON.stringify({
                 email: authForm.value.email,
-                password: authForm.value.password,
+                // [修复] 使用 hashPassword 加密密码
+                password: await hashPassword(authForm.value.password),
                 code: authForm.value.code,
-                invitation_code: authForm.value.invitation_code // [新增]
+                invitation_code: authForm.value.invitation_code
             }),
         });
         message.success(t('pleaseLogin'));
