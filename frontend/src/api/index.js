@@ -308,6 +308,14 @@ export const api = {
     adminRejectWithdraw: async (id) => {
         return await apiFetch(`/admin/aff/withdrawals/${id}/reject`, { method: 'POST' });
     },
+    // [新增] 获取邀请人列表
+    adminGetAffInviters: async (limit = 20, offset = 0, query = '') => {
+        return await apiFetch(`/admin/aff/inviters?limit=${limit}&offset=${offset}&query=${query}`);
+    },
+    // [新增] 获取受邀者列表
+    adminGetAffInvitees: async (id) => {
+        return await apiFetch(`/admin/aff/inviters/${id}/invitees`);
+    },
 
     // --- 抽奖 API ---
     getLotteryStatus: async () => {
