@@ -209,7 +209,6 @@ export const api = {
     bindUserAddress,
 
     // --- 管理员登录 ---
-    // [修改] 移除 cf_token 参数
     adminLogin: async (password) => {
         return await apiFetch('/admin/login', {
             method: 'POST',
@@ -271,6 +270,43 @@ export const api = {
         return await apiFetch('/user_api/checkin', {
             method: 'POST'
         });
+    },
+
+    // --- AFF API ---
+    getAffInfo: async () => {
+        return await apiFetch('/user_api/aff/info');
+    },
+    generateAffCode: async () => {
+        return await apiFetch('/user_api/aff/generate_code', { method: 'POST' });
+    },
+    withdrawAff: async (amount) => {
+        return await apiFetch('/user_api/aff/withdraw', {
+            method: 'POST',
+            body: JSON.stringify({ amount })
+        });
+    },
+    getAffHistory: async () => {
+        return await apiFetch('/user_api/aff/history');
+    },
+    
+    // --- Admin AFF ---
+    adminGetAffSettings: async () => {
+        return await apiFetch('/admin/aff/settings');
+    },
+    adminSaveAffSettings: async (settings) => {
+        return await apiFetch('/admin/aff/settings', {
+            method: 'POST',
+            body: JSON.stringify(settings)
+        });
+    },
+    adminGetAffWithdrawals: async (status, limit = 20, offset = 0) => {
+        return await apiFetch(`/admin/aff/withdrawals?status=${status || ''}&limit=${limit}&offset=${offset}`);
+    },
+    adminApproveWithdraw: async (id) => {
+        return await apiFetch(`/admin/aff/withdrawals/${id}/approve`, { method: 'POST' });
+    },
+    adminRejectWithdraw: async (id) => {
+        return await apiFetch(`/admin/aff/withdrawals/${id}/reject`, { method: 'POST' });
     },
 
     // --- 抽奖 API ---
