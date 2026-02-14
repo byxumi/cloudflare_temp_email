@@ -7,6 +7,9 @@ import { SignOutAlt } from '@vicons/fa'
 import { useGlobalState } from '../store'
 import { api } from '../api'
 
+// [恢复] 引入 Turnstile
+import Turnstile from '../components/Turnstile.vue'
+
 import SenderAccess from './admin/SenderAccess.vue'
 import Statistics from "./admin/Statistics.vue"
 import SendBox from './admin/SendBox.vue';
@@ -33,7 +36,6 @@ import PricingManager from './admin/PricingManager.vue';
 import TransactionManager from './admin/TransactionManager.vue';
 import VersionSettings from './admin/VersionSettings.vue';
 import LotterySettings from './admin/LotterySettings.vue';
-// [新增] 引入 AFF 设置组件
 import AffiliateSettings from './admin/AffiliateSettings.vue';
 
 const {
@@ -49,17 +51,35 @@ const SendMail = defineAsyncComponent(() => {
     .finally(() => loading.value = false);
 });
 
+// [修复] 重新定义 cfToken 和 turnstileRef，防止报错
+const cfToken = ref('')
+const turnstileRef = ref(null)
+
 const tmpAdminAuth = ref('')
 
 const authFunc = async () => {
+  // [新增] 检查人机验证
+  if (openSettings.value.cfTurnstileSiteKey && !cfToken.value) {
+      message.error("Please complete the captcha verification");
+      return;
+  }
+  
   loading.value = true;
   try {
-    await api.adminLogin(tmpAdminAuth.value);
+    // [新增] 传递 cfToken
+    await api.adminLogin(tmpAdminAuth.value, cfToken.value || "");
+    
     adminAuth.value = tmpAdminAuth.value;
     adminLoginTime.value = Date.now();
     location.reload();
   } catch (error) {
     message.error(error.message || "Authentication failed");
+    
+    // [修复] 安全重置验证码，防止报错
+    if (turnstileRef.value) {
+        turnstileRef.value.reset();
+    }
+    cfToken.value = "";
   } finally {
     loading.value = false;
   }
@@ -108,7 +128,7 @@ const { t } = useI18n({
       transactionManager: 'Transactions',
       versionSettings: 'Version',
       lotterySettings: 'Lottery Settings',
-      affiliateSettings: 'Affiliate Settings' // [新增]
+      affiliateSettings: 'Affiliate Settings'
     },
     zh: {
       accessHeader: '管理员登录',
@@ -145,7 +165,7 @@ const { t } = useI18n({
       transactionManager: '交易流水',
       versionSettings: '版本号',
       lotterySettings: '抽奖设置',
-      affiliateSettings: '邀请返利设置' // [新增]
+      affiliateSettings: '邀请返利设置'
     }
   }
 });
@@ -166,12 +186,18 @@ onMounted(async () => {
       </div>
       <n-space vertical size="large">
           <n-input v-model:value="tmpAdminAuth" type="password" show-password-on="click" placeholder="Password" size="large" @keydown.enter="authFunc"/>
+          
+          <div v-if="openSettings.cfTurnstileSiteKey" style="display: flex; justify-content: center;">
+              <Turnstile ref="turnstileRef" v-model:value="cfToken" />
+          </div>
+
           <n-button 
             @click="authFunc" 
             type="primary" 
             :loading="loading" 
             block 
             size="large"
+            :disabled="openSettings.cfTurnstileSiteKey && !cfToken"
           >
             {{ t('ok') }}
           </n-button>
