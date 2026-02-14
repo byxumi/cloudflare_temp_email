@@ -7,9 +7,6 @@ import { SignOutAlt } from '@vicons/fa'
 import { useGlobalState } from '../store'
 import { api } from '../api'
 
-// [修改] 移除 Turnstile 组件引用
-// import Turnstile from '../components/Turnstile.vue'
-
 import SenderAccess from './admin/SenderAccess.vue'
 import Statistics from "./admin/Statistics.vue"
 import SendBox from './admin/SendBox.vue';
@@ -36,6 +33,8 @@ import PricingManager from './admin/PricingManager.vue';
 import TransactionManager from './admin/TransactionManager.vue';
 import VersionSettings from './admin/VersionSettings.vue';
 import LotterySettings from './admin/LotterySettings.vue';
+// [新增] 引入 AFF 设置组件
+import AffiliateSettings from './admin/AffiliateSettings.vue';
 
 const {
   adminAuth, showAdminAuth, adminTab, loading,
@@ -50,23 +49,17 @@ const SendMail = defineAsyncComponent(() => {
     .finally(() => loading.value = false);
 });
 
-// [修改] 移除 cfToken 变量
-// const cfToken = ref('')
-// const turnstileRef = ref(null)
+const tmpAdminAuth = ref('')
 
 const authFunc = async () => {
-  // [修改] 移除前端验证码检查
-  
   loading.value = true;
   try {
-    // [修改] 移除 cfToken 参数
     await api.adminLogin(tmpAdminAuth.value);
     adminAuth.value = tmpAdminAuth.value;
     adminLoginTime.value = Date.now();
     location.reload();
   } catch (error) {
     message.error(error.message || "Authentication failed");
-    // [修改] 移除 reset 逻辑
   } finally {
     loading.value = false;
   }
@@ -115,6 +108,7 @@ const { t } = useI18n({
       transactionManager: 'Transactions',
       versionSettings: 'Version',
       lotterySettings: 'Lottery Settings',
+      affiliateSettings: 'Affiliate Settings' // [新增]
     },
     zh: {
       accessHeader: '管理员登录',
@@ -151,12 +145,12 @@ const { t } = useI18n({
       transactionManager: '交易流水',
       versionSettings: '版本号',
       lotterySettings: '抽奖设置',
+      affiliateSettings: '邀请返利设置' // [新增]
     }
   }
 });
 
 const showAdminPasswordModal = computed(() => !showAdminPage.value || showAdminAuth.value)
-const tmpAdminAuth = ref('')
 
 onMounted(async () => {
   if (!userSettings.value.user_id) await api.getUserSettings(message);
@@ -172,7 +166,6 @@ onMounted(async () => {
       </div>
       <n-space vertical size="large">
           <n-input v-model:value="tmpAdminAuth" type="password" show-password-on="click" placeholder="Password" size="large" @keydown.enter="authFunc"/>
-          
           <n-button 
             @click="authFunc" 
             type="primary" 
@@ -265,6 +258,9 @@ onMounted(async () => {
           </n-tab-pane>
           <n-tab-pane name="lotterySettings" :tab="t('lotterySettings')">
             <LotterySettings />
+          </n-tab-pane>
+          <n-tab-pane name="affiliateSettings" :tab="t('affiliateSettings')">
+            <AffiliateSettings />
           </n-tab-pane>
         </n-tabs>
       </n-tab-pane>
