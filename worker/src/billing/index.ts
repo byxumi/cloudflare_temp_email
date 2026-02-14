@@ -2,6 +2,8 @@ import { Hono } from 'hono'
 import { Context } from 'hono';
 import { handleListQuery, commonGetUserRole, clearCacheByPrefix } from '../common';
 import { purchaseAddress } from './purchase';
+// [新增] 引入 AFF 处理函数
+import { processAffRebate } from '../aff_utils';
 
 // 辅助函数：元转分
 const toCents = (yuan: number | string) => Math.round(parseFloat(yuan.toString()) * 100);
@@ -260,8 +262,13 @@ api.post('/user_api/billing/redeem', async (c) => {
             c.env.DB.prepare(`UPDATE redemption_codes SET used_count = used_count + 1, status = CASE WHEN used_count + 1 >= max_uses THEN 'used' ELSE status END WHERE id = ?`).bind(card.id),
             c.env.DB.prepare(`INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, 'redeem', ?)`).bind(user_id, card.amount, `Redeem code ${code}`)
         ]);
+
+        // [新增] 处理 AFF 返利 (放在数据库操作成功后)
+        await processAffRebate(c, user_id, card.amount);
+
         return c.json({ success: true, amount: card.amount });
     } catch (e) {
+        console.error("Redemption error:", e);
         return c.text("Redemption failed", 500);
     }
 });

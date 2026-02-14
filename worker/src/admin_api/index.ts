@@ -2,7 +2,8 @@ import { Hono, Context, Next } from 'hono'
 import { Jwt } from 'hono/utils/jwt'
 
 import i18n from '../i18n'
-import { sendAdminInternalMail, getJsonSetting, saveSetting, getUserRoles, getBooleanValue, hashPassword, getStringValue } from '../utils'
+// [恢复] 引入 checkCfTurnstile
+import { sendAdminInternalMail, getJsonSetting, saveSetting, getUserRoles, getBooleanValue, hashPassword, getStringValue, checkCfTurnstile } from '../utils'
 import { newAddress, handleListQuery } from '../common'
 import { CONSTANTS } from '../constants'
 import cleanup_api from './cleanup_api'
@@ -18,6 +19,7 @@ import ip_blacklist_settings from './ip_blacklist_settings'
 import { EmailRuleSettings, HonoCustomType } from '../models'
 import lottery_api from './lottery';
 import { api as billing_api } from '../billing/index'; 
+import aff from './aff';
 
 import { 
     adminCreateRechargeCode, 
@@ -28,6 +30,12 @@ import {
 export const api = new Hono<HonoCustomType>()
 
 const adminAuth = async (c: Context<HonoCustomType>, next: Next) => {
+    // 豁免登录接口
+    if (c.req.path === '/admin/login') {
+        await next();
+        return;
+    }
+
     const adminPassword = getStringValue(c.env.ADMIN_PASSWORD);
     if (adminPassword) {
         const auth = c.req.header("x-admin-auth");
@@ -39,6 +47,32 @@ const adminAuth = async (c: Context<HonoCustomType>, next: Next) => {
 }
 
 api.use('/*', adminAuth);
+
+// [恢复] Admin 登录验证 (带 Turnstile)
+api.post('/admin/login', async (c) => {
+    const { password, cf_token } = await c.req.json();
+    const lang = c.get("lang") || c.env.DEFAULT_LANG;
+    const msgs = i18n.getMessages(lang);
+
+    // 1. 验证 Turnstile 人机 Token
+    if (c.env.CF_TURNSTILE_SITE_KEY && c.env.CF_TURNSTILE_SECRET_KEY) {
+        try {
+            await checkCfTurnstile(c, cf_token);
+        } catch (error) {
+            console.error("Turnstile Check Error:", error);
+            const errorMessage = error instanceof Error ? error.message : "Unknown error";
+            return c.text(`${msgs.TurnstileCheckFailedMsg}: ${errorMessage}`, 500)
+        }
+    }
+
+    // 2. 验证管理员密码
+    const adminPassword = getStringValue(c.env.ADMIN_PASSWORD);
+    if (adminPassword && password !== adminPassword) {
+        return c.text("Invalid password", 401);
+    }
+
+    return c.json({ success: true });
+})
 
 api.get('/admin/address', async (c) => {
     const { limit, offset, query } = c.req.query();
@@ -412,3 +446,6 @@ api.post('/admin/lottery/settings', lottery_api.saveSettings);
 
 // Billing & Cards
 api.route('/admin/billing', billing_api);
+
+// [恢复] 注册 AFF 路由
+api.route('/admin/aff', aff);

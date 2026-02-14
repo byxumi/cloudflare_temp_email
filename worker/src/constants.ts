@@ -21,6 +21,7 @@ export const CONSTANTS = {
 
     // [新增] 抽奖设置 Key
     LOTTERY_SETTINGS_KEY: "lottery_settings",
+    AFF_SETTINGS_KEY: "aff_settings",
 
     // KV
     TG_KV_PREFIX: "temp-mail-telegram",

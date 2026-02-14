@@ -131,8 +131,8 @@ export default {
         const jwt = await Jwt.sign({
             user_email: email,
             user_id: user_id,
-            // 90 days expire in seconds
-            exp: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+            // [修改] 7 days expire in seconds
+            exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
             iat: Math.floor(Date.now() / 1000),
         }, c.env.JWT_SECRET, "HS256")
         return c.json({

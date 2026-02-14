@@ -9,6 +9,7 @@ import user_mail_api from './user_mail_api';
 import { userUseRechargeCode } from './recharge_code_api';
 import { checkin } from './checkin';
 import * as lottery from './lottery';
+import aff from './aff';
 
 export const api = new Hono<HonoCustomType>();
 
@@ -61,3 +62,6 @@ api.post('/user_api/checkin', checkin);
 // lottery
 api.get('/user_api/lottery/status', lottery.getStatus);
 api.post('/user_api/lottery/draw', lottery.draw);
+
+// [新增] 注册 AFF 路由
+api.route('/user_api/aff', aff);

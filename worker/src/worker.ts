@@ -9,7 +9,6 @@ import { api as userApi } from './user_api';
 import { api as adminApi } from './admin_api';
 import { api as apiSendMail } from './mails_api/send_mail_api'
 import { api as telegramApi } from './telegram_api'
-// [关键修复] 引入计费模块
 import { api as billingApi } from './billing';
 
 import i18n from './i18n';
@@ -215,6 +214,11 @@ app.use('/user_api/*', async (c, next) => {
 });
 // admin auth
 app.use('/admin/*', async (c, next) => {
+    // [关键修复] 放行 admin 登录接口，防止死循环
+    if (c.req.path === '/admin/login') {
+        await next();
+        return;
+    }
 
 	// check header x-admin-auth
 	const adminPasswords = getAdminPasswords(c);
@@ -264,7 +268,6 @@ app.route('/', userApi)
 app.route('/', adminApi)
 app.route('/', apiSendMail)
 app.route('/', telegramApi)
-// [关键修复] 注册计费路由
 app.route('/', billingApi)
 
 const health_check = async (c: Context<HonoCustomType>) => {
