@@ -2,12 +2,11 @@
 import { ref, onMounted, defineAsyncComponent, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useMessage, NIcon, NModal, NInput, NButton, NSpace, NTabs, NTabPane, NStatistic, NSkeleton, NGrid, NGridItem, NNumberAnimation } from 'naive-ui'
-import { History, Sync, CreditCard, ShoppingCart, Gift, User, Wallet } from '@vicons/fa'
+import { History, Sync, CreditCard, ShoppingCart, Gift, User, Wallet, ShareAlt } from '@vicons/fa'
 
 import { useGlobalState } from '../store'
 import { api } from '../api'
 
-// 导入 UserBar
 import UserBar from './user/UserBar.vue';
 
 // 全组件异步加载
@@ -16,6 +15,8 @@ const UserSettingsPage = defineAsyncComponent(() => import('./user/UserSettings.
 const UserMailBox = defineAsyncComponent(() => import('./user/UserMailBox.vue'));
 const UserTransactions = defineAsyncComponent(() => import('./user/UserTransactions.vue'));
 const Lottery = defineAsyncComponent(() => import('./user/Lottery.vue'))
+// [新增] 引入 Affiliate 组件
+const Affiliate = defineAsyncComponent(() => import('./user/Affiliate.vue'))
 
 const { userTab, globalTabplacement, userSettings, userBalance, openSettings, userJwt } = useGlobalState()
 
@@ -27,7 +28,6 @@ const showRedeemModal = ref(false)
 const balanceLoading = ref(false)
 const dataInitLoading = ref(true)
 
-// 抽奖 Tab 显示控制
 const showLotteryTab = ref(false)
 
 const { t } = useI18n({
@@ -46,6 +46,7 @@ const { t } = useI18n({
             refreshBalance: 'Refresh',
             buyCard: 'Buy Card',
             lottery: 'Lottery',
+            affiliate: 'Affiliate', // [新增]
             goodMorning: 'Good Morning',
             goodAfternoon: 'Good Afternoon',
             goodEvening: 'Good Evening',
@@ -65,6 +66,7 @@ const { t } = useI18n({
             refreshBalance: '刷新',
             buyCard: '购买卡密',
             lottery: '幸运抽奖',
+            affiliate: '邀请返利', // [新增]
             goodMorning: '早上好',
             goodAfternoon: '下午好',
             goodEvening: '晚上好',
@@ -235,6 +237,15 @@ onMounted(async () => {
                     </n-tab-pane>
                     <n-tab-pane name="user_mail_box_tab" :tab="t('user_mail_box_tab')" display-directive="show:lazy">
                         <UserMailBox />
+                    </n-tab-pane>
+                    <n-tab-pane name="affiliate" :tab="t('affiliate')" display-directive="show:lazy">
+                        <template #tab>
+                            <n-space :size="6" align="center">
+                                <n-icon><ShareAlt /></n-icon>
+                                <span>{{ t('affiliate') }}</span>
+                            </n-space>
+                        </template>
+                        <Affiliate />
                     </n-tab-pane>
                     <n-tab-pane v-if="showLotteryTab" name="lottery" :tab="t('lottery')" display-directive="show:lazy">
                         <template #tab>
