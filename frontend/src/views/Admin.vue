@@ -7,7 +7,6 @@ import { SignOutAlt } from '@vicons/fa'
 import { useGlobalState } from '../store'
 import { api } from '../api'
 
-// [恢复] 引入 Turnstile
 import Turnstile from '../components/Turnstile.vue'
 
 import SenderAccess from './admin/SenderAccess.vue'
@@ -51,14 +50,11 @@ const SendMail = defineAsyncComponent(() => {
     .finally(() => loading.value = false);
 });
 
-// [修复] 重新定义 cfToken 和 turnstileRef，防止报错
 const cfToken = ref('')
 const turnstileRef = ref(null)
-
 const tmpAdminAuth = ref('')
 
 const authFunc = async () => {
-  // [新增] 检查人机验证
   if (openSettings.value.cfTurnstileSiteKey && !cfToken.value) {
       message.error("Please complete the captcha verification");
       return;
@@ -66,16 +62,16 @@ const authFunc = async () => {
   
   loading.value = true;
   try {
-    // [新增] 传递 cfToken
     await api.adminLogin(tmpAdminAuth.value, cfToken.value || "");
     
     adminAuth.value = tmpAdminAuth.value;
-    adminLoginTime.value = Date.now();
+    // [修复] 加一个判断，防止 store 未更新导致报错
+    if (adminLoginTime) {
+        adminLoginTime.value = Date.now();
+    }
     location.reload();
   } catch (error) {
     message.error(error.message || "Authentication failed");
-    
-    // [修复] 安全重置验证码，防止报错
     if (turnstileRef.value) {
         turnstileRef.value.reset();
     }
@@ -87,7 +83,9 @@ const authFunc = async () => {
 
 const logout = () => {
     adminAuth.value = '';
-    adminLoginTime.value = 0;
+    if (adminLoginTime) {
+        adminLoginTime.value = 0;
+    }
     location.reload();
 }
 
