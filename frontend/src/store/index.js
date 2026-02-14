@@ -63,7 +63,8 @@ export const useGlobalState = createGlobalState(
         const showAdminAuth = ref(false);
         const auth = useStorage('auth', '');
         const adminAuth = useStorage('adminAuth', '');
-        // Admin 登录时间戳，用于 3 天强制失效检测
+        
+        // [关键] 定义 Admin 登录时间戳
         const adminLoginTime = useStorage('adminLoginTime', 0);
 
         // 检查 Admin 是否过期 (3天 = 259200000 毫秒)
@@ -97,7 +98,7 @@ export const useGlobalState = createGlobalState(
         const preferShowTextMail = useStorage('preferShowTextMail', false);
         const userJwt = useStorage('userJwt', '');
         
-        // [修复] 将默认 Tab 改回 'user_mail_box_tab' (收件箱)
+        // 默认 Tab 改回收件箱
         const userTab = useSessionStorage('userTab', 'user_mail_box_tab');
         
         const indexTab = useSessionStorage('indexTab', 'mailbox');
@@ -182,6 +183,7 @@ export const useGlobalState = createGlobalState(
             useSimpleIndex,
             addressPassword,
             browserFingerprint,
+            adminLoginTime, // [关键] 必须在这里导出
         }
     },
 )
