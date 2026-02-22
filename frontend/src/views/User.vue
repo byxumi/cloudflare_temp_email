@@ -113,7 +113,7 @@ const handleRedeem = async () => {
 }
 
 const handleBuyCard = () => {
-    const myWebsiteUrl = "https://buy.xumicloud.top"; 
+    const myWebsiteUrl = "https://buy.xumitech.top"; 
     if (openSettings.value.buyCardUrl) {
         window.open(openSettings.value.buyCardUrl, '_blank');
     } else {
