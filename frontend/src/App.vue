@@ -7,7 +7,6 @@ import { useGlobalState } from './store'
 import { useIsMobile } from './utils/composables'
 import Header from './views/Header.vue';
 import Footer from './views/Footer.vue';
-import RouterLoadingBar from './components/RouterLoadingBar.vue'
 import { api } from './api'
 
 const {
@@ -264,8 +263,6 @@ onMounted(async () => {
     </Transition>
 
     <n-loading-bar-provider>
-      <RouterLoadingBar />
-      
       <n-spin description="loading..." :show="loading">
         <n-notification-provider container-style="margin-top: 60px;">
           <n-message-provider container-style="margin-top: 20px;">
