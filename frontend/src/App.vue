@@ -195,14 +195,6 @@ onMounted(async () => {
 </template>
 
 <style>
-/* === CSS 变量，用于处理渐变背景和暗色模式 === */
-:root {
-  /* 柔和的蓝粉组合 */
-  --bg-gradient-light: linear-gradient(135deg, #f0f7ff 0%, #fff0f7 100%);
-  /* 深沉的暗色组合 */
-  --bg-gradient-dark: linear-gradient(135deg, #0f172a 0%, #171717 100%);
-}
-
 *, *::before, *::after {
   box-sizing: border-box;
 }
@@ -211,14 +203,7 @@ body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* 全局渐变背景 */
-  background: var(--bg-gradient-light);
-  /* 移除 Transitional */
-}
-
-[data-theme='dark'] body {
-  /* 暗色模式下的全局渐变背景 */
-  background: var(--bg-gradient-dark);
+  transition: background-color 0.3s ease;
 }
 
 ::-webkit-scrollbar {
@@ -229,15 +214,14 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  /* 修改滚动条滑块颜色，使其更生动 */
-  background: linear-gradient(180deg, rgba(147, 165, 207, 0.5) 0%, rgba(228, 187, 178, 0.5) 100%);
+  background: rgba(156, 163, 175, 0.5);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(107, 114, 128, 0.8);
 }
 [data-theme='dark'] ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, rgba(82, 82, 91, 0.5) 0%, rgba(113, 113, 122, 0.5) 100%);
+  background: rgba(82, 82, 91, 0.6);
 }
 [data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
   background: rgba(113, 113, 122, 0.8);
@@ -250,17 +234,15 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  /* 加载动画背景也应用渐变，使其更生动 */
-  background: var(--bg-gradient-light);
+  background: #ffffff;
 }
 [data-theme='dark'] .splash-screen {
-  background: var(--bg-gradient-dark);
+  background: #09090b;
 }
 .splash-logo {
   width: 80px;
   height: 80px;
   border-radius: 16px;
-  /* 保留 pulse 动画 */
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 @keyframes pulse {
@@ -318,10 +300,9 @@ body {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* === 暗色模式样式（精准覆盖，去除白蒙层，使其更生动） === */
+/* === 暗色模式样式（精准覆盖，去除白蒙层） === */
 .header-wrapper.is-dark {
-  /* 添加一个微妙的渐变，使其暗色背景更生动 */
-  background: linear-gradient(135deg, rgba(24, 24, 27, 0.65) 0%, rgba(39, 39, 42, 0.65) 100%);
+  background: rgba(24, 24, 27, 0.65); /* 使用偏黑灰的半透明色 */
   border: 1px solid rgba(63, 63, 70, 0.4);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
