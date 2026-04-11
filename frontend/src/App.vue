@@ -158,7 +158,8 @@ onMounted(async () => {
                 
                 <n-gi :span="!showSideMargin ? gridMaxCols : (gridMaxCols - 2)">
                   <div class="main-content">
-                    <div class="header-wrapper">
+                    
+                    <div class="header-wrapper" :class="{ 'is-dark': isDark }">
                       <Header />
                     </div>
                     
@@ -281,21 +282,29 @@ body {
   }
 }
 
+/* === 顶部 Header 悬浮圆角设计 === */
 .header-wrapper {
   position: sticky;
-  top: 0;
+  top: 16px; /* 距离顶部留出间隙形成悬浮感 */
   z-index: 100;
-  padding: 16px 0;
-  background: rgba(249, 250, 251, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+  padding: 12px 24px;
+  border-radius: 16px; /* 圆角设计 */
   margin-bottom: 24px;
+  
+  /* 浅色模式样式 */
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-:deep(.n-config-provider--theme-dark) .header-wrapper {
-  background: rgba(9, 9, 11, 0.85);
-  border-bottom: 1px solid rgba(39, 39, 42, 0.5);
+/* === 暗色模式样式（精准覆盖，去除白蒙层） === */
+.header-wrapper.is-dark {
+  background: rgba(24, 24, 27, 0.65); /* 使用偏黑灰的半透明色 */
+  border: 1px solid rgba(63, 63, 70, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .router-container {
