@@ -1,8 +1,6 @@
 <script setup>
-import {
-  darkTheme,
-} from 'naive-ui'
-import { computed, onMounted, watchEffect } from 'vue'
+import { darkTheme, NGlobalStyle } from 'naive-ui'
+import { computed, onMounted, ref, watchEffect } from 'vue'
 import { useScript } from '@unhead/vue'
 import { useI18n } from 'vue-i18n'
 import { useGlobalState } from './store'
@@ -19,19 +17,22 @@ const {
 const adClient = import.meta.env.VITE_GOOGLE_AD_CLIENT;
 const adSlot = import.meta.env.VITE_GOOGLE_AD_SLOT;
 const { locale } = useI18n({ useScope: 'global' });
+
 const theme = computed(() => isDark.value ? darkTheme : null)
 const localeConfig = computed(() => getNaiveLocaleConfig(isSupportedLocale(locale.value) ? locale.value : DEFAULT_LOCALE))
+
 const isMobile = useIsMobile()
 const showSideMargin = computed(() => !isMobile.value && useSideMargin.value);
 const showAd = computed(() => !isMobile.value && adClient && adSlot);
 const gridMaxCols = computed(() => showAd.value ? 8 : 12);
+
+const showSplash = ref(true)
 
 watchEffect(() => {
   if (typeof document === 'undefined') return
   document.documentElement.lang = isSupportedLocale(locale.value) ? locale.value : DEFAULT_LOCALE
 })
 
-// Load Google Ad script at top level (not inside onMounted)
 if (showAd.value) {
   useScript({
     src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adClient}`,
@@ -40,7 +41,61 @@ if (showAd.value) {
   })
 }
 
+const themeOverrides = computed(() => {
+  const isDarkTheme = isDark.value;
+  
+  const primaryColor = '#2563eb'; 
+  const primaryColorHover = '#3b82f6';
+  const primaryColorPressed = '#1d4ed8';
+  
+  const bgLight = '#f9fafb';
+  const bgDark = '#09090b';
+  const cardLight = '#ffffff';
+  const cardDark = '#18181b';
+  const borderLight = '#e5e7eb';
+  const borderDark = '#27272a';
+
+  return {
+    common: {
+      primaryColor,
+      primaryColorHover,
+      primaryColorPressed,
+      borderRadius: '12px', 
+      borderRadiusSmall: '8px',
+      fontFamily: '"Inter", "-apple-system", "BlinkMacSystemFont", "PingFang SC", "Helvetica Neue", sans-serif',
+      
+      bodyColor: isDarkTheme ? bgDark : bgLight,
+      cardColor: isDarkTheme ? cardDark : cardLight,
+      popoverColor: isDarkTheme ? cardDark : cardLight,
+      modalColor: isDarkTheme ? cardDark : cardLight,
+      
+      borderColor: isDarkTheme ? borderDark : borderLight,
+      textColorBase: isDarkTheme ? '#f8fafc' : '#0f172a',
+      textColor1: isDarkTheme ? '#f8fafc' : '#0f172a',
+      textColor2: isDarkTheme ? '#94a3b8' : '#64748b',
+    },
+    Card: {
+      borderRadius: '16px',
+      borderColor: isDarkTheme ? borderDark : borderLight,
+      boxShadow: isDarkTheme 
+        ? '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5)' 
+        : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)'
+    },
+    Button: {
+      fontWeight: '500',
+      borderRadiusMedium: '8px',
+    },
+    Input: {
+      borderRadius: '8px',
+    }
+  }
+})
+
 onMounted(async () => {
+  setTimeout(() => {
+    showSplash.value = false
+  }, 1200)
+
   try {
     await api.getUserSettings();
   } catch (error) {
@@ -48,7 +103,6 @@ onMounted(async () => {
   }
 
   const token = import.meta.env.VITE_CF_WEB_ANALY_TOKEN;
-
   const exist = document.querySelector('script[src="https://static.cloudflareinsights.com/beacon.min.js"]') !== null
   if (token && !exist) {
     const script = document.createElement('script');
@@ -58,14 +112,11 @@ onMounted(async () => {
     document.body.appendChild(script);
   }
 
-  // check if google ad is enabled
   if (showAd.value) {
     (window.adsbygoogle = window.adsbygoogle || []).push({});
     (window.adsbygoogle = window.adsbygoogle || []).push({});
   }
 
-
-  // check if telegram is enabled
   const enableTelegram = import.meta.env.VITE_IS_TELEGRAM;
   if (
     (typeof enableTelegram === 'boolean' && enableTelegram === true)
@@ -86,70 +137,219 @@ onMounted(async () => {
 </script>
 
 <template>
-  <n-config-provider :locale="localeConfig.locale" :date-locale="localeConfig.dateLocale" :theme="theme">
+  <n-config-provider 
+    :locale="localeConfig.locale" 
+    :date-locale="localeConfig.dateLocale" 
+    :theme="theme" 
+    :theme-overrides="themeOverrides"
+  >
     <n-global-style />
-    <n-spin description="loading..." :show="loading">
-      <n-notification-provider container-style="margin-top: 60px;">
-        <n-message-provider container-style="margin-top: 20px;">
-          <n-grid x-gap="12" :cols="gridMaxCols">
-            <n-gi v-if="showSideMargin" span="1">
-              <div class="side" v-if="showAd">
-                <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
-                  data-ad-format="auto" data-full-width-responsive="true"></ins>
-              </div>
-            </n-gi>
-            <n-gi :span="!showSideMargin ? gridMaxCols : (gridMaxCols - 2)">
-              <div class="main">
-                <n-space vertical>
-                  <n-layout style="min-height: 80vh;">
-                    <Header />
-                    <router-view></router-view>
-                  </n-layout>
-                  <Footer />
-                </n-space>
-              </div>
-            </n-gi>
-            <n-gi v-if="showSideMargin" span="1">
-              <div class="side" v-if="showAd">
-                <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
-                  data-ad-format="auto" data-full-width-responsive="true"></ins>
-              </div>
-            </n-gi>
-          </n-grid>
-          <n-back-top />
-        </n-message-provider>
-      </n-notification-provider>
-    </n-spin>
+    
+    <Transition name="fade">
+      <div v-if="showSplash" class="splash-screen">
+        <img src="/logo.png" alt="Logo" class="splash-logo" />
+      </div>
+    </Transition>
+
+    <n-loading-bar-provider>
+      <n-spin :show="loading" description="loading...">
+        <n-notification-provider container-style="margin-top: 60px;">
+          <n-message-provider container-style="margin-top: 20px;">
+            
+            <div class="app-container">
+              <n-grid :cols="gridMaxCols" class="main-grid" :x-gap="isMobile ? 0 : 24">
+                <n-gi v-if="showSideMargin" span="1">
+                  <div class="side-ad" v-if="showAd">
+                    <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
+                      data-ad-format="auto" data-full-width-responsive="true"></ins>
+                  </div>
+                </n-gi>
+                
+                <n-gi :span="!showSideMargin ? gridMaxCols : (gridMaxCols - 2)">
+                  <div class="main-content">
+                    
+                    <div class="header-wrapper" :class="{ 'is-dark': isDark }">
+                      <Header />
+                    </div>
+                    
+                    <div class="router-container">
+                      <router-view v-slot="{ Component }">
+                        <transition name="fade-slide" mode="out-in">
+                          <component :is="Component" />
+                        </transition>
+                      </router-view>
+                    </div>
+
+                    <div class="footer-wrapper">
+                      <Footer />
+                    </div>
+                  </div>
+                </n-gi>
+                
+                <n-gi v-if="showSideMargin" span="1">
+                  <div class="side-ad" v-if="showAd">
+                    <ins class="adsbygoogle" style="display:block" :data-ad-client="adClient" :data-ad-slot="adSlot"
+                      data-ad-format="auto" data-full-width-responsive="true"></ins>
+                  </div>
+                </n-gi>
+              </n-grid>
+            </div>
+
+            <n-back-top :bottom="50" :right="30" />
+          </n-message-provider>
+        </n-notification-provider>
+      </n-spin>
+    </n-loading-bar-provider>
   </n-config-provider>
 </template>
 
-
 <style>
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease;
+}
+
 .n-switch {
   margin-left: 10px;
   margin-right: 10px;
 }
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.8);
+}
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(82, 82, 91, 0.6);
+}
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(113, 113, 122, 0.8);
+}
+
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #ffffff;
+}
+[data-theme='dark'] .splash-screen {
+  background: #09090b;
+}
+.splash-logo {
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .7; transform: scale(0.95); }
+}
+
+.n-button {
+  transition: all 0.2s ease !important;
+}
+.n-button:active {
+  transform: scale(0.96);
+}
 </style>
 
 <style scoped>
-.side {
-  height: 100vh;
+.app-container {
+  min-height: 100vh;
+  width: 100%;
 }
 
-.main {
-  height: 100vh;
+.main-grid {
+  max-width: 1440px; 
+  margin: 0 auto;
+}
+
+.main-content {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px; 
+}
+
+@media (max-width: 600px) {
+  .main-content {
+    padding: 0 16px;
+  }
+}
+
+.header-wrapper {
+  position: sticky;
+  top: 16px;
+  z-index: 100;
+  padding: 12px 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(229, 231, 235, 0.6);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header-wrapper.is-dark {
+  background: rgba(24, 24, 27, 0.65);
+  border: 1px solid rgba(63, 63, 70, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.router-container {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 48px;
+}
+
+.footer-wrapper {
+  padding: 24px 0;
   text-align: center;
+  margin-top: auto;
 }
 
-.n-grid {
-  height: 100%;
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
-.n-gi {
-  height: 100%;
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
-
-.n-space {
-  height: 100%;
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>
